@@ -44,10 +44,8 @@ export default function Login() {
       >
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 shadow-glow mb-4">
-            <Shield size={24} className="text-phantix-950" />
-          </div>
-          <h1 className="font-display text-xl font-bold text-white">Phantix Staff Portal</h1>
+          <img src="/logo-white.png" alt="Phantix" className="h-14 w-auto object-contain mb-4" />
+          <h1 className="font-display text-xl font-bold text-white">Staff Portal</h1>
           <p className="text-sm text-slate-400 mt-1">Sign in with your staff account</p>
         </div>
 
