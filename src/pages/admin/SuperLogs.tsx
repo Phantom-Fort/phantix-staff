@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { FileText, RefreshCw, Wifi, WifiOff, Search, Filter, ChevronDown, Bug, AlertTriangle, Info, AlertCircle, Clock, Activity } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatCard, AnimatedNumber, TableSkeleton, EmptyState, SeverityBadge } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
@@ -36,7 +36,7 @@ export default function SuperLogs() {
       if (orgFilter) params.organization_id = Number(orgFilter);
       return api.get<{ items: SuperLog[]; total: number }>("/admin/super/logs", { params });
     },
-    [logTypeFilter, levelFilter, orgFilter],
+    {} as any,
   );
 
   const items = liveEvents.length > 0 ? [...liveEvents, ...(logs.data?.items || [])].slice(0, 100) : (logs.data?.items || []);

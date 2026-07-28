@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import { Building2, MessageSquare, Server, Wrench, FileText, Activity, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -25,7 +25,7 @@ export default function Dashboard() {
       if (DEMO_MODE) return demoStats;
       return api.get<AdminDashboardStats>("/admin/dashboard/stats");
     },
-    [],
+    {} as any,
   );
 
   const s = DEMO_MODE ? demoStats : stats.data;

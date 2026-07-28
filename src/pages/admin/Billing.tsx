@@ -33,8 +33,8 @@ export default function BillingAdmin() {
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [redemptions, setRedemptions] = useState<RedemptionItem[]>([]);
 
-  const { data: billing, loading, refresh } = useResource<BillingSettings>(async () => DEMO_MODE ? demoBilling : api.get("/admin/billing/settings"), []);
-  const { data: pricing } = useResource<PricingPreview>(async () => DEMO_MODE ? demoPricing : api.get("/admin/billing/pricing-preview"), []);
+  const { data: billing, loading, refresh } = useResource<BillingSettings>(async () => DEMO_MODE ? demoBilling : api.get("/admin/billing/settings"), {} as any);
+  const { data: pricing } = useResource<PricingPreview>(async () => DEMO_MODE ? demoPricing : api.get("/admin/billing/pricing-preview"), {} as any);
 
   React.useEffect(() => {
     if (!DEMO_MODE) {

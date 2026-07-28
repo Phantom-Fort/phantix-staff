@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { ScanLine, RefreshCw, Terminal, FileText, Play, Settings, HardDrive, CheckCircle2, XCircle, Container } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatusBadge, TableSkeleton, EmptyState, Modal, Tabs } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
@@ -36,7 +36,7 @@ export default function ScannerTools() {
       if (DEMO_MODE) return { tools: demoTools, wordlists: demoWordlists, wordlist_root: "/usr/share/wordlists", notes: [] };
       return api.get<ScannerResponse>("/admin/scanner-tools");
     },
-    [],
+    {} as any,
   );
 
   const tools = resource.data?.tools ?? (DEMO_MODE ? demoTools : []);

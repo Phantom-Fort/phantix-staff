@@ -1,55 +1,49 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { api, ApiError } from "./api";
+import { useCallback, useEffect, useState } from "react";
+import { DEMO_MODE } from "./api";
 
-export interface ResourceState<T> {
-  data: T | null;
+export type ResourceState<T> = {
+  data: T;
   loading: boolean;
   error: string | null;
   refresh: () => void;
-}
+  demo: boolean;
+};
 
-export function useResource<T>(
-  fetcher: (signal: AbortSignal) => Promise<T>,
-  deps: unknown[] = [],
-): ResourceState<T> {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
+const _cache = new Map<string, { data: unknown; ts: number }>();
+const CACHE_TTL = 60_000;
+
+export function useResource<T>(loader: (signal?: AbortSignal) => Promise<T>, initial: T): ResourceState<T> {
+  const cacheKey = typeof loader === "function" ? String(loader) : undefined;
+  const [data, setData] = useState<T>(() => {
+    if (cacheKey && _cache.has(cacheKey)) return _cache.get(cacheKey)!.data as T;
+    return initial;
+  });
+  const [loading, setLoading] = useState(() => !(cacheKey && _cache.has(cacheKey)));
   const [error, setError] = useState<string | null>(null);
-  const version = useRef(0);
+  const [tick, setTick] = useState(0);
+  const demo = DEMO_MODE;
 
-  const refresh = useCallback(() => {
-    version.current += 1;
-    const v = version.current;
-    const controller = new AbortController();
-    setLoading(true);
-    setError(null);
-    fetcher(controller.signal)
-      .then((res) => {
-        if (v === version.current) {
-          setData(res);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (v === version.current && err.name !== "AbortError") {
-          setError(err instanceof ApiError ? err.message : "Failed to load data");
-          setLoading(false);
-        }
-      });
-    return () => controller.abort();
-  }, deps);
+  const refresh = useCallback(() => setTick((t) => t + 1), []);
 
   useEffect(() => {
-    const cancel = refresh();
-    return cancel;
-  }, [refresh]);
+    let cancelled = false;
+    const hadCached = cacheKey && _cache.has(cacheKey);
+    if (!hadCached) setLoading(true);
+    setError(null);
+    loader()
+      .then((value) => {
+        if (!cancelled) { setData(value); if (cacheKey) _cache.set(cacheKey, { data: value, ts: Date.now() }); }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled && !hadCached) setError(err instanceof Error ? err.message : "Failed to load");
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [tick, demo]);
 
-  return { data, loading, error, refresh };
+  return { data, loading, error, refresh, demo };
 }
 
-export function useApi<T>(path: string, params?: Record<string, string | number | boolean>): ResourceState<T> {
-  return useResource(
-    (signal) => api.get<T>(path, { params }),
-    [path, JSON.stringify(params)],
-  );
+if (typeof window !== "undefined") {
+  setInterval(() => { const now = Date.now(); for (const [k, v] of _cache) { if (now - v.ts > CACHE_TTL) _cache.delete(k); } }, 30_000);
 }

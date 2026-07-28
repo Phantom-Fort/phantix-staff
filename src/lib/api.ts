@@ -1,6 +1,7 @@
 export const API_BASE = import.meta.env.VITE_API_BASE as string | undefined;
 
 export const DEMO_MODE = !API_BASE;
+import { dedupedRequest } from "./dedupe";
 
 // ── Token stores ────────────────────────────────────────────────────────────
 export const tokens = {
@@ -118,7 +119,8 @@ async function request<T>(
 }
 
 export const api = {
-  get: <T>(path: string, opts?: Parameters<typeof request>[2]) => request<T>("GET", path, opts),
+  get: <T>(path: string, opts?: Parameters<typeof request>[2]) =>
+    dedupedRequest("GET", path, opts?.body, () => request<T>("GET", path, opts)),
   post: <T>(path: string, body?: unknown, opts?: Parameters<typeof request>[2]) => request<T>("POST", path, { ...opts, body }),
   put: <T>(path: string, body?: unknown, opts?: Parameters<typeof request>[2]) => request<T>("PUT", path, { ...opts, body }),
   patch: <T>(path: string, body?: unknown, opts?: Parameters<typeof request>[2]) => request<T>("PATCH", path, { ...opts, body }),

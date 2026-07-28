@@ -39,7 +39,7 @@ export default function EngineJobs() {
       if (DEMO_MODE) return demoSnapshot;
       return api.get<JobsSnapshot>("/admin/super/engines/jobs");
     },
-    [],
+    {} as any,
   );
 
   const data = streamData || jobs.data || (DEMO_MODE ? demoSnapshot : null);
@@ -78,7 +78,7 @@ export default function EngineJobs() {
       } catch { if (!cancelled) setLiveConnected(false); }
     })();
     return () => { cancelled = true; controller.abort(); };
-  }, []);
+    } , {} as any);
 
   return (
     <div>

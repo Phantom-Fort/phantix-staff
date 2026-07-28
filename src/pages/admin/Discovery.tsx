@@ -74,7 +74,7 @@ export default function DiscoveryAdmin() {
       if (DEMO_MODE) return demoSettings;
       return api.get<DiscoverySettings>("/admin/discovery/settings");
     },
-    [],
+    {} as any,
   );
 
   const handleSave = async () => {
