@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Building2, Search, Eye, Mail, Globe, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Shield, ExternalLink, Settings } from "lucide-react";
@@ -66,7 +66,7 @@ export default function Clients() {
     <div>
       <PageHeader
         title="Clients"
-        description="Manage all tenant organizations — search, view details, verify, and moderate"
+        description="Manage all tenant organizations --- search, view details, verify, and moderate"
         actions={
           <button onClick={() => clients.refresh()} className="btn-ghost text-sm px-3 py-1.5" disabled={clients.loading}>
             <RefreshCw size={14} className={clients.loading ? "animate-spin" : ""} />

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { ScanLine, RefreshCw, Terminal, FileText, Play, Settings, HardDrive, CheckCircle2, XCircle, Container } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatusBadge, TableSkeleton, EmptyState, Modal, Tabs } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
@@ -129,7 +129,7 @@ export default function ScannerTools() {
                             <span className="text-xs font-mono text-slate-400 truncate max-w-[120px]" title={t.host_binary}>{t.host_binary.split("/").pop()}</span>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-600">—</span>
+                          <span className="text-xs text-slate-600">---</span>
                         )}
                       </td>
                       <td className="td">
@@ -139,7 +139,7 @@ export default function ScannerTools() {
                             <span className="text-xs text-slate-400">available</span>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-600">—</span>
+                          <span className="text-xs text-slate-600">---</span>
                         )}
                       </td>
                       <td className="td">
@@ -181,7 +181,7 @@ export default function ScannerTools() {
                         <p className="text-xs text-slate-500 font-mono truncate max-w-[300px]">{w.path}</p>
                       </td>
                       <td className="td"><span className="chip text-xs text-slate-400 bg-slate-400/10 border-slate-500/30">{w.purpose.replace(/_/g, " ")}</span></td>
-                      <td className="td"><span className="text-xs font-mono text-slate-300">{w.present ? `${(w.bytes / 1024).toFixed(1)} KB` : "—"}</span></td>
+                      <td className="td"><span className="text-xs font-mono text-slate-300">{w.present ? `${(w.bytes / 1024).toFixed(1)} KB` : "---"}</span></td>
                       <td className="td">
                         {w.present ? <StatusBadge status="ready" /> : <StatusBadge status="failed" />}
                       </td>

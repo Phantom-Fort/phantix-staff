@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { motion } from "framer-motion";
 import { Building2, MessageSquare, Server, Wrench, FileText, Activity, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -34,7 +34,7 @@ export default function Dashboard() {
     <div>
       <PageHeader
         title="Staff Dashboard"
-        description={isAdmin ? "Platform operations overview — clients, connections, support" : "Support operations overview"}
+        description={isAdmin ? "Platform operations overview --- clients, connections, support" : "Support operations overview"}
       />
 
       {stats.loading ? (

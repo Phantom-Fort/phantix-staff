@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { RefreshCw, Clock, AlertTriangle, Info, AlertCircle, Bug, Plus } from "lucide-react";
 import { PageHeader, Card, TableSkeleton, EmptyState, Modal } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
@@ -11,7 +11,7 @@ type LogEntry = { id: number; organization_id: number | null; issue_id: string |
 const demoLogs: LogEntry[] = [
   { id: 1, organization_id: 11, issue_id: "ISS-11-A223C840", level: "info", log_type: "app", engine: "scanner_engine", category: "scan", message: "Scan job #18 finished with status=completed", created_at: new Date(Date.now() - 3600000).toISOString(), source: "platform" },
   { id: 2, organization_id: 11, issue_id: "ISS-11-A6D1EE14", level: "warning", log_type: "app", engine: "scanner_engine", category: "scan", message: "Scan job #13 cancelled by operator", created_at: new Date(Date.now() - 7200000).toISOString(), source: "platform" },
-  { id: 3, organization_id: 21, issue_id: "ISS-21-9C1BDC36", level: "error", log_type: "security", engine: "compliance_engine", category: "bootstrap", message: "Security DB bootstrap failed — driver version mismatch", created_at: new Date(Date.now() - 86400000).toISOString(), source: "platform" },
+  { id: 3, organization_id: 21, issue_id: "ISS-21-9C1BDC36", level: "error", log_type: "security", engine: "compliance_engine", category: "bootstrap", message: "Security DB bootstrap failed --- driver version mismatch", created_at: new Date(Date.now() - 86400000).toISOString(), source: "platform" },
   { id: 4, organization_id: null, issue_id: null, level: "info", log_type: "http", engine: null, category: "access", message: "GET /api/v1/admin/dashboard/stats 200 42ms", created_at: new Date(Date.now() - 600000).toISOString(), source: "platform" },
 ];
 
@@ -44,7 +44,7 @@ export default function DevLogs() {
     <div>
       <PageHeader
         title="Application Logs"
-        description="Platform-wide diagnostics — scans, auth, HTTP, security events"
+        description="Platform-wide diagnostics --- scans, auth, HTTP, security events"
         actions={
           <>
             <button onClick={() => setShowWriteLog(true)} className="btn-secondary text-sm px-3 py-1.5"><Plus size={14} /> Write Note</button>
@@ -111,7 +111,7 @@ export default function DevLogs() {
                         {log.organization_id ? (
                           <span className="text-xs font-mono text-slate-400">#{log.organization_id}</span>
                         ) : (
-                          <span className="text-xs text-slate-600">—</span>
+                          <span className="text-xs text-slate-600">---</span>
                         )}
                       </td>
                       <td className="td text-xs text-slate-500 whitespace-nowrap">{timeAgo(log.created_at)}</td>

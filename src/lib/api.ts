@@ -125,6 +125,22 @@ export const api = {
   delete: <T>(path: string, opts?: Parameters<typeof request>[2]) => request<T>("DELETE", path, opts),
   postForm: <T>(path: string, form: Record<string, string>) =>
     request<T>("POST", path, { form }),
+
+  async download(path: string): Promise<Blob> {
+    const headers: Record<string, string> = {};
+    if (tokens.staff) headers["Authorization"] = `Bearer ${tokens.staff}`;
+    const res = await fetch(`${API_BASE}${path}`, { method: "GET", headers });
+    if (!res.ok) throw new ApiError(res.status, res.statusText);
+    return res.blob();
+  },
+
+  async fetchText(path: string): Promise<string> {
+    const headers: Record<string, string> = {};
+    if (tokens.staff) headers["Authorization"] = `Bearer ${tokens.staff}`;
+    const res = await fetch(`${API_BASE}${path}`, { method: "GET", headers });
+    if (!res.ok) throw new ApiError(res.status, res.statusText);
+    return res.text();
+  },
 };
 
 export const delay = (ms = 420) => new Promise((r) => setTimeout(r, ms));

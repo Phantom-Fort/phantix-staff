@@ -1,84 +1,122 @@
-import React from "react";
-import { Wrench, RefreshCw, Settings, DollarSign, Tag } from "lucide-react";
-import { PageHeader, Card, StatusBadge, TableSkeleton, EmptyState } from "@/components/ui";
+﻿import React, { useState } from "react";
+import { Wrench, RefreshCw, DollarSign, Plus, Edit3, EyeOff, Eye, Upload } from "lucide-react";
+import { PageHeader, Card, StatusBadge, Modal, TableSkeleton, EmptyState } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
 import { api, DEMO_MODE } from "@/lib/api";
-import { formatNaira } from "@/lib/utils";
+import { formatNaira, cx } from "@/lib/utils";
 
-type AdminTool = { id: number; tool_key: string; name: string; description: string; category: string; pricing_model: string; monthly_price_ngn: number; is_active: boolean; is_featured: boolean; features: string[]; sort_order: number };
+type AdminTool = { id: number; tool_key: string; name: string; description: string; category: string; pricing_model: string; monthly_price_ngn: number; yearly_month_equivalent?: number; providability?: string; requires_platform_subscription?: boolean; is_active: boolean; is_featured: boolean; features: string[]; sort_order: number; docs_url?: string };
+type Provision = { id: number; organization_id: number; tool_key: string; status: string; admin_notes: string; created_at: string };
 
 const demoTools: AdminTool[] = [
-  { id: 1, tool_key: "config_inspector", name: "Config Inspector", description: "Inspect database security rules, roles, and engine configuration", category: "scanning", pricing_model: "free", monthly_price_ngn: 0, is_active: true, is_featured: true, features: ["metadata_scan", "role_audit", "rls_policy_view"], sort_order: 10 },
-  { id: 2, tool_key: "vulnerability_scanner", name: "Vulnerability Scanner", description: "Scheduled and on-demand vulnerability scanning with findings export", category: "scanning", pricing_model: "paid", monthly_price_ngn: 2500, is_active: true, is_featured: true, features: ["scheduled_scans", "severity_scoring", "remediation_hints"], sort_order: 20 },
-  { id: 3, tool_key: "compliance_workbench", name: "Compliance Workbench", description: "Control mapping, evidence collection, and audit readiness", category: "compliance", pricing_model: "paid", monthly_price_ngn: 3000, is_active: true, is_featured: true, features: ["frameworks", "evidence_locker", "gap_analysis"], sort_order: 30 },
-  { id: 4, tool_key: "soc_alert_console", name: "SOC Alert Console", description: "Alert triage workspace for SOC-as-a-Service and MSSP clients", category: "monitoring", pricing_model: "paid", monthly_price_ngn: 5000, is_active: false, is_featured: false, features: ["alert_queue", "sla_timer", "escalation"], sort_order: 40 },
+  { id: 1, tool_key: "config_inspector", name: "Config Inspector", description: "Inspect database security rules, roles, and engine configuration", category: "scanning", pricing_model: "free", monthly_price_ngn: 0, is_active: true, is_featured: true, features: ["metadata_scan","role_audit","rls_policy_view"], sort_order: 10 },
+  { id: 2, tool_key: "vulnerability_scanner", name: "Vulnerability Scanner", description: "Scheduled and on-demand vulnerability scanning with findings export", category: "scanning", pricing_model: "paid", monthly_price_ngn: 2500, is_active: true, is_featured: true, features: ["scheduled_scans","severity_scoring","remediation_hints"], sort_order: 20 },
+  { id: 3, tool_key: "compliance_workbench", name: "Compliance Workbench", description: "Control mapping, evidence collection, and audit readiness", category: "compliance", pricing_model: "paid", monthly_price_ngn: 3000, is_active: true, is_featured: true, features: ["frameworks","evidence_locker","gap_analysis"], sort_order: 30 },
+  { id: 4, tool_key: "soc_alert_console", name: "SOC Alert Console", description: "Alert triage workspace for SOC-as-a-Service and MSSP clients", category: "monitoring", pricing_model: "paid", monthly_price_ngn: 5000, is_active: false, is_featured: false, features: ["alert_queue","sla_timer","escalation"], sort_order: 40 },
 ];
+
+const emptyForm = { tool_key: "", name: "", description: "", category: "scanning", pricing_model: "free" as string, monthly_price_ngn: 0, features: "", providability: "all", requires_platform_subscription: false, is_active: true, is_featured: false, sort_order: 0, docs_url: "" };
 
 export default function ToolingAdmin() {
   const { toast } = useStore();
+  const [tab, setTab] = useState<"catalog" | "provisions">("catalog");
+  const [showCreate, setShowCreate] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [showProvision, setShowProvision] = useState(false);
+  const [provOrgId, setProvOrgId] = useState("");
+  const [provToolKey, setProvToolKey] = useState("");
+  const [form, setForm] = useState(emptyForm);
+  const [provisions, setProvisions] = useState<Provision[]>([]);
 
-  const tools = useResource<AdminTool[]>(
-    async (signal) => {
-      if (DEMO_MODE) return demoTools;
-      const raw = await api.get<any>("/admin/tooling/tools");
-      return (Array.isArray(raw) ? raw : (raw?.items ?? [])) as AdminTool[];
-    },
-    [],
-  );
+  const toolsRes = useResource<AdminTool[]>(async () => DEMO_MODE ? demoTools : ((await api.get<any>("/admin/tooling/tools?include_inactive=true"))?.items ?? await api.get<any>("/admin/tooling/tools?include_inactive=true") ?? []), []);
+  const data = DEMO_MODE ? demoTools : (toolsRes.data?.length ? toolsRes.data : []);
 
-  const data = DEMO_MODE ? demoTools : (tools.data?.length ? tools.data : []);
+  React.useEffect(() => {
+    if (!DEMO_MODE) api.get<any>("/admin/tooling/provisions?limit=50").then(r => setProvisions(r?.items ?? [])).catch(() => {});
+  }, []);
 
-  const handleSeed = async () => {
-    try { await api.post("/admin/tooling/tools/seed", {}); toast("success", "Seeded"); tools.refresh(); }
-    catch (e) { toast("error", "Seed failed", e instanceof Error ? e.message : ""); }
+  const handleSeed = async () => { try { await api.post("/admin/tooling/tools/seed", {}); toast("success", "Seeded"); toolsRes.refresh(); } catch (e) { toast("error", "Seed failed"); } };
+  const handleCreate = async () => {
+    if (!form.tool_key || !form.name) { toast("error", "Tool key and name required"); return; }
+    try {
+      await api.post("/admin/tooling/tools", { ...form, pricing_model: form.pricing_model, monthly_price_ngn: form.pricing_model === "paid" ? form.monthly_price_ngn : 0, features: form.features.split(",").map(f => f.trim()).filter(Boolean) });
+      toast("success", "Created"); setShowCreate(false); setForm(emptyForm); toolsRes.refresh();
+    } catch (e) { toast("error", "Failed", e instanceof Error ? e.message : ""); }
   };
+  const handleEdit = async () => {
+    if (!editId) return;
+    try { await api.patch(`/admin/tooling/tools/${editId}`, { pricing_model: form.pricing_model, monthly_price_ngn: form.pricing_model === "paid" ? form.monthly_price_ngn : 0, is_featured: form.is_featured, is_active: form.is_active }); toast("success", "Updated"); setEditId(null); toolsRes.refresh(); } catch (e) { toast("error", "Failed"); }
+  };
+  const handleProvision = async () => {
+    if (!provOrgId || !provToolKey) return;
+    try { await api.post("/admin/tooling/provisions", { organization_id: Number(provOrgId), tool_key: provToolKey, status: "provisioned", admin_notes: "Manual grant" }); toast("success", "Granted"); setShowProvision(false); setProvOrgId(""); setProvToolKey(""); } catch (e) { toast("error", "Failed"); }
+  };
+  const handleDelete = async (id: number) => { try { await api.delete(`/admin/tooling/tools/${id}`); toast("success", "Deactivated"); toolsRes.refresh(); } catch (e) { toast("error", "Failed"); } };
+
+  const openEdit = (t: AdminTool) => { setForm({ ...emptyForm, tool_key: t.tool_key, name: t.name, pricing_model: t.pricing_model as any, monthly_price_ngn: t.monthly_price_ngn, is_featured: t.is_featured, is_active: t.is_active }); setEditId(t.id); };
 
   return (
     <div>
-      <PageHeader
-        title="Tooling Marketplace"
-        description={`${data.length} tools in catalog — manage availability, pricing, and features`}
-        actions={
-          <button onClick={handleSeed} className="btn-ghost text-sm px-3 py-1.5">
-            <RefreshCw size={14} /> Seed
-          </button>
-        }
-      />
+      <PageHeader title="Tooling Marketplace" description={`${data.length} tools in catalog`} actions={<><button onClick={handleSeed} className="btn-ghost text-sm px-3 py-1.5"><RefreshCw size={14} /> Seed</button><button onClick={() => { setForm(emptyForm); setShowCreate(true); }} className="btn-primary text-sm"><Plus size={14} /> New Tool</button></>} />
+      <div className="mb-4 flex gap-1.5">
+        {[{ id: "catalog", label: "Catalog" }, { id: "provisions", label: "Provisions" }].map(t => <button key={t.id} onClick={() => setTab(t.id as any)} className={cx("rounded-lg px-3 py-1.5 text-xs font-medium border", tab === t.id ? "border-gold-400/40 bg-gold-400/12 text-gold-300" : "border-transparent text-slate-500 hover:text-slate-300")}>{t.label}</button>)}
+      </div>
 
-      {tools.loading ? <TableSkeleton rows={4} /> : data.length === 0 ? (
-        <EmptyState icon={<Wrench size={24} />} title="No tools" body="Seed the catalog to populate" action={<button onClick={handleSeed} className="btn-primary">Seed Defaults</button>} />
-      ) : (
-        <div className="grid md:grid-cols-2 gap-4">
-          {data.sort((a, b) => a.sort_order - b.sort_order).map((t) => (
-            <Card key={t.id} className={!t.is_active ? "opacity-60" : ""}>
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Wrench size={16} className={t.is_active ? "text-phantix-400" : "text-slate-600"} />
-                  <h3 className="font-display text-sm font-semibold text-white">{t.name}</h3>
-                  {t.is_featured && <span className="chip text-[10px] text-gold-400 bg-gold-400/10 border-gold-400/20">Featured</span>}
+      {tab === "catalog" && (
+        toolsRes.loading ? <TableSkeleton rows={4} /> : data.length === 0 ? <EmptyState icon={<Wrench size={24} />} title="No tools" action={<button onClick={handleSeed} className="btn-primary">Seed Defaults</button>} /> : (
+          <div className="grid md:grid-cols-2 gap-4">
+            {data.sort((a, b) => a.sort_order - b.sort_order).map(t => (
+              <Card key={t.id} className={cx("", !t.is_active && "opacity-60")}>
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2"><Wrench size={16} className={t.is_active ? "text-phantix-400" : "text-slate-600"} /><h3 className="font-display text-sm font-semibold text-white">{t.name}</h3>{t.is_featured && <span className="chip text-[10px] text-gold-400 bg-gold-400/10 border-gold-400/20">Featured</span>}</div>
+                  <StatusBadge status={t.is_active ? "active" : "closed"} />
                 </div>
-                <StatusBadge status={t.is_active ? "active" : "closed"} />
-              </div>
-              <p className="text-xs text-slate-400 mb-3">{t.description}</p>
-              <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                <span className="chip text-[10px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{t.category}</span>
-                <span className="chip text-[10px] text-slate-400 bg-slate-400/10 border-slate-500/30 capitalize">{t.pricing_model}</span>
-                {t.monthly_price_ngn > 0 && (
-                  <span className="text-[10px] font-mono text-slate-400 flex items-center gap-0.5">
-                    <DollarSign size={10} /> {formatNaira(t.monthly_price_ngn)}/mo
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {t.features.map((f) => (
-                  <span key={f} className="text-[10px] text-slate-500 bg-phantix-800/60 rounded px-1.5 py-0.5">{f}</span>
-                ))}
-              </div>
-            </Card>
-          ))}
-        </div>
+                <p className="text-xs text-slate-400 mb-3">{t.description}</p>
+                <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                  <span className="chip text-[10px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{t.category}</span>
+                  <span className={cx("chip text-[10px] capitalize", t.pricing_model === "free" ? "text-emerald-300 bg-emerald-400/10 border-emerald-400/20" : "text-amber-300 bg-amber-400/10 border-amber-400/20")}>{t.pricing_model}</span>
+                  {t.monthly_price_ngn > 0 && <span className="text-[10px] font-mono text-slate-400 flex items-center gap-0.5"><DollarSign size={10} />{formatNaira(t.monthly_price_ngn)}/mo</span>}
+                </div>
+                <div className="flex flex-wrap gap-1 mb-2">{t.features.map(f => <span key={f} className="text-[10px] text-slate-500 bg-phantix-800/60 rounded px-1.5 py-0.5">{f}</span>)}</div>
+                <div className="flex gap-1.5">
+                  <button onClick={() => openEdit(t)} className="btn-ghost text-xs px-2 py-1"><Edit3 size={11} /> Edit</button>
+                  <button onClick={() => handleDelete(t.id)} className="btn-ghost text-xs px-2 py-1 text-severity-critical"><EyeOff size={11} /> {t.is_active ? "Deactivate" : "Delete"}</button>
+                  {t.is_active && <button onClick={() => { setProvToolKey(t.tool_key); setShowProvision(true); }} className="btn-ghost text-xs px-2 py-1 text-gold-400"><Upload size={11} /> Grant</button>}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
       )}
+
+      {tab === "provisions" && (
+        provisions.length === 0 ? <EmptyState icon={<Eye size={24} />} title="No provisions" body="Grant tools to organizations via the catalog." /> : (
+          <Card className="!p-0 overflow-hidden"><table className="w-full"><thead><tr className="border-b border-phantix-700/40"><th className="th">Tool Key</th><th className="th">Org ID</th><th className="th">Status</th><th className="th">Notes</th></tr></thead><tbody>{provisions.map(p => <tr key={p.id} className="border-b border-phantix-800/40"><td className="td font-mono text-xs text-gold-300">{p.tool_key}</td><td className="td text-xs">#{p.organization_id}</td><td className="td"><span className={cx("chip text-[10px]", p.status === "provisioned" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{p.status}</span></td><td className="td text-xs text-slate-400 max-w-[200px] truncate">{p.admin_notes || "-"}</td></tr>)}</tbody></table></Card>
+        )
+      )}
+
+      <Modal open={showCreate || editId !== null} onClose={() => { setShowCreate(false); setEditId(null); }} title={editId ? "Edit Tool" : "Create Tool"}>
+        <div className="space-y-3">
+          {!editId && <><div className="grid grid-cols-2 gap-2"><div><label className="label">Tool Key</label><input className="input" value={form.tool_key} onChange={e => setForm({...form,tool_key:e.target.value})} placeholder="my_tool" /></div><div><label className="label">Name</label><input className="input" value={form.name} onChange={e => setForm({...form,name:e.target.value})} /></div></div>
+          <div><label className="label">Description</label><textarea className="input" value={form.description} onChange={e => setForm({...form,description:e.target.value})} /></div></>}
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="label">Pricing</label><select className="input" value={form.pricing_model} onChange={e => setForm({...form,pricing_model:e.target.value as any})}><option value="free">Free</option><option value="paid">Paid</option></select></div>
+            {form.pricing_model === "paid" && <div><label className="label">Price (NGN/month)</label><input className="input font-mono" type="number" value={form.monthly_price_ngn} onChange={e => setForm({...form,monthly_price_ngn:Number(e.target.value)})} /></div>}
+          </div>
+          {!editId && <div><label className="label">Features (comma-separated)</label><input className="input" value={form.features} onChange={e => setForm({...form,features:e.target.value})} placeholder="scan,export,alert" /></div>}
+          <div className="flex items-center gap-3"><label className="flex items-center gap-1.5"><input type="checkbox" checked={form.is_featured} onChange={e => setForm({...form,is_featured:e.target.checked})} className="accent-gold-400" /> Featured</label><label className="flex items-center gap-1.5"><input type="checkbox" checked={form.is_active} onChange={e => setForm({...form,is_active:e.target.checked})} className="accent-gold-400" /> Active</label></div>
+          <button onClick={editId ? handleEdit : handleCreate} className="btn-primary w-full">{editId ? "Save Changes" : "Create Tool"}</button>
+        </div>
+      </Modal>
+
+      <Modal open={showProvision} onClose={() => setShowProvision(false)} title="Grant Tool">
+        <div className="space-y-3">
+          <div><label className="label">Organization ID</label><input className="input font-mono" value={provOrgId} onChange={e => setProvOrgId(e.target.value)} placeholder="24" /></div>
+          <div><label className="label">Tool Key</label><input className="input font-mono" value={provToolKey} onChange={e => setProvToolKey(e.target.value)} readOnly /></div>
+          <button onClick={handleProvision} className="btn-primary w-full">Grant Access</button>
+        </div>
+      </Modal>
     </div>
   );
 }

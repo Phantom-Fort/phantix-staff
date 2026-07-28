@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Shield, Mail, Lock, Eye, EyeOff, Loader2, AlertTriangle } from "lucide-react";
@@ -28,7 +28,7 @@ export default function Login() {
       await login(email, password);
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed — check your credentials");
+      setError(err instanceof Error ? err.message : "Login failed --- check your credentials");
     } finally {
       setLoading(false);
     }
@@ -54,7 +54,7 @@ export default function Login() {
           {DEMO_MODE && (
             <div className="flex items-center gap-2 rounded-lg bg-severity-medium/10 border border-severity-medium/30 px-3 py-2 text-xs text-severity-medium">
               <AlertTriangle size={14} />
-              Demo mode — any email + any password works
+              Demo mode --- any email + any password works
             </div>
           )}
 
@@ -108,7 +108,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-xs text-slate-500 mt-6">
-          Staff accounts only — for internal use
+          Staff accounts only --- for internal use
         </p>
       </motion.div>
     </div>

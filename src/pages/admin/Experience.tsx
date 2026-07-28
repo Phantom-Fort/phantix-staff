@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { Zap, RefreshCw, Eye, EyeOff, ChevronDown, ChevronUp, Layers, Navigation, BookOpen, Link2, Clock, Plus } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatusBadge, TableSkeleton, EmptyState, Modal } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
@@ -49,7 +49,7 @@ export default function ExperienceAdmin() {
     <div>
       <PageHeader
         title="Experience Services"
-        description="Platform product modules — each service defines nav, onboarding, widgets, and required connections"
+        description="Platform product modules --- each service defines nav, onboarding, widgets, and required connections"
         actions={
           <>
             <button onClick={() => setShowCreate(true)} className="btn-secondary text-sm px-3 py-1.5"><Plus size={14} /> New Service</button>

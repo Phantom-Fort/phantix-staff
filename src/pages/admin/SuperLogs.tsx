@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { FileText, RefreshCw, Wifi, WifiOff, Search, Filter, ChevronDown, Bug, AlertTriangle, Info, AlertCircle, Clock, Activity } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatCard, AnimatedNumber, TableSkeleton, EmptyState, SeverityBadge } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
@@ -9,10 +9,10 @@ import { timeAgo, cx } from "@/lib/utils";
 type SuperLog = { id: number; organizationId: number | null; issueId: string | null; correlationId: string | null; level: string; logType: string; engine: string | null; category: string | null; message: string; createdAt: string; source: string };
 
 const demoLogs: SuperLog[] = [
-  { id: 1, organizationId: 11, issueId: "ISS-11-A223C840", correlationId: null, level: "error", logType: "scan", engine: "scanner_engine", category: "job", message: "Scan job #18 failed — tool timeout after 600s", createdAt: new Date(Date.now() - 600000).toISOString(), source: "platform" },
-  { id: 2, organizationId: 24, issueId: "ISS-24-9C1BDC36", correlationId: "67cdffc7dbeb4ed19b7bf55b84fc51a0", level: "warning", logType: "scan", engine: "scanner_engine", category: "job", message: "Scan job #6 finished with warnings — 3 hosts unreachable", createdAt: new Date(Date.now() - 1200000).toISOString(), source: "platform" },
+  { id: 1, organizationId: 11, issueId: "ISS-11-A223C840", correlationId: null, level: "error", logType: "scan", engine: "scanner_engine", category: "job", message: "Scan job #18 failed --- tool timeout after 600s", createdAt: new Date(Date.now() - 600000).toISOString(), source: "platform" },
+  { id: 2, organizationId: 24, issueId: "ISS-24-9C1BDC36", correlationId: "67cdffc7dbeb4ed19b7bf55b84fc51a0", level: "warning", logType: "scan", engine: "scanner_engine", category: "job", message: "Scan job #6 finished with warnings --- 3 hosts unreachable", createdAt: new Date(Date.now() - 1200000).toISOString(), source: "platform" },
   { id: 3, organizationId: null, issueId: null, correlationId: null, level: "info", logType: "http", engine: null, category: "access", message: "GET /api/v1/admin/dashboard/stats 200 42ms (staff=admin@example.com)", createdAt: new Date(Date.now() - 300000).toISOString(), source: "platform" },
-  { id: 4, organizationId: 11, issueId: "ISS-11-DD8145A4", correlationId: "973e0b40f4e94c52ba06963664d4e79b", level: "critical", logType: "security", engine: "compliance_engine", category: "bootstrap", message: "Security DB schema bootstrap failed — asyncpg driver error", createdAt: new Date(Date.now() - 3600000).toISOString(), source: "platform" },
+  { id: 4, organizationId: 11, issueId: "ISS-11-DD8145A4", correlationId: "973e0b40f4e94c52ba06963664d4e79b", level: "critical", logType: "security", engine: "compliance_engine", category: "bootstrap", message: "Security DB schema bootstrap failed --- asyncpg driver error", createdAt: new Date(Date.now() - 3600000).toISOString(), source: "platform" },
   { id: 5, organizationId: 21, issueId: "ISS-21-CA48523F", correlationId: null, level: "info", logType: "app", engine: "ai_engine", category: "prompt", message: "AI finding_explanation v2 activated for org #21", createdAt: new Date(Date.now() - 7200000).toISOString(), source: "platform" },
 ];
 
@@ -83,7 +83,7 @@ export default function SuperLogs() {
     <div>
       <PageHeader
         title="Centralized Logs"
-        description="All-tenant application logs with SSE live tail — scan jobs, auth, HTTP, security events"
+        description="All-tenant application logs with SSE live tail --- scan jobs, auth, HTTP, security events"
         actions={
           <div className="flex items-center gap-2">
             <span className={cx("flex items-center gap-1.5 text-xs font-mono", liveConnected ? "text-emerald-400" : "text-slate-500")}>
@@ -150,9 +150,9 @@ export default function SuperLogs() {
                         {log.issueId && <p className="text-[10px] font-mono text-slate-600 mt-0.5">{log.issueId}</p>}
                       </td>
                       <td className="td">
-                        {log.organizationId ? <span className="text-xs font-mono text-slate-400">#{log.organizationId}</span> : <span className="text-xs text-slate-600">—</span>}
+                        {log.organizationId ? <span className="text-xs font-mono text-slate-400">#{log.organizationId}</span> : <span className="text-xs text-slate-600">---</span>}
                       </td>
-                      <td className="td"><span className="text-[10px] text-slate-500">{log.engine || "—"}</span></td>
+                      <td className="td"><span className="text-[10px] text-slate-500">{log.engine || "---"}</span></td>
                       <td className="td text-xs text-slate-500 whitespace-nowrap">{timeAgo(log.createdAt)}</td>
                     </tr>
                   );

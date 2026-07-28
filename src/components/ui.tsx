@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 import { cx, titleCase, severityColor } from "@/lib/utils";
@@ -92,7 +92,7 @@ export function StatCard({ label, value, icon, trend, trendLabel, className }: {
           <div className="font-display text-2xl font-bold text-white">{value}</div>
           {trendLabel && (
             <p className={cx("text-xs mt-1", trend === "up" ? "text-severity-critical" : trend === "down" ? "text-emerald-400" : "text-slate-400")}>
-              {trend === "up" ? "↑" : trend === "down" ? "↓" : "—"} {trendLabel}
+              {trend === "up" ? "↑" : trend === "down" ? "↓" : "---"} {trendLabel}
             </p>
           )}
         </div>

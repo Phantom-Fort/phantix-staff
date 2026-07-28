@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Server, Cpu, HardDrive, RefreshCw, Zap, Activity, Database, CheckCircle2, AlertTriangle } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatCard, TableSkeleton, ProgressRing } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
@@ -50,7 +50,7 @@ export default function ServerOps() {
     <div>
       <PageHeader
         title="Server Operations"
-        description={`${d?.version ?? ""} · ${d?.environment ?? ""} · PID ${d?.process?.pid ?? "—"}`}
+        description={`${d?.version ?? ""} · ${d?.environment ?? ""} · PID ${d?.process?.pid ?? "---"}`}
         actions={
           <button onClick={() => server.refresh()} className="btn-ghost text-sm px-3 py-1.5" disabled={server.loading}>
             <RefreshCw size={14} className={server.loading ? "animate-spin" : ""} />
@@ -82,7 +82,7 @@ export default function ServerOps() {
                 {d.related_processes.map((p) => (
                   <div key={p.pid} className="flex items-center justify-between rounded bg-phantix-800/30 px-2.5 py-1.5 text-xs">
                     <div className="min-w-0">
-                      <span className="text-slate-300 truncate block">{p.cmdline.slice(0, 60)}{p.cmdline.length > 60 ? "…" : ""}</span>
+                      <span className="text-slate-300 truncate block">{p.cmdline.slice(0, 60)}{p.cmdline.length > 60 ? "..." : ""}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       <span className="chip text-[10px] text-slate-400 bg-slate-400/10 border-slate-500/30">{p.role}</span>

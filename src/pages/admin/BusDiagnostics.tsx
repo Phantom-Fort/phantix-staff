@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Activity, Radio, RefreshCw, Zap } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatusBadge, TableSkeleton, EmptyState } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
@@ -40,7 +40,7 @@ export default function BusDiagnostics() {
     <div>
       <PageHeader
         title="Event Bus Diagnostics"
-        description="Engine event catalog — debug which engines listen to which events across the platform"
+        description="Engine event catalog --- debug which engines listen to which events across the platform"
         actions={
           <button onClick={refresh} className="btn-ghost text-sm px-3 py-1.5">
             <RefreshCw size={14} />
