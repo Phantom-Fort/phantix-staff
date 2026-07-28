@@ -6,17 +6,23 @@ import { useStore } from "@/lib/store";
 import { api, DEMO_MODE } from "@/lib/api";
 import { formatNaira, cx } from "@/lib/utils";
 
-type AdminTool = { id: number; tool_key: string; name: string; description: string; category: string; pricing_model: string; monthly_price_ngn: number; yearly_month_equivalent?: number; providability?: string; requires_platform_subscription?: boolean; is_active: boolean; is_featured: boolean; features: string[]; sort_order: number; docs_url?: string };
-type Provision = { id: number; organization_id: number; tool_key: string; status: string; admin_notes: string; created_at: string };
+type AdminTool = { id: number; tool_key: string; name: string; description: string; category: string; pricing_model: string; tier?: string; monthly_price_ngn: number; yearly_month_equivalent?: number; providability?: string; requires_platform_subscription?: boolean; is_active: boolean; is_featured: boolean; features: string[]; sort_order: number; docs_url?: string };
+
+const tierLabels: Record<string, { label: string; color: string }> = {
+  free: { label: "Free", color: "text-emerald-300 border-emerald-400/20 bg-emerald-400/10" },
+  premium_included: { label: "Premium", color: "text-gold-300 border-gold-400/20 bg-gold-400/10" },
+  addon_subscription: { label: "Add-on", color: "text-blue-300 border-blue-400/20 bg-blue-400/10" },
+  addon_engagement: { label: "Engagement", color: "text-purple-300 border-purple-400/20 bg-purple-400/10" },
+} as const;
 
 const demoTools: AdminTool[] = [
-  { id: 1, tool_key: "config_inspector", name: "Config Inspector", description: "Inspect database security rules, roles, and engine configuration", category: "scanning", pricing_model: "free", monthly_price_ngn: 0, is_active: true, is_featured: true, features: ["metadata_scan","role_audit","rls_policy_view"], sort_order: 10 },
-  { id: 2, tool_key: "vulnerability_scanner", name: "Vulnerability Scanner", description: "Scheduled and on-demand vulnerability scanning with findings export", category: "scanning", pricing_model: "paid", monthly_price_ngn: 2500, is_active: true, is_featured: true, features: ["scheduled_scans","severity_scoring","remediation_hints"], sort_order: 20 },
-  { id: 3, tool_key: "compliance_workbench", name: "Compliance Workbench", description: "Control mapping, evidence collection, and audit readiness", category: "compliance", pricing_model: "paid", monthly_price_ngn: 3000, is_active: true, is_featured: true, features: ["frameworks","evidence_locker","gap_analysis"], sort_order: 30 },
-  { id: 4, tool_key: "soc_alert_console", name: "SOC Alert Console", description: "Alert triage workspace for SOC-as-a-Service and MSSP clients", category: "monitoring", pricing_model: "paid", monthly_price_ngn: 5000, is_active: false, is_featured: false, features: ["alert_queue","sla_timer","escalation"], sort_order: 40 },
+  { id: 1, tool_key: "config_inspector", name: "Config Inspector", description: "Inspect database security rules, roles, and engine configuration", category: "scanning", pricing_model: "free", tier: "free", monthly_price_ngn: 0, is_active: true, is_featured: true, features: ["metadata_scan","role_audit","rls_policy_view"], sort_order: 10 },
+  { id: 2, tool_key: "vulnerability_scanner", name: "Vulnerability Scanner", description: "Scheduled and on-demand vulnerability scanning with findings export", category: "scanning", pricing_model: "paid", tier: "premium_included", monthly_price_ngn: 2500, is_active: true, is_featured: true, features: ["scheduled_scans","severity_scoring","remediation_hints"], sort_order: 20 },
+  { id: 3, tool_key: "compliance_workbench", name: "Compliance Workbench", description: "Control mapping, evidence collection, and audit readiness", category: "compliance", pricing_model: "paid", tier: "addon_subscription", monthly_price_ngn: 3000, is_active: true, is_featured: true, features: ["frameworks","evidence_locker","gap_analysis"], sort_order: 30 },
+  { id: 4, tool_key: "soc_alert_console", name: "SOC Alert Console", description: "Alert triage workspace for SOC-as-a-Service and MSSP clients", category: "monitoring", pricing_model: "paid", tier: "addon_subscription", monthly_price_ngn: 5000, is_active: false, is_featured: false, features: ["alert_queue","sla_timer","escalation"], sort_order: 40 },
 ];
 
-const emptyForm = { tool_key: "", name: "", description: "", category: "scanning", pricing_model: "free" as string, monthly_price_ngn: 0, features: "", providability: "all", requires_platform_subscription: false, is_active: true, is_featured: false, sort_order: 0, docs_url: "" };
+type Provision = { id: number; organization_id: number; tool_key: string; status: string; admin_notes: string; created_at: string };
 
 export default function ToolingAdmin() {
   const { toast } = useStore();
@@ -26,6 +32,7 @@ export default function ToolingAdmin() {
   const [showProvision, setShowProvision] = useState(false);
   const [provOrgId, setProvOrgId] = useState("");
   const [provToolKey, setProvToolKey] = useState("");
+  const emptyForm = { tool_key: "", name: "", description: "", category: "scanning", pricing_model: "free" as string, monthly_price_ngn: 0, features: "", providability: "all", requires_platform_subscription: false, is_active: true, is_featured: false, sort_order: 0, docs_url: "" };
   const [form, setForm] = useState(emptyForm);
   const [provisions, setProvisions] = useState<Provision[]>([]);
 
@@ -75,7 +82,11 @@ export default function ToolingAdmin() {
                 <p className="text-xs text-slate-400 mb-3">{t.description}</p>
                 <div className="flex flex-wrap items-center gap-1.5 mb-3">
                   <span className="chip text-[10px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{t.category}</span>
-                  <span className={cx("chip text-[10px] capitalize", t.pricing_model === "free" ? "text-emerald-300 bg-emerald-400/10 border-emerald-400/20" : "text-amber-300 bg-amber-400/10 border-amber-400/20")}>{t.pricing_model}</span>
+                  {(t.tier || t.pricing_model) && (
+                    <span className={cx("chip text-[10px] capitalize", (tierLabels[t.tier ?? ""] ?? tierLabels[t.pricing_model])?.color ?? "text-slate-400 bg-slate-400/10 border-slate-500/30")}>
+                      {(tierLabels[t.tier ?? ""] ?? tierLabels[t.pricing_model])?.label ?? t.pricing_model}
+                    </span>
+                  )}
                   {t.monthly_price_ngn > 0 && <span className="text-[10px] font-mono text-slate-400 flex items-center gap-0.5"><DollarSign size={10} />{formatNaira(t.monthly_price_ngn)}/mo</span>}
                 </div>
                 <div className="flex flex-wrap gap-1 mb-2">{t.features.map(f => <span key={f} className="text-[10px] text-slate-500 bg-phantix-800/60 rounded px-1.5 py-0.5">{f}</span>)}</div>
