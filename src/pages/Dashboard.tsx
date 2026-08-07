@@ -93,10 +93,10 @@ export default function Dashboard() {
                   <span className="font-mono text-severity-critical">{s.critical_open_tickets}</span>
                 </div>
               )}
-              {Object.entries(s.tickets_by_status).length > 0 && (
+              {Object.entries(s.tickets_by_status ?? {}).length > 0 && (
                 <div className="pt-2">
                   <p className="text-xs text-slate-500 mb-1.5">By Status</p>
-                  {Object.entries(s.tickets_by_status).map(([status, count]) => (
+                  {Object.entries(s.tickets_by_status ?? {}).map(([status, count]) => (
                     <div key={status} className="flex justify-between text-xs px-2 py-1">
                       <span className="text-slate-400 capitalize">{status.replace(/_/g, " ")}</span>
                       <span className="font-mono text-slate-300">{count}</span>

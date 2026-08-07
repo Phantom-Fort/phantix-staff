@@ -37,11 +37,24 @@ export default function SupportTickets() {
       const raw = await api.get<any>("/admin/support/tickets");
       const items = Array.isArray(raw) ? raw : (raw?.value ?? raw?.items ?? []);
       return (items as any[]).map((t: any) => ({
-        ...t,
+        id: Number(t.id ?? 0),
+        subject: String(t.subject ?? ""),
+        status: String(t.status ?? "open"),
+        priority: String(t.priority ?? "medium"),
         org_name: t.organization_name || t.org_name || "",
         org_id: t.organization_id || t.org_id || 0,
-        updated_at: t.last_activity_at || t.updated_at || t.created_at,
-        messages: t.messages || [],
+        created_by: t.submitter_name || t.created_by || "",
+        created_at: t.created_at || "",
+        updated_at: t.last_activity_at || t.updated_at || t.created_at || "",
+        messages: Array.isArray(t.messages)
+          ? (t.messages as any[]).map((m) => ({
+              id: Number(m.id ?? 0),
+              from: String(m.submitter_name || m.from || "customer"),
+              from_type: String(m.is_internal ? "staff" : m.from_type || "customer"),
+              body: String(m.body ?? ""),
+              at: String(m.created_at || m.at || ""),
+            }))
+          : [],
       })) as SupportTicket[];
     },
     [],

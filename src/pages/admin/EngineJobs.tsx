@@ -30,6 +30,21 @@ const engineIcons: Record<string, React.ReactNode> = {
   ai_engine: <Brain size={16} />,
 };
 
+function normalizeSnapshot(raw: any): JobsSnapshot {
+  const celery = raw?.celery ?? {};
+  return {
+    totalActiveJobs: Number(raw?.totalActiveJobs ?? raw?.total_active_jobs ?? 0),
+    organizationsSampled: Number(raw?.organizationsSampled ?? raw?.organizations_sampled ?? 0),
+    engines: Array.isArray(raw?.engines) ? raw.engines : [],
+    celery: {
+      available: celery.available === true || celery.available === "true",
+      workerCount: Number(celery.workerCount ?? celery.worker_count ?? 0),
+      activeTasksByWorker: celery.activeTasksByWorker ?? celery.active_tasks_by_worker ?? {},
+    },
+    durationMs: Number(raw?.durationMs ?? raw?.duration_ms ?? 0),
+  };
+}
+
 export default function EngineJobs() {
   const [liveConnected, setLiveConnected] = useState(false);
   const [streamData, setStreamData] = useState<JobsSnapshot | null>(null);
@@ -37,7 +52,7 @@ export default function EngineJobs() {
   const jobs = useResource<JobsSnapshot>(
     async (signal) => {
       if (DEMO_MODE) return demoSnapshot;
-      return api.get<JobsSnapshot>("/admin/super/engines/jobs");
+      return normalizeSnapshot(await api.get<any>("/admin/super/engines/jobs"));
     },
     {} as any,
   );
@@ -72,8 +87,7 @@ export default function EngineJobs() {
               if (line.startsWith("data:")) dataStr += line.slice(5).trim();
             }
             if (!dataStr || eventName === "heartbeat") continue;
-            try { setStreamData(JSON.parse(dataStr)); } catch { /* ignore */ }
-          }
+            try { setStreamData(normalizeSnapshot(JSON.parse(dataStr))); } catch { /* ignore */ }          }
         }
       } catch { if (!cancelled) setLiveConnected(false); }
     })();

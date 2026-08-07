@@ -112,6 +112,7 @@ export default function AiAdmin() {
         providers: (() => {
           const configured = (raw as any).providers_configured ?? (raw as any).providers ?? {};
           if (Array.isArray(configured)) return configured;
+          if (!configured || typeof configured !== "object") return [];
           return Object.entries(configured as Record<string, boolean>).map(([id, conf]) => ({
             id,
             configured: Boolean(conf),

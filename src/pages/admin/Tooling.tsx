@@ -111,7 +111,7 @@ export default function ToolingAdmin() {
                   )}
                   {t.monthly_price_ngn > 0 && <span className="text-[10px] font-mono text-slate-400 flex items-center gap-0.5"><DollarSign size={10} />{formatNaira(t.monthly_price_ngn)}/mo</span>}
                 </div>
-                <div className="flex flex-wrap gap-1 mb-2">{t.features.map(f => <span key={f} className="text-[10px] text-slate-500 bg-phantix-800/60 rounded px-1.5 py-0.5">{f}</span>)}</div>
+                <div className="flex flex-wrap gap-1 mb-2">{(t.features ?? []).map(f => <span key={f} className="text-[10px] text-slate-500 bg-phantix-800/60 rounded px-1.5 py-0.5">{f}</span>)}</div>
                 <div className="flex gap-1.5">
                   <button onClick={() => openEdit(t)} className="btn-ghost text-xs px-2 py-1"><Edit3 size={11} /> Edit</button>
                   <button onClick={() => handleDelete(t.id)} className="btn-ghost text-xs px-2 py-1 text-severity-critical"><EyeOff size={11} /> {t.is_active ? "Deactivate" : "Delete"}</button>

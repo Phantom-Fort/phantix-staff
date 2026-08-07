@@ -24,7 +24,22 @@ export default function ExperienceAdmin() {
     async (signal) => {
       if (DEMO_MODE) return [];
       const raw = await api.get<any>("/admin/experience-services");
-      return (Array.isArray(raw) ? raw : (raw?.items ?? [])) as ExpService[];
+      const list = Array.isArray(raw) ? raw : (raw?.items ?? []);
+      return (list as any[]).map((s) => ({
+        service_key: String(s.service_key ?? s.key ?? ""),
+        label: String(s.label ?? s.name ?? ""),
+        description: String(s.description ?? ""),
+        modules: Array.isArray(s.modules) ? s.modules.map(String) : [],
+        nav: Array.isArray(s.nav) ? s.nav : [],
+        dashboard_widgets: Array.isArray(s.dashboard_widgets) ? s.dashboard_widgets.map(String) : [],
+        onboarding: Array.isArray(s.onboarding) ? s.onboarding : [],
+        requires_connections: Array.isArray(s.requires_connections) ? s.requires_connections.map(String) : [],
+        is_active: s.is_active !== false,
+        sort_order: Number(s.sort_order ?? 0),
+        created_at: String(s.created_at ?? ""),
+        updated_at: String(s.updated_at ?? ""),
+        updated_by: (s.updated_by as string) ?? "",
+      })) as ExpService[];
     },
     [],
   );
