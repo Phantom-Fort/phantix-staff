@@ -20,6 +20,7 @@ const demoTools: AdminTool[] = [
   { id: 2, tool_key: "vulnerability_scanner", name: "Vulnerability Scanner", description: "Scheduled and on-demand vulnerability scanning with findings export", category: "scanning", pricing_model: "paid", tier: "premium_included", monthly_price_ngn: 2500, is_active: true, is_featured: true, features: ["scheduled_scans","severity_scoring","remediation_hints"], sort_order: 20 },
   { id: 3, tool_key: "compliance_workbench", name: "Compliance Workbench", description: "Control mapping, evidence collection, and audit readiness", category: "compliance", pricing_model: "paid", tier: "addon_subscription", monthly_price_ngn: 3000, is_active: true, is_featured: true, features: ["frameworks","evidence_locker","gap_analysis"], sort_order: 30 },
   { id: 4, tool_key: "soc_alert_console", name: "SOC Alert Console", description: "Alert triage workspace for SOC-as-a-Service and MSSP clients", category: "monitoring", pricing_model: "paid", tier: "addon_subscription", monthly_price_ngn: 5000, is_active: false, is_featured: false, features: ["alert_queue","sla_timer","escalation"], sort_order: 40 },
+  { id: 5, tool_key: "caido", name: "Caido Advanced Proxy", description: "Advanced deep web/API analysis via Caido — proxy history, Replay, findings, workflows. Replaces Burp as the primary advanced path.", category: "scanning", pricing_model: "paid", tier: "addon_subscription", monthly_price_ngn: 4000, is_active: true, is_featured: true, features: ["proxy_history","httpql","replay","workflows","scope_presets"], sort_order: 15, docs_url: "https://docs.phantix.site/tools/caido" },
 ];
 
 type Provision = { id: number; organization_id: number; tool_key: string; status: string; admin_notes: string; created_at: string };
@@ -35,12 +36,15 @@ export default function ToolingAdmin() {
   const emptyForm = { tool_key: "", name: "", description: "", category: "scanning", pricing_model: "free" as string, monthly_price_ngn: 0, features: "", providability: "all", requires_platform_subscription: false, is_active: true, is_featured: false, sort_order: 0, docs_url: "" };
   const [form, setForm] = useState(emptyForm);
   const [provisions, setProvisions] = useState<Provision[]>([]);
+  const [stats, setStats] = useState<{ total_tools: number; active_tools: number; free_tools: number; paid_tools: number; provisions: number; active_subscriptions: number } | null>(null);
 
   const toolsRes = useResource<AdminTool[]>(async () => DEMO_MODE ? demoTools : ((await api.get<any>("/admin/tooling/tools?include_inactive=true"))?.items ?? await api.get<any>("/admin/tooling/tools?include_inactive=true") ?? []), []);
   const data = DEMO_MODE ? demoTools : (toolsRes.data?.length ? toolsRes.data : []);
 
   React.useEffect(() => {
-    if (!DEMO_MODE) api.get<any>("/admin/tooling/provisions?limit=50").then(r => setProvisions(r?.items ?? [])).catch(() => {});
+    if (DEMO_MODE) return;
+    api.get<any>("/admin/tooling/provisions?limit=50").then(r => setProvisions(r?.items ?? [])).catch(() => {});
+    api.get<any>("/admin/tooling/stats").then(r => setStats(r)).catch(() => {});
   }, []);
 
   const handleSeed = async () => { try { await api.post("/admin/tooling/tools/seed", {}); toast("success", "Seeded"); toolsRes.refresh(); } catch (e) { toast("error", "Seed failed"); } };
@@ -57,7 +61,14 @@ export default function ToolingAdmin() {
   };
   const handleProvision = async () => {
     if (!provOrgId || !provToolKey) return;
-    try { await api.post("/admin/tooling/provisions", { organization_id: Number(provOrgId), tool_key: provToolKey, status: "provisioned", admin_notes: "Manual grant" }); toast("success", "Granted"); setShowProvision(false); setProvOrgId(""); setProvToolKey(""); } catch (e) { toast("error", "Failed"); }
+    try { await api.post("/admin/tooling/provisions", { organization_id: Number(provOrgId), tool_key: provToolKey, status: "provisioned", admin_notes: "Manual grant" }); toast("success", "Granted"); setShowProvision(false); setProvOrgId(""); setProvToolKey(""); refreshProvisions(); } catch (e) { toast("error", "Failed"); }
+  };
+  const handleSuspendProvision = async (p: Provision) => {
+    const next = p.status === "provisioned" ? "suspended" : "provisioned";
+    try { await api.patch(`/admin/tooling/provisions/${p.id}`, { status: next, admin_notes: p.admin_notes }); toast("success", `${next}`, `Provision ${p.id}`); refreshProvisions(); } catch (e) { toast("error", "Failed"); }
+  };
+  const refreshProvisions = () => {
+    if (!DEMO_MODE) api.get<any>("/admin/tooling/provisions?limit=50").then(r => setProvisions(r?.items ?? [])).catch(() => {});
   };
   const handleDelete = async (id: number) => { try { await api.delete(`/admin/tooling/tools/${id}`); toast("success", "Deactivated"); toolsRes.refresh(); } catch (e) { toast("error", "Failed"); } };
 
@@ -69,6 +80,17 @@ export default function ToolingAdmin() {
       <div className="mb-4 flex gap-1.5">
         {[{ id: "catalog", label: "Catalog" }, { id: "provisions", label: "Provisions" }].map(t => <button key={t.id} onClick={() => setTab(t.id as any)} className={cx("rounded-lg px-3 py-1.5 text-xs font-medium border", tab === t.id ? "border-gold-400/40 bg-gold-400/12 text-gold-300" : "border-transparent text-slate-500 hover:text-slate-300")}>{t.label}</button>)}
       </div>
+
+      {stats && (
+        <div className="mb-4 grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-white">{stats.total_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Total tools</p></div>
+          <div className="rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-emerald-400">{stats.active_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Active</p></div>
+          <div className="rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-phantix-300">{stats.free_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Free</p></div>
+          <div className="rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-gold-400">{stats.paid_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Paid</p></div>
+          <div className="rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-blue-400">{stats.provisions ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Provisions</p></div>
+          <div className="rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-emerald-400">{stats.active_subscriptions ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Active subs</p></div>
+        </div>
+      )}
 
       {tab === "catalog" && (
         toolsRes.loading ? <TableSkeleton rows={4} /> : data.length === 0 ? <EmptyState icon={<Wrench size={24} />} title="No tools" action={<button onClick={handleSeed} className="btn-primary">Seed Defaults</button>} /> : (
@@ -103,7 +125,7 @@ export default function ToolingAdmin() {
 
       {tab === "provisions" && (
         provisions.length === 0 ? <EmptyState icon={<Eye size={24} />} title="No provisions" body="Grant tools to organizations via the catalog." /> : (
-          <Card className="!p-0 overflow-hidden"><table className="w-full"><thead><tr className="border-b border-phantix-700/40"><th className="th">Tool Key</th><th className="th">Org ID</th><th className="th">Status</th><th className="th">Notes</th></tr></thead><tbody>{provisions.map(p => <tr key={p.id} className="border-b border-phantix-800/40"><td className="td font-mono text-xs text-gold-300">{p.tool_key}</td><td className="td text-xs">#{p.organization_id}</td><td className="td"><span className={cx("chip text-[10px]", p.status === "provisioned" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{p.status}</span></td><td className="td text-xs text-slate-400 max-w-[200px] truncate">{p.admin_notes || "-"}</td></tr>)}</tbody></table></Card>
+          <Card className="!p-0 overflow-hidden"><table className="w-full"><thead><tr className="border-b border-phantix-700/40"><th className="th">Tool Key</th><th className="th">Org ID</th><th className="th">Status</th><th className="th">Notes</th><th className="th w-12" /></tr></thead><tbody>{provisions.map(p => <tr key={p.id} className="border-b border-phantix-800/40"><td className="td font-mono text-xs text-gold-300">{p.tool_key}</td><td className="td text-xs">#{p.organization_id}</td><td className="td"><span className={cx("chip text-[10px]", p.status === "provisioned" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{p.status}</span></td><td className="td text-xs text-slate-400 max-w-[200px] truncate">{p.admin_notes || "-"}</td><td className="td"><button onClick={() => handleSuspendProvision(p)} className="btn-ghost text-xs px-2 py-1 text-severity-medium">{p.status === "provisioned" ? "Suspend" : "Re-enable"}</button></td></tr>)}</tbody></table></Card>
         )
       )}
 

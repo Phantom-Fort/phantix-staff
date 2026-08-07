@@ -60,11 +60,14 @@ export default function SupportTickets() {
   const selected = selectedTicket ? data.find((t) => t.id === selectedTicket) : null;
 
   const handleStatusChange = async (id: number, status: string) => {
+    const previous = tickets.data;
+    tickets.setData((list) => list.map((t) => (t.id === id ? { ...t, status: status as SupportTicket["status"] } : t)));
     try {
       await api.patch(`/admin/support/tickets/${id}`, { status });
       toast("success", "Updated", `Status → ${status.replace(/_/g, " ")}`);
       tickets.refresh();
     } catch (e) {
+      tickets.setData(previous);
       toast("error", "Failed", e instanceof Error ? e.message : "");
     }
   };
@@ -72,6 +75,7 @@ export default function SupportTickets() {
   const handleReply = async () => {
     if (!replyText.trim() || !selectedTicket) return;
     setSending(true);
+    const previous = tickets.data;
     try {
       await api.post(`/admin/support/tickets/${selectedTicket}/messages`, {
         body: replyText,
@@ -82,6 +86,7 @@ export default function SupportTickets() {
       setInternalNote(false);
       tickets.refresh();
     } catch (e) {
+      tickets.setData(previous);
       toast("error", "Failed", e instanceof Error ? e.message : "");
     } finally {
       setSending(false);

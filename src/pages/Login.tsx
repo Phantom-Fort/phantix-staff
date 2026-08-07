@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import { Shield, Mail, Lock, Eye, EyeOff, Loader2, AlertTriangle } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { DEMO_MODE } from "@/lib/api";
+import { BrandLogo } from "@/components/BrandLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Login() {
   const { session, login } = useStore();
@@ -35,7 +37,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="relative min-h-screen flex items-center justify-center p-4">
+      <div className="absolute right-6 top-6 z-20"><ThemeToggle /></div>
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -44,7 +47,7 @@ export default function Login() {
       >
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <img src="/logo-white.png" alt="Phantix" className="h-14 w-auto object-contain mb-4" />
+          <BrandLogo className="h-14 w-auto mb-4" />
           <h1 className="font-display text-xl font-bold text-white">Staff Portal</h1>
           <p className="text-sm text-slate-400 mt-1">Sign in with your staff account</p>
         </div>

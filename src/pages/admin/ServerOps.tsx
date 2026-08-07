@@ -44,7 +44,60 @@ export default function ServerOps() {
   const { data: server, loading, refresh } = useResource<ServerOverview>(
     async () => {
       if (DEMO_MODE) return demoServer;
-      return api.get<ServerOverview>("/admin/server");
+      const [overview, processes, resources, runtime, recommendations] = await Promise.all([
+        api.get<Record<string, unknown>>("/admin/server/overview").catch(() => null),
+        api.get<Record<string, unknown> | Record<string, unknown>[]>("/admin/server/processes").catch(() => null),
+        api.get<Record<string, unknown>>("/admin/server/resources").catch(() => null),
+        api.get<Record<string, unknown>>("/admin/server/runtime").catch(() => null),
+        api.get<Record<string, unknown> | Record<string, unknown>[]>("/admin/server/recommendations").catch(() => null),
+      ]);
+
+      const obj = (v: unknown): Record<string, any> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, any>) : {});
+      const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+
+      const ov = obj(overview);
+      const res = obj(resources);
+      const rt = obj(runtime);
+      const mem = obj(res.memory);
+      const disk = obj(res.disk);
+      const proc = obj(ov.process);
+      const pool = obj(rt.database_pool ?? rt.db_pool ?? ov.database_pool);
+      const celery = obj(rt.celery ?? ov.celery);
+      const processesRaw = arr<Record<string, any>>(processes ?? ov.processes);
+      const recsRaw = Array.isArray(recommendations)
+        ? (recommendations as Record<string, any>[])
+        : arr<Record<string, any>>(obj(recommendations).items ?? obj(recommendations).recommendations);
+      const actionsRaw = arr<string>(ov.optimize_actions ?? ov.actions ?? rt.optimize_actions);
+
+      return {
+        health: String(ov.health ?? ov.health_score ?? "unknown"),
+        version: String(ov.version ?? ""),
+        environment: String(ov.environment ?? ""),
+        process: {
+          pid: Number(proc.pid ?? ov.pid ?? 0),
+          rss_mb: Number(proc.rss_mb ?? proc.rss ?? 0),
+          uptime_seconds: Number(proc.uptime_seconds ?? proc.uptime ?? 0),
+        },
+        processes: processesRaw.map((p) => ({
+          pid: Number(p.pid ?? 0),
+          role: String(p.role ?? p.name ?? ""),
+          rss_mb: Number(p.rss_mb ?? p.rss ?? 0),
+          cmdline: String(p.cmdline ?? p.command ?? ""),
+        })),
+        resources: {
+          cpu_count_logical: Number(res.cpu_count_logical ?? res.cpu_count ?? 0),
+          memory: { total_mb: Number(mem.total_mb ?? 0), used_percent: Number(mem.used_percent ?? 0) },
+          disk: { used_percent: Number(disk.used_percent ?? 0) },
+        },
+        database_pool: { size: Number(pool.size ?? 0), checkedin: Number(pool.checkedin ?? 0), checkedout: Number(pool.checkedout ?? 0) },
+        recommendations: recsRaw.map((r) => ({
+          severity: String(r.severity ?? "info"),
+          title: String(r.title ?? ""),
+          detail: String(r.detail ?? r.message ?? ""),
+        })),
+        optimize_actions: actionsRaw.length ? actionsRaw : ["gc_collect", "dispose_db_pool", "clear_idle_tool_locks", "all"],
+        celery: { worker_count: Number(celery.worker_count ?? celery.workerCount ?? 0) },
+      } as ServerOverview;
     },
     {} as any,
   );

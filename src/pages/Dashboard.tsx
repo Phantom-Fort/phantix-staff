@@ -4,6 +4,7 @@ import { Building2, MessageSquare, Server, Wrench, FileText, Activity, CheckCirc
 import { Link } from "react-router-dom";
 import { PageHeader, StatCard, AnimatedNumber, Card, CardHeader, TableSkeleton } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
+import { useSmartPoll } from "@/lib/usePolling";
 import { useStore } from "@/lib/store";
 import { api, DEMO_MODE } from "@/lib/api";
 import type { AdminDashboardStats } from "@/lib/types";
@@ -29,6 +30,11 @@ export default function Dashboard() {
   );
 
   const s = DEMO_MODE ? demoStats : stats.data;
+
+  // Smart polling: keep platform stats fresh; slow when tab hidden.
+  useSmartPoll(async () => {
+    if (!DEMO_MODE) stats.refresh();
+  }, { intervalMs: 30000, hiddenIntervalMs: 120000 });
 
   return (
     <div>

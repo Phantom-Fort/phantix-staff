@@ -44,6 +44,30 @@ export default function Clients() {
     {} as any,
   );
 
+  const clientDetail = useResource<ClientOrg>(
+    async (signal) => {
+      if (DEMO_MODE || !selectedClient) throw new Error("No client");
+      return api.get<ClientOrg>(`/admin/clients/${selectedClient}`);
+    },
+    {} as any,
+  );
+
+  const clientExperience = useResource<ClientExperience>(
+    async (signal) => {
+      if (DEMO_MODE || !selectedClient) throw new Error("No client");
+      return api.get<ClientExperience>(`/admin/clients/${selectedClient}/experience`);
+    },
+    {} as any,
+  );
+
+  const handleSelectClient = (id: number | null) => {
+    setSelectedClient(id);
+    if (id != null) {
+      clientDetail.refresh();
+      clientExperience.refresh();
+    }
+  };
+
   const data = clients.data;
 
   const filtered = (data || (DEMO_MODE ? demoClients : [])).filter((c) => {
@@ -54,7 +78,7 @@ export default function Clients() {
 
   const handleManualReview = async (id: number, approve: boolean) => {
     try {
-      await api.post(`/admin/clients/${id}/verification/manual-review?approve=${approve}&notes=Reviewed by staff`);
+      await api.post(`/admin/clients/${id}/verification/manual-review?approve=${approve}&notes=${encodeURIComponent("Reviewed by staff")}`);
       toast("success", approve ? "Approved" : "Rejected", `Client ${id} verification ${approve ? "approved" : "rejected"}`);
       clients.refresh();
     } catch (e) {
@@ -122,7 +146,7 @@ export default function Clients() {
                     <td className="td">
                       <button
                         className="btn-ghost p-1.5"
-                        onClick={() => setSelectedClient(selectedClient === client.id ? null : client.id)}
+                        onClick={() => handleSelectClient(selectedClient === client.id ? null : client.id)}
                       >
                         <Eye size={14} />
                       </button>
@@ -144,7 +168,7 @@ export default function Clients() {
         wide
       >
         {selectedClient && (() => {
-          const c = (data || (DEMO_MODE ? demoClients : [])).find((x: ClientOrg) => x.id === selectedClient);
+          const c = clientDetail.data ?? (data || (DEMO_MODE ? demoClients : [])).find((x: ClientOrg) => x.id === selectedClient);
           if (!c) return <p className="text-slate-400">Client not found</p>;
           return (
             <div className="space-y-4">
@@ -193,7 +217,29 @@ export default function Clients() {
                 )}
               </div>
 
-              {isAdmin && !c.company_verified && c.flags?.includes("pending_verification") && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Experience</p>
+                {clientExperience.loading ? (
+                  <TableSkeleton rows={2} cols={2} />
+                ) : clientExperience.data ? (
+                  <div className="space-y-1.5">
+                    {(Array.isArray(clientExperience.data) ? clientExperience.data : []).map((svc: any) => (
+                      <div key={String(svc.service_key ?? svc.key ?? "svc")} className="flex items-center justify-between rounded-lg bg-phantix-950/60 border border-phantix-700/40 px-3 py-2">
+                        <span className="text-sm text-slate-300">{svc.label ?? svc.service_key}</span>
+                        <div className="flex gap-1">
+                          {(svc.modules ?? []).slice(0, 3).map((m: string) => (
+                            <span key={m} className="chip text-[10px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{m}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">Experience profile unavailable</p>
+                )}
+              </div>
+
+              {isAdmin && !c.company_verified && (c.flags?.includes("pending_verification") || !c.setup_complete) && (
                 <div className="flex items-center gap-2">
                   <button onClick={() => handleManualReview(c.id, true)} className="btn-primary text-xs px-3 py-1.5">Approve Verification</button>
                   <button onClick={() => handleManualReview(c.id, false)} className="btn-danger text-xs px-3 py-1.5">Reject</button>

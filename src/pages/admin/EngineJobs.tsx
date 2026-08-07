@@ -51,7 +51,7 @@ export default function EngineJobs() {
     let cancelled = false;
     (async () => {
       try {
-        const url = `${API_BASE}/api/v1/admin/super/engines/jobs/stream?poll_seconds=5`;
+        const url = `${API_BASE}/admin/super/engines/jobs/stream?poll_seconds=5`;
         const res = await fetch(url, { headers: { Authorization: `Bearer ${tokens.staff}`, Accept: "text/event-stream" }, signal: controller.signal });
         if (!res.ok || !res.body) return;
         setLiveConnected(true);
@@ -78,7 +78,8 @@ export default function EngineJobs() {
       } catch { if (!cancelled) setLiveConnected(false); }
     })();
     return () => { cancelled = true; controller.abort(); };
-    } , {} as any);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div>

@@ -48,7 +48,7 @@ export default function SuperLogs() {
     let cancelled = false;
     (async () => {
       try {
-        const url = `${API_BASE}/api/v1/admin/super/logs/stream?poll_seconds=5&level=${levelFilter || ""}`;
+        const url = `${API_BASE}/admin/super/logs/stream?poll_seconds=5&level=${levelFilter || ""}&log_type=${logTypeFilter || ""}&organization_id=${orgFilter || ""}`;
         const res = await fetch(url, { headers: { Authorization: `Bearer ${tokens.staff}`, Accept: "text/event-stream" }, signal: controller.signal });
         if (!res.ok || !res.body) return;
         setLiveConnected(true);
@@ -77,7 +77,8 @@ export default function SuperLogs() {
       } catch { if (!cancelled) setLiveConnected(false); }
     })();
     return () => { cancelled = true; controller.abort(); };
-  }, [levelFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [levelFilter, logTypeFilter, orgFilter]);
 
   return (
     <div>

@@ -1,5 +1,5 @@
 ﻿import React, { useState } from "react";
-import { Zap, RefreshCw, Eye, EyeOff, ChevronDown, ChevronUp, Layers, Navigation, BookOpen, Link2, Clock, Plus } from "lucide-react";
+import { Zap, RefreshCw, Eye, EyeOff, ChevronDown, ChevronUp, Layers, Navigation, BookOpen, Link2, Clock, Plus, Edit3 } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatusBadge, TableSkeleton, EmptyState, Modal } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
@@ -34,6 +34,8 @@ export default function ExperienceAdmin() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [newService, setNewService] = useState({ service_key: "", label: "", description: "", modules: "", nav_json: "", sort_order: 10 });
+  const [editing, setEditing] = useState<ExpService | null>(null);
+  const [editForm, setEditForm] = useState({ label: "", description: "", modules: "", is_active: true, sort_order: 10 });
 
   const handleSeed = async () => {
     try {
@@ -42,6 +44,39 @@ export default function ExperienceAdmin() {
       resource.refresh();
     } catch (e) {
       toast("error", "Seed failed", e instanceof Error ? e.message : "");
+    }
+  };
+
+  const openEdit = (svc: ExpService) => {
+    setEditing(svc);
+    setEditForm({ label: svc.label, description: svc.description, modules: svc.modules.join(", "), is_active: svc.is_active, sort_order: svc.sort_order });
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    try {
+      await api.patch(`/admin/experience-services/${editing.service_key}`, {
+        label: editForm.label,
+        description: editForm.description,
+        modules: editForm.modules.split(",").map((s) => s.trim()).filter(Boolean),
+        is_active: editForm.is_active,
+        sort_order: Number(editForm.sort_order),
+      });
+      toast("success", "Service updated", editing.service_key);
+      setEditing(null);
+      resource.refresh();
+    } catch (e) {
+      toast("error", "Update failed", e instanceof Error ? e.message : "");
+    }
+  };
+
+  const deactivate = async (svc: ExpService) => {
+    try {
+      await api.patch(`/admin/experience-services/${svc.service_key}`, { is_active: !svc.is_active });
+      toast("success", svc.is_active ? "Deactivated" : "Activated", svc.service_key);
+      resource.refresh();
+    } catch (e) {
+      toast("error", "Failed", e instanceof Error ? e.message : "");
     }
   };
 
@@ -179,6 +214,10 @@ export default function ExperienceAdmin() {
                       <span>by {svc.updated_by}</span>
                       <span>Created {new Date(svc.created_at).toLocaleDateString()}</span>
                     </div>
+                    <div className="flex gap-1.5 pt-1">
+                      <button onClick={() => openEdit(svc)} className="btn-secondary text-xs px-2 py-1"><Edit3 size={11} /> Edit</button>
+                      <button onClick={() => deactivate(svc)} className="btn-ghost text-xs px-2 py-1 text-severity-medium">{svc.is_active ? "Deactivate" : "Activate"}</button>
+                    </div>
                   </div>
                 )}
               </Card>
@@ -186,6 +225,19 @@ export default function ExperienceAdmin() {
           })}
         </div>
       )}
+
+      <Modal open={editing !== null} onClose={() => setEditing(null)} title={editing ? `Edit: ${editing.label}` : ""}>
+        <div className="space-y-3">
+          <div><label className="label">Label</label><input className="input" value={editForm.label} onChange={e => setEditForm(f => ({...f, label: e.target.value}))} /></div>
+          <div><label className="label">Description</label><input className="input" value={editForm.description} onChange={e => setEditForm(f => ({...f, description: e.target.value}))} /></div>
+          <div><label className="label">Modules (comma separated)</label><input className="input" value={editForm.modules} onChange={e => setEditForm(f => ({...f, modules: e.target.value}))} placeholder="assets,scans,findings" /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="label">Sort order</label><input className="input" type="number" value={editForm.sort_order} onChange={e => setEditForm(f => ({...f, sort_order: Number(e.target.value)}))} /></div>
+            <div className="flex items-end pb-1"><label className="flex items-center gap-1.5 text-sm text-slate-300"><input type="checkbox" checked={editForm.is_active} onChange={e => setEditForm(f => ({...f, is_active: e.target.checked}))} className="accent-gold-400" /> Active</label></div>
+          </div>
+          <button onClick={saveEdit} className="btn-primary w-full">Save Changes</button>
+        </div>
+      </Modal>
 
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Create Experience Service">
         <div className="space-y-3">

@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { FileCheck, Plus, RefreshCw, Upload, Search, Eye } from "lucide-react";
-import { PageHeader, Card, StatusBadge, TableSkeleton, EmptyState, Modal } from "@/components/ui";
+import React, { useState, useRef } from "react";
+import { FileCheck, Plus, RefreshCw, Upload, Search, Eye, FileUp, ListChecks, Loader2 } from "lucide-react";
+import { PageHeader, Card, StatusBadge, TableSkeleton, EmptyState, Modal, Tabs } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
 import { api, DEMO_MODE } from "@/lib/api";
@@ -16,6 +16,9 @@ const demoFrameworks: ComplianceFramework[] = [
 
 export default function ComplianceAdmin() {
   const { toast } = useStore();
+  const [tab, setTab] = useState("frameworks");
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const frameworks = useResource<ComplianceFramework[]>(
     async (signal) => {
@@ -49,6 +52,22 @@ export default function ComplianceAdmin() {
     }
   };
 
+  const handleUpload = async (file: File) => {
+    setUploadBusy(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      await api.postMultipart("/admin/compliance/frameworks/upload?force=true", formData);
+      toast("success", "Uploaded", `Framework ${file.name} imported`);
+      frameworks.refresh();
+    } catch (e) {
+      toast("error", "Upload failed", e instanceof Error ? e.message : "");
+    } finally {
+      setUploadBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
   return (
     <div>
       <PageHeader
@@ -56,6 +75,16 @@ export default function ComplianceAdmin() {
         description="Manage global compliance frameworks and questionnaire catalog"
         actions={
           <div className="flex items-center gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleUpload(f); }}
+            />
+            <button onClick={() => fileRef.current?.click()} disabled={uploadBusy} className="btn-secondary text-sm px-3 py-1.5">
+              {uploadBusy ? <Loader2 size={14} className="animate-spin" /> : <FileUp size={14} />} Upload Framework
+            </button>
             <button onClick={handleSeed} className="btn-ghost text-sm px-3 py-1.5">
               <RefreshCw size={14} /> Reload Seeds
             </button>
@@ -63,6 +92,16 @@ export default function ComplianceAdmin() {
         }
       />
 
+      <Tabs
+        tabs={[
+          { id: "frameworks", label: "Frameworks", count: data.length },
+          { id: "questionnaire", label: "Questionnaire" },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+
+      {tab === "frameworks" && (
       <Card>
         {frameworks.loading && !frameworks.data?.length ? (
           <div className="p-4"><TableSkeleton rows={5} cols={4} /></div>
@@ -109,6 +148,40 @@ export default function ComplianceAdmin() {
           </div>
         )}
       </Card>
+      )}
+
+      {tab === "questionnaire" && (
+        <Card>
+          <div className="p-6 space-y-3">
+            <div className="flex items-center gap-2">
+              <ListChecks size={16} className="text-gold-400" />
+              <p className="text-sm font-medium text-slate-200">GRC questionnaire catalog</p>
+            </div>
+            <p className="text-xs leading-5 text-slate-400">
+              Manage expert-curated questionnaire questions and rebuild the auto-generated bank from framework controls.
+              Question CRUD lives under <span className="font-mono">/admin/compliance/questionnaire/questions</span>.
+            </p>
+            <button
+              className="btn-secondary text-sm"
+              onClick={async () => {
+                try {
+                  await api.post("/admin/compliance/questionnaire/rebuild", {});
+                  toast("success", "Rebuilt", "Merged questionnaire regenerated from controls");
+                } catch (e) {
+                  toast("error", "Rebuild failed", e instanceof Error ? e.message : "");
+                }
+              }}
+            >
+              <RefreshCw size={14} /> Rebuild Questionnaire
+            </button>
+            <div className="flex flex-wrap gap-2 text-[11px] text-slate-500">
+              <span className="chip">POST /admin/compliance/questionnaire/questions</span>
+              <span className="chip">PATCH /admin/compliance/questionnaire/questions/{`{id}`}</span>
+              <span className="chip">DELETE /admin/compliance/questionnaire/questions/{`{id}`}</span>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

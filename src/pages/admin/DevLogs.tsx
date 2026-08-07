@@ -21,16 +21,32 @@ export default function DevLogs() {
   const [logForm, setLogForm] = useState({ level: "info", log_type: "security", engine: "operations_engine", category: "support_note", message: "", organization_id: "" });
   const [logTypeFilter, setLogTypeFilter] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
+  const [orgFilter, setOrgFilter] = useState("");
+  const [issueTimeline, setIssueTimeline] = useState<LogEntry[] | null>(null);
 
   const logs = useResource<LogEntry[]>(
     async (signal) => {
       if (DEMO_MODE) return demoLogs;
-      const raw = await api.get<any>("/admin/logs");
+      const params: Record<string, string | number> = {};
+      if (logTypeFilter) params.log_type = logTypeFilter;
+      if (levelFilter) params.level = levelFilter;
+      if (orgFilter) params.organization_id = Number(orgFilter);
+      const raw = await api.get<any>("/admin/logs", { params });
       const items = Array.isArray(raw) ? raw : (raw?.items ?? []);
       return items as LogEntry[];
     },
     [],
   );
+
+  const openIssue = async (issueId: string) => {
+    try {
+      const raw = await api.get<any>(`/admin/logs/issues/${issueId}${orgFilter ? `?organization_id=${orgFilter}` : ""}`);
+      const items = Array.isArray(raw) ? raw : (raw?.items ?? []);
+      setIssueTimeline(items as LogEntry[]);
+    } catch (e) {
+      toast("error", "Issue timeline failed", e instanceof Error ? e.message : "");
+    }
+  };
 
   const data = DEMO_MODE ? demoLogs : (logs.data?.length ? logs.data : []);
 
@@ -64,6 +80,7 @@ export default function DevLogs() {
           <option value="">All Levels</option>
           {["debug","info","warning","error","critical"].map(l => <option key={l} value={l}>{l}</option>)}
         </select>
+        <input className="input w-24 py-1.5 text-xs" placeholder="Org ID" type="number" value={orgFilter} onChange={e => setOrgFilter(e.target.value)} />
       </div>
 
       <Card>
@@ -98,7 +115,15 @@ export default function DevLogs() {
                       </td>
                       <td className="td">
                         <p className="text-sm text-slate-200">{log.message}</p>
-                        {log.issue_id && <p className="text-[10px] font-mono text-slate-600 mt-0.5">{log.issue_id}</p>}
+                        {log.issue_id && (
+                          <button
+                            onClick={() => void openIssue(log.issue_id!)}
+                            className="text-[10px] font-mono text-gold-400/80 hover:text-gold-300"
+                            title="Open issue timeline"
+                          >
+                            {log.issue_id} → timeline
+                          </button>
+                        )}
                       </td>
                       <td className="td">
                         <div className="space-y-0.5">
@@ -123,6 +148,28 @@ export default function DevLogs() {
           </div>
         )}
       </Card>
+
+      <Modal open={issueTimeline !== null} onClose={() => setIssueTimeline(null)} title="Issue timeline" wide>
+        {issueTimeline ? (
+          <div className="space-y-2">
+            {issueTimeline.length === 0 && <p className="text-sm text-slate-500">No events in this issue thread.</p>}
+            {issueTimeline.map((e) => (
+              <div key={e.id} className="rounded-lg bg-phantix-950/60 border border-phantix-700/40 p-3">
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <span className="chip text-[10px] capitalize">{e.level}</span>
+                  <span className="chip text-[10px]">{e.log_type}</span>
+                  {e.organization_id && <span className="font-mono">#{e.organization_id}</span>}
+                  <span className="ml-auto">{timeAgo(e.created_at)}</span>
+                </div>
+                <p className="mt-1.5 text-sm text-slate-200">{e.message}</p>
+                {e.category && <p className="mt-0.5 text-[10px] text-slate-600">{e.category}</p>}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">Loading...</p>
+        )}
+      </Modal>
 
       <Modal open={showWriteLog} onClose={() => setShowWriteLog(false)} title="Write Diagnostic Entry">
         <div className="space-y-3">

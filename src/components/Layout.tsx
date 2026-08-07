@@ -5,11 +5,12 @@ import {
   LayoutDashboard, Shield, Building2, MessageSquare, Server, Brain,
   Users, FileCheck, Wrench, Search, Activity, LogOut, Menu, X,
   Zap, Globe, AlertTriangle, ScanLine, BarChart3, RefreshCw,
-  Crosshair, Radio, FileText,
+  Crosshair, Radio, FileText, TerminalSquare,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { APP_URL } from "@/lib/links";
 import { cx } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navSections: {
   label: string;
@@ -65,6 +66,7 @@ const navSections: {
     items: [
       { to: "/super-logs", label: "Centralized Logs", icon: <FileText size={18} />, superadminOnly: true },
       { to: "/engine-jobs", label: "Engine Jobs", icon: <Activity size={18} />, superadminOnly: true },
+      { to: "/terminal", label: "Terminal", icon: <TerminalSquare size={18} />, superadminOnly: true },
       { to: "/billing", label: "Billing", icon: <BarChart3 size={18} />, superadminOnly: true },
       { to: "/staff", label: "Staff Users", icon: <Users size={18} />, superadminOnly: true },
     ],
@@ -91,7 +93,7 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-phantix-700/30 bg-phantix-950/80 backdrop-blur-xl">
         <div className="flex h-16 items-center gap-3 px-5 border-b border-phantix-700/30">
-          <img src="/logo-white.png" alt="Phantix" className="h-7 w-auto object-contain" />
+          <img src="/logo-transparent.png" alt="Phantix" className="h-7 w-auto object-contain" />
           <div>
             <p className="font-display text-sm font-bold text-white tracking-tight">Staff Portal</p>
           </div>
@@ -159,6 +161,7 @@ export default function Layout() {
           <div className="flex-1" />
 
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <span className={cx("chip capitalize", roleBadge)}>
               {session?.role || "staff"}
             </span>

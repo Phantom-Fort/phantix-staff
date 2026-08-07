@@ -20,6 +20,7 @@ import VaptAdmin from "@/pages/admin/VaptAdmin";
 import BusDiagnostics from "@/pages/admin/BusDiagnostics";
 import SuperLogs from "@/pages/admin/SuperLogs";
 import EngineJobs from "@/pages/admin/EngineJobs";
+import SuperadminTerminal from "@/pages/admin/Terminal";
 
 function RequireStaff({ children }: { children: React.ReactNode }) {
   const { session } = useStore();
@@ -72,6 +73,7 @@ export default function App() {
             {/* Superadmin */}
             <Route path="/super-logs" element={<RequireSuperadmin><SuperLogs /></RequireSuperadmin>} />
             <Route path="/engine-jobs" element={<RequireSuperadmin><EngineJobs /></RequireSuperadmin>} />
+            <Route path="/terminal" element={<RequireSuperadmin><SuperadminTerminal /></RequireSuperadmin>} />
             <Route path="/billing" element={<RequireSuperadmin><BillingAdmin /></RequireSuperadmin>} />
             <Route path="/staff" element={<RequireSuperadmin><StaffUsers /></RequireSuperadmin>} />
 

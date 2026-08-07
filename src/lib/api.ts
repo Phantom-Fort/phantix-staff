@@ -128,6 +128,21 @@ export const api = {
   postForm: <T>(path: string, form: Record<string, string>) =>
     request<T>("POST", path, { form }),
 
+  /** multipart/form-data (e.g. framework upload field `file`) */
+  async postMultipart<T>(path: string, formData: FormData): Promise<T> {
+    const headers: Record<string, string> = {};
+    if (tokens.staff) headers["Authorization"] = `Bearer ${tokens.staff}`;
+    const res = await fetch(`${API_BASE}${path}`, { method: "POST", headers, body: formData });
+    if (!res.ok) {
+      let detail: unknown = res.statusText;
+      try { detail = (await res.json()).detail; } catch { /* non-JSON */ }
+      if (res.status === 401) { tokens.staff = null; tokens.email = null; }
+      throw new ApiError(res.status, detail);
+    }
+    if (res.status === 204) return undefined as T;
+    return (await res.json()) as T;
+  },
+
   async download(path: string): Promise<Blob> {
     const headers: Record<string, string> = {};
     if (tokens.staff) headers["Authorization"] = `Bearer ${tokens.staff}`;
