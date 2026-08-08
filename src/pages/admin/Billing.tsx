@@ -3,7 +3,7 @@ import { BarChart3, DollarSign, RefreshCw, AlertTriangle, CreditCard, Ticket, Co
 import { PageHeader, Card, CardHeader, StatCard, TableSkeleton, Modal, Tabs, EmptyState } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
-import { api, DEMO_MODE } from "@/lib/api";
+import { api, DEMO_MODE, API_BASE } from "@/lib/api";
 import { formatNaira, timeAgo, cx } from "@/lib/utils";
 import type { BillingSettings, PricingPreview } from "@/lib/types";
 
@@ -118,7 +118,7 @@ export default function BillingAdmin() {
               </div>
               <div className="mt-3 flex items-center gap-2">
                 <span className="text-xs text-slate-400">Webhook:</span>
-                <code className="text-[11px] bg-phantix-950/70 px-2 py-1 rounded font-mono text-slate-300">{gateway.callback_url || `${import.meta.env.VITE_API_BASE ?? ""}/billing/webhooks/paystack`}</code>
+                <code className="text-[11px] bg-phantix-950/70 px-2 py-1 rounded font-mono text-slate-300">{gateway.callback_url || `${API_BASE}/billing/webhooks/paystack`}</code>
                 <button onClick={() => { navigator.clipboard.writeText(gateway.callback_url || ""); toast("info", "Copied"); }} className="text-gold-400 text-xs"><Copy size={12} /></button>
               </div>
             </Card>
