@@ -54,22 +54,31 @@ export default function EngineJobs() {
       if (DEMO_MODE) return demoSnapshot;
       return normalizeSnapshot(await api.get<any>("/admin/super/engines/jobs"));
     },
-    {} as any,
+    normalizeSnapshot({}) as any,
   );
 
   const data = streamData || jobs.data || (DEMO_MODE ? demoSnapshot : null);
 
-  // SSE stream
+  // SSE stream (auto-reconnect with backoff)
   useEffect(() => {
     if (DEMO_MODE) { setLiveConnected(true); return; }
     const controller = new AbortController();
     let cancelled = false;
-    (async () => {
+    let retryTimer: number | null = null;
+    let delay = 1500;
+
+    const connect = async () => {
+      if (cancelled) return;
       try {
         const url = `${API_BASE}/admin/super/engines/jobs/stream?poll_seconds=5`;
         const res = await fetch(url, { headers: { Authorization: `Bearer ${tokens.staff}`, Accept: "text/event-stream" }, signal: controller.signal });
-        if (!res.ok || !res.body) return;
+        if (!res.ok || !res.body) {
+          if (!cancelled) setLiveConnected(false);
+          scheduleReconnect();
+          return;
+        }
         setLiveConnected(true);
+        delay = 1500;
         const reader = res.body.getReader();
         const dec = new TextDecoder();
         let buf = "";
@@ -87,11 +96,32 @@ export default function EngineJobs() {
               if (line.startsWith("data:")) dataStr += line.slice(5).trim();
             }
             if (!dataStr || eventName === "heartbeat") continue;
-            try { setStreamData(normalizeSnapshot(JSON.parse(dataStr))); } catch { /* ignore */ }          }
+            try { setStreamData(normalizeSnapshot(JSON.parse(dataStr))); } catch { /* ignore */ }
+          }
         }
-      } catch { if (!cancelled) setLiveConnected(false); }
-    })();
-    return () => { cancelled = true; controller.abort(); };
+      } catch {
+        if (!cancelled) {
+          setLiveConnected(false);
+          scheduleReconnect();
+        }
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      retryTimer = window.setTimeout(() => {
+        delay = Math.min(delay * 2, 30000);
+        void connect();
+      }, delay);
+    };
+
+    void connect();
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (retryTimer) window.clearTimeout(retryTimer);
+      setLiveConnected(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

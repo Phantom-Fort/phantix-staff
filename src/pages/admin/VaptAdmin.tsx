@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Crosshair, Play, Pause, SkipForward, Plus, RefreshCw, Calendar, Trash2, Loader2 } from "lucide-react";
+import { Crosshair, Play, Pause, SkipForward, Plus, RefreshCw, Calendar, Trash2, Loader2, Pencil } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatusBadge, TableSkeleton, EmptyState, Modal, Tabs } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
@@ -180,6 +180,67 @@ export default function VaptAdmin() {
   const ruleList = rules.data;
   const schedList = schedules.data;
 
+  // ── Procedure view / edit ─────────────────────────────────────────────────
+  const [editProc, setEditProc] = useState<VaptProcedure | null>(null);
+  const [procForm, setProcForm] = useState({ name: "", category: "web", steps: 5, active: true });
+  const [savingProc, setSavingProc] = useState(false);
+
+  const openEditProcedure = (p: VaptProcedure) => {
+    setEditProc(p);
+    setProcForm({ name: p.name, category: p.category, steps: p.steps, active: p.active });
+  };
+
+  const saveProcedure = async () => {
+    if (!editProc) return;
+    setSavingProc(true);
+    try {
+      await api.post("/admin/vapt/procedures", {
+        procedure_key: editProc.key,
+        display_name: procForm.name.trim(),
+        category: procForm.category,
+        steps: Array.from({ length: Math.max(1, procForm.steps) }, (_, i) => ({ index: i, phase: procForm.category, required_role: "operator", title: `Step ${i + 1}` })),
+        is_active: procForm.active,
+      });
+      toast("success", "Procedure updated", editProc.key);
+      setEditProc(null);
+      procedures.refresh();
+    } catch (e) {
+      toast("error", "Update failed", e instanceof Error ? e.message : "");
+    } finally {
+      setSavingProc(false);
+    }
+  };
+
+  // ── Schedule view / edit ──────────────────────────────────────────────────
+  const [editSched, setEditSched] = useState<VaptSchedule | null>(null);
+  const [schedForm, setSchedForm] = useState({ name: "", procedure_key: "", cron: "", active: true });
+  const [savingSched, setSavingSched] = useState(false);
+
+  const openEditSchedule = (s: VaptSchedule) => {
+    setEditSched(s);
+    setSchedForm({ name: s.name, procedure_key: s.procedure_key, cron: s.cron, active: s.status === "active" });
+  };
+
+  const saveSchedule = async () => {
+    if (!editSched) return;
+    setSavingSched(true);
+    try {
+      await api.patch(`/admin/vapt/schedules/${editSched.id}`, {
+        schedule_name: schedForm.name.trim(),
+        procedure_key: schedForm.procedure_key.trim(),
+        cron_expression: schedForm.cron,
+        is_active: schedForm.active,
+      });
+      toast("success", "Schedule updated", `#${editSched.id}`);
+      setEditSched(null);
+      schedules.refresh();
+    } catch (e) {
+      toast("error", "Update failed", e instanceof Error ? e.message : "");
+    } finally {
+      setSavingSched(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
@@ -217,6 +278,7 @@ export default function VaptAdmin() {
                     <th className="th">Category</th>
                     <th className="th">Steps</th>
                     <th className="th">Status</th>
+                    <th className="th w-16" />
                   </tr>
                 </thead>
                 <tbody>
@@ -227,6 +289,7 @@ export default function VaptAdmin() {
                       <td className="td"><span className="chip text-xs text-slate-400 bg-slate-400/10 border-slate-500/30">{p.category}</span></td>
                       <td className="td"><span className="text-sm font-mono text-slate-300">{p.steps}</span></td>
                       <td className="td">{p.active ? <StatusBadge status="active" /> : <StatusBadge status="closed" />}</td>
+                      <td className="td"><button onClick={() => openEditProcedure(p)} className="btn-ghost p-1.5" title="Edit"><Pencil size={14} /></button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -277,6 +340,7 @@ export default function VaptAdmin() {
                   <div className="flex items-center gap-2">
                     <StatusBadge status={s.status} />
                     {s.last_run && <span className="text-xs text-slate-500">Last: {timeAgo(s.last_run)}</span>}
+                    <button onClick={() => openEditSchedule(s)} className="btn-ghost p-1.5" title="Edit"><Pencil size={14} /></button>
                     <button onClick={() => handleScheduleAction(s.id, "run-now")} className="btn-ghost p-1.5" title="Run now"><Play size={14} /></button>
                     <button onClick={() => handleScheduleAction(s.id, "pause-until")} className="btn-ghost p-1.5" title="Pause"><Pause size={14} /></button>
                     <button onClick={() => handleScheduleAction(s.id, "skip-next")} className="btn-ghost p-1.5" title="Skip next"><SkipForward size={14} /></button>
@@ -306,6 +370,34 @@ export default function VaptAdmin() {
           <div><label className="label">Procedure Key</label><input className="input" value={newSched.procedure_key} onChange={e => setNewSched(p => ({...p, procedure_key: e.target.value}))} placeholder="ext_network" /></div>
           <div><label className="label">Cron Expression</label><input className="input font-mono" value={newSched.cron} onChange={e => setNewSched(p => ({...p, cron: e.target.value}))} placeholder="0 2 * * 0" /></div>
           <button onClick={createSchedule} disabled={saving} className="btn-primary w-full">{saving ? <Loader2 size={14} className="animate-spin inline" /> : null} Create Schedule</button>
+        </div>
+      </Modal>
+
+      {/* Edit procedure */}
+      <Modal open={editProc !== null} onClose={() => setEditProc(null)} title={editProc ? `Edit procedure: ${editProc.key}` : "Edit procedure"}>
+        <div className="space-y-3">
+          <div>
+            <p className="label">Procedure key (read-only)</p>
+            <input className="input font-mono" value={editProc?.key ?? ""} readOnly />
+          </div>
+          <div><label className="label">Display name</label><input className="input" value={procForm.name} onChange={e => setProcForm(f => ({...f, name: e.target.value}))} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="label">Category</label><select className="input" value={procForm.category} onChange={e => setProcForm(f => ({...f, category: e.target.value}))}><option value="web">Web</option><option value="network">Network</option><option value="api">API</option><option value="mobile">Mobile</option></select></div>
+            <div><label className="label">Steps</label><input className="input" type="number" min={1} value={procForm.steps} onChange={e => setProcForm(f => ({...f, steps: Number(e.target.value) || 1}))} /></div>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={procForm.active} onChange={e => setProcForm(f => ({...f, active: e.target.checked}))} className="accent-gold-400" /> Active</label>
+          <button onClick={saveProcedure} disabled={savingProc} className="btn-primary w-full">{savingProc ? <Loader2 size={14} className="animate-spin inline" /> : null} Save procedure</button>
+        </div>
+      </Modal>
+
+      {/* Edit schedule */}
+      <Modal open={editSched !== null} onClose={() => setEditSched(null)} title={editSched ? `Edit schedule #${editSched.id}` : "Edit schedule"}>
+        <div className="space-y-3">
+          <div><label className="label">Name</label><input className="input" value={schedForm.name} onChange={e => setSchedForm(f => ({...f, name: e.target.value}))} /></div>
+          <div><label className="label">Procedure Key</label><input className="input font-mono" value={schedForm.procedure_key} onChange={e => setSchedForm(f => ({...f, procedure_key: e.target.value}))} /></div>
+          <div><label className="label">Cron Expression</label><input className="input font-mono" value={schedForm.cron} onChange={e => setSchedForm(f => ({...f, cron: e.target.value}))} placeholder="0 2 * * 0" /></div>
+          <label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={schedForm.active} onChange={e => setSchedForm(f => ({...f, active: e.target.checked}))} className="accent-gold-400" /> Active</label>
+          <button onClick={saveSchedule} disabled={savingSched} className="btn-primary w-full">{savingSched ? <Loader2 size={14} className="animate-spin inline" /> : null} Save schedule</button>
         </div>
       </Modal>
     </div>

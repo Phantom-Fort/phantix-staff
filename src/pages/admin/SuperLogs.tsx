@@ -41,17 +41,31 @@ export default function SuperLogs() {
 
   const items = liveEvents.length > 0 ? [...liveEvents, ...(logs.data?.items || [])].slice(0, 100) : (logs.data?.items || []);
 
-  // SSE stream for tail
+  // SSE stream for tail (auto-reconnect with backoff)
   useEffect(() => {
     if (DEMO_MODE) { setLiveConnected(true); return; }
     const controller = new AbortController();
     let cancelled = false;
-    (async () => {
+    let retryTimer: number | null = null;
+    let delay = 1500;
+
+    const connect = async () => {
+      if (cancelled) return;
       try {
-        const url = `${API_BASE}/admin/super/logs/stream?poll_seconds=5&level=${levelFilter || ""}&log_type=${logTypeFilter || ""}&organization_id=${orgFilter || ""}`;
+        const params: Record<string, string> = { poll_seconds: "5" };
+        if (levelFilter) params.level = levelFilter;
+        if (logTypeFilter) params.log_type = logTypeFilter;
+        if (orgFilter) params.organization_id = orgFilter;
+        const qs = new URLSearchParams(params).toString();
+        const url = `${API_BASE}/admin/super/logs/stream?${qs}`;
         const res = await fetch(url, { headers: { Authorization: `Bearer ${tokens.staff}`, Accept: "text/event-stream" }, signal: controller.signal });
-        if (!res.ok || !res.body) return;
+        if (!res.ok || !res.body) {
+          if (!cancelled) setLiveConnected(false);
+          scheduleReconnect();
+          return;
+        }
         setLiveConnected(true);
+        delay = 1500;
         const reader = res.body.getReader();
         const dec = new TextDecoder();
         let buf = "";
@@ -70,13 +84,33 @@ export default function SuperLogs() {
             if (!dataStr) continue;
             try {
               const evt = JSON.parse(dataStr);
-              if (evt.items) setLiveEvents((prev) => [...evt.items, ...prev].slice(0, 50));
+              if (Array.isArray(evt.items)) setLiveEvents((prev) => [...evt.items, ...prev].slice(0, 50));
             } catch { /* ignore */ }
           }
         }
-      } catch { if (!cancelled) setLiveConnected(false); }
-    })();
-    return () => { cancelled = true; controller.abort(); };
+      } catch {
+        if (!cancelled) {
+          setLiveConnected(false);
+          scheduleReconnect();
+        }
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      retryTimer = window.setTimeout(() => {
+        delay = Math.min(delay * 2, 30000);
+        void connect();
+      }, delay);
+    };
+
+    void connect();
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (retryTimer) window.clearTimeout(retryTimer);
+      setLiveConnected(false);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [levelFilter, logTypeFilter, orgFilter]);
 
