@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { motion } from "framer-motion";
 import { Building2, MessageSquare, Server, Wrench, FileText, Activity, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -32,9 +32,13 @@ export default function Dashboard() {
   const s = DEMO_MODE ? demoStats : stats.data;
 
   // Smart polling: keep platform stats fresh; slow when tab hidden.
+  // 60s foreground / 5min hidden — the initial load is handled by useResource.
+  const skipFirstPoll = useRef(true);
   useSmartPoll(async () => {
-    if (!DEMO_MODE) stats.refresh();
-  }, { intervalMs: 30000, hiddenIntervalMs: 120000 });
+    if (DEMO_MODE) return;
+    if (skipFirstPoll.current) { skipFirstPoll.current = false; return; }
+    stats.refresh();
+  }, { intervalMs: 60000, hiddenIntervalMs: 300000 });
 
   return (
     <div>

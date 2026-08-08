@@ -13,6 +13,7 @@ import { cx, timeAgo } from "@/lib/utils";
 
 type ServerOverview = {
   health: string;
+  healthScore: number;
   version: string;
   environment: string;
   timestamp: string;
@@ -38,6 +39,7 @@ type ServerOverview = {
 
 const demoServer: ServerOverview = {
   health: "healthy",
+  healthScore: 100,
   version: "4.3.2",
   environment: "staging",
   timestamp: new Date().toISOString(),
@@ -67,6 +69,7 @@ const demoServer: ServerOverview = {
 
 const EMPTY: ServerOverview = {
   health: "unknown",
+  healthScore: 0,
   version: "",
   environment: "",
   timestamp: "",
@@ -97,6 +100,12 @@ function obj(v: unknown): Record<string, any> {
 function arr<T>(v: unknown): T[] {
   return Array.isArray(v) ? (v as T[]) : [];
 }
+/** Backend reports process RSS as rss_mb OR rss_kb — normalize to MB. */
+function rssMb(p: Record<string, any>): number {
+  if (p.rss_mb != null) return num(p.rss_mb);
+  if (p.rss_kb != null) return num(p.rss_kb) / 1024;
+  return num(p.rss);
+}
 
 function normalize(raw: any): ServerOverview {
   const proc = obj(raw.process);
@@ -107,33 +116,50 @@ function normalize(raw: any): ServerOverview {
   const celery = obj(raw.celery);
   const locks = obj(raw.tool_locks);
   const asyncInfo = obj(raw.asyncio);
+  const healthObj = obj(raw.health);
+  const gcObj = obj(raw.gc);
+  const gcCounts = obj(gcObj.counts);
+  // celery.active_tasks is a worker -> count map; sum for a scalar
+  const activeTasks = obj(celery.active_tasks);
+  const celeryActive =
+    Object.keys(activeTasks).length > 0
+      ? Object.values(activeTasks).reduce((s: number, v) => s + num(v), 0)
+      : num(celery.active);
+  // load_avg may be an array or {1m,5m,15m} object
+  let loadAvg: number[] = [];
+  if (Array.isArray(res.load_avg)) loadAvg = res.load_avg.map((v: unknown) => num(v));
+  else if (res.load_avg && typeof res.load_avg === "object") {
+    const la = res.load_avg as Record<string, unknown>;
+    loadAvg = [num(la["1m"]), num(la["5m"]), num(la["15m"])].filter((v) => v > 0);
+  }
   return {
-    health: str(raw.health, "unknown"),
+    health: str(healthObj.label ?? raw.health ?? "unknown"),
+    healthScore: num(healthObj.score, num(raw.health_score)),
     version: str(raw.version),
     environment: str(raw.environment),
     timestamp: str(raw.timestamp),
     process: {
       pid: num(proc.pid),
-      rss_mb: num(proc.rss_mb ?? proc.rss),
-      cpu_percent: num(proc.cpu_percent ?? proc.cpu),
+      rss_mb: rssMb(proc),
+      cpu_percent: num(proc.cpu_percent ?? proc.cpu ?? 0),
       threads: num(proc.threads ?? proc.thread_count),
       uptime_seconds: num(proc.uptime_seconds ?? proc.uptime),
     },
     related_processes: arr<any>(raw.related_processes ?? raw.processes).map((p) => ({
       pid: num(p.pid),
       role: str(p.role ?? p.name ?? "process"),
-      rss_mb: num(p.rss_mb ?? p.rss),
+      rss_mb: rssMb(p),
       cmdline: str(p.cmdline ?? p.command),
     })),
     resources: {
       cpu_count_logical: num(res.cpu_count_logical ?? res.cpu_count),
-      cpu_percent: num(res.cpu_percent ?? res.cpu_usage_percent),
-      load_avg: Array.isArray(res.load_avg) ? res.load_avg.map((v: unknown) => num(v)) : [],
+      cpu_percent: num(res.cpu_percent ?? res.cpu_usage_percent ?? 0),
+      load_avg: loadAvg,
       memory: {
         total_mb: num(mem.total_mb ?? mem.total),
         used_percent: num(mem.used_percent),
-        used_mb: num(mem.used_mb ?? mem.used),
-        free_mb: num(mem.free_mb ?? mem.free),
+        used_mb: num(mem.used_mb ?? mem.used ?? (num(mem.available_mb) && num(mem.total_mb) ? num(mem.total_mb) - num(mem.available_mb) : 0)),
+        free_mb: num(mem.free_mb ?? mem.available_mb ?? mem.free),
       },
       disk: {
         used_percent: num(disk.used_percent),
@@ -149,18 +175,22 @@ function normalize(raw: any): ServerOverview {
     },
     security_db_pools: raw.security_db_pools ?? {},
     asyncio: { running_loop: Boolean(asyncInfo.running_loop), tasks: num(asyncInfo.tasks) },
-    gc: raw.gc ?? {},
-    tool_locks: { total: num(locks.total ?? locks.total_locks), active: num(locks.active ?? locks.active_locks), note: str(locks.note) },
+    gc: { gen0: num(gcCounts.gen0), gen1: num(gcCounts.gen1), gen2: num(gcCounts.gen2), garbage: num(gcObj.garbage) },
+    tool_locks: {
+      total: num(locks.total ?? locks.total_locks),
+      active: num(locks.active ?? locks.active_locks),
+      note: str(locks.note),
+    },
     celery: {
       available: Boolean(celery.available),
-      worker_count: num(celery.worker_count ?? celery.workers),
-      active_tasks: num(celery.active_tasks ?? celery.active),
+      worker_count: num(celery.worker_count ?? (Array.isArray(celery.workers) ? celery.workers.length : 0)),
+      active_tasks: celeryActive,
     },
     config_snapshot: raw.config_snapshot ?? {},
     recommendations: arr<any>(raw.recommendations).map((r) => ({
       severity: str(r.severity, "info"),
       title: str(r.title ?? r.message),
-      detail: str(r.detail ?? r.message),
+      detail: str(r.detail ?? r.action ?? r.message),
     })),
     optimize_actions: arr<string>(raw.optimize_actions).length
       ? arr<string>(raw.optimize_actions)
@@ -205,8 +235,11 @@ export default function ServerOps() {
   const d = server && (server as any)?.related_processes ? server : EMPTY;
 
   // Realtime refresh via smart polling (slows when tab hidden).
+  // 30s foreground / 90s hidden — keeps the dashboard live without hammering the API.
+  const skipFirstPoll = useRef(true);
   useSmartPoll(async () => {
     if (DEMO_MODE) return;
+    if (skipFirstPoll.current) { skipFirstPoll.current = false; return; } // initial load handled by useResource
     try {
       const raw = await api.get<any>("/admin/server/overview");
       const next = normalize(raw);
@@ -219,7 +252,7 @@ export default function ServerOps() {
       setLive(true);
       forceTick((x) => x + 1);
     } catch { setLive(false); }
-  }, { intervalMs: 8000, hiddenIntervalMs: 30000 });
+  }, { intervalMs: 30000, hiddenIntervalMs: 90000 });
 
   useEffect(() => {
     if (!DEMO_MODE && server && server.related_processes) {
@@ -277,8 +310,10 @@ export default function ServerOps() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard
               label="Health"
-              value={<span className={cx("flex items-center gap-1.5", healthOk ? "text-emerald-400" : "text-severity-critical")}>{healthOk ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />} {d.health}</span>}
+              value={<span className={cx("flex items-center gap-1.5 capitalize", healthOk ? "text-emerald-400" : "text-severity-critical")}>{healthOk ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />} {d.health}</span>}
               icon={<Activity size={18} />}
+              trend="up"
+              trendLabel={`score ${d.healthScore}/100`}
             />
             <StatCard label="CPU" value={`${cpuPct}%`} icon={<Cpu size={18} />} trend={cpuPct > 85 ? "down" : "up"} trendLabel={`${d.resources.cpu_count_logical} logical cores`} />
             <StatCard label="Memory" value={`${rss} MB`} icon={<HardDrive size={18} />} trend="neutral" trendLabel={`${memPct}% of ${d.resources.memory.total_mb} MB host`} />
