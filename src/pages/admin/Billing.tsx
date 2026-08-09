@@ -8,14 +8,14 @@ import { formatNaira, timeAgo, cx } from "@/lib/utils";
 import type { BillingSettings, PricingPreview } from "@/lib/types";
 
 interface GatewayStatus { configured: boolean; test_mode: boolean; public_key_prefix: string; secret_key_configured: boolean; callback_url: string; environment: string; }
-interface CouponItem { id: number; label: string; code: string; duration_days: number; max_redemptions: number; redeemed_count: number; is_active: boolean; notes: string; created_at: string; }
-interface RedemptionItem { id: number; organization_id: number; coupon_id: number; code: string; redeemed_at: string; access_ends_at: string; status: string; }
+interface CouponItem { id: number; label: string; code: string; duration_days: number; max_redemptions: number | null; redemption_count: number; remaining_redemptions: number | null; is_active: boolean; notes: string | null; created_at: string; }
+interface RedemptionItem { id: number; organization_id: number; coupon_id: number; code_snapshot: string; redeemed_at: string; access_ends_at: string; status: string; }
 
 const demoBilling: BillingSettings = { monthly_price_ngn: 100000, yearly_price_ngn: 1000000, currency: "NGN", updated_at: "2026-07-01T00:00:00Z" };
 const demoPricing: PricingPreview = { monthly: 100000, yearly: 1000000, yearly_monthly_eq: 83333, savings_percent: 17 };
 const demoGateway: GatewayStatus = { configured: true, test_mode: true, public_key_prefix: "pk_test_abc...", secret_key_configured: true, callback_url: "https://platform.phantix.site/billing/callback", environment: "staging" };
-const demoCoupons: CouponItem[] = [{ id: 1, label: "Design Partners", code: "BETA-7F3K-9Q2M", duration_days: 31, max_redemptions: 1, redeemed_count: 0, is_active: true, notes: "Q3 partners", created_at: new Date().toISOString() }];
-const demoRedemptions: RedemptionItem[] = [{ id: 1, organization_id: 24, coupon_id: 1, code: "BETA-7F3K-9Q2M", redeemed_at: "2026-07-28T10:00:00Z", access_ends_at: "2026-08-28T10:00:00Z", status: "active" }];
+const demoCoupons: CouponItem[] = [{ id: 1, label: "Design Partners", code: "BETA-7F3K-9Q2M", duration_days: 31, max_redemptions: 1, redemption_count: 0, remaining_redemptions: 1, is_active: true, notes: "Q3 partners", created_at: new Date().toISOString() }];
+const demoRedemptions: RedemptionItem[] = [{ id: 1, organization_id: 24, coupon_id: 1, code_snapshot: "BETA-7F3K-9Q2M", redeemed_at: "2026-07-28T10:00:00Z", access_ends_at: "2026-08-28T10:00:00Z", status: "active" }];
 
 export default function BillingAdmin() {
   const { toast } = useStore();
@@ -39,8 +39,8 @@ export default function BillingAdmin() {
   React.useEffect(() => {
     if (!DEMO_MODE) {
       api.get<GatewayStatus>("/admin/billing/gateway").then(setGateway).catch(() => {});
-      api.get<{ items: CouponItem[] }>("/admin/coupons").then(r => setCoupons(r.items ?? [])).catch(() => {});
-      api.get<{ items: RedemptionItem[] }>("/admin/coupon-redemptions?limit=20").then(r => setRedemptions(r.items ?? [])).catch(() => {});
+      api.get<CouponItem[] | { items: CouponItem[] }>("/admin/coupons").then((r) => setCoupons(Array.isArray(r) ? r : r.items ?? [])).catch(() => {});
+      api.get<RedemptionItem[] | { items: RedemptionItem[] }>("/admin/coupon-redemptions?limit=20").then((r) => setRedemptions(Array.isArray(r) ? r : r.items ?? [])).catch(() => {});
     } else {
       setGateway(demoGateway); setCoupons(demoCoupons); setRedemptions(demoRedemptions);
     }
@@ -59,9 +59,16 @@ export default function BillingAdmin() {
 
   const handleGenerateCoupons = async () => {
     try {
-      const res = await api.post<{ codes: string[]; count: number }>("/admin/coupons", { label: couponForm.label, duration_days: Math.min(31, couponForm.duration_days), count: Math.min(50, couponForm.count), notes: couponForm.notes });
-      setGeneratedCodes(res.codes ?? []);
-      toast("success", `${res.count ?? couponForm.count} codes generated`);
+      const res = await api.post<{ created: CouponItem[]; message: string }>("/admin/coupons", { label: couponForm.label, duration_days: Math.min(31, couponForm.duration_days), count: Math.min(50, couponForm.count), notes: couponForm.notes });
+      const created = res?.created ?? [];
+      setGeneratedCodes(created.map((c) => c.code));
+      toast("success", `${created.length} codes generated`);
+      // Refresh list so new coupons appear immediately.
+      if (!DEMO_MODE) {
+        api.get<CouponItem[] | { items: CouponItem[] }>("/admin/coupons").then((r) => setCoupons(Array.isArray(r) ? r : r.items ?? [])).catch(() => {});
+      } else {
+        setCoupons((cs) => [...cs, ...created]);
+      }
     } catch (e) { toast("error", "Failed", e instanceof Error ? e.message : ""); }
   };
 
@@ -132,7 +139,7 @@ export default function BillingAdmin() {
           {coupons.length === 0 ? <EmptyState icon={<Ticket size={24} />} title="No coupons" body="Generate beta access codes for trial access." /> : (
             <div className="space-y-2">
               {coupons.map(c => (
-                <Card key={c.id}><div className="flex flex-wrap items-center gap-3"><span className={cx("chip", c.is_active ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{c.is_active ? "Active" : "Inactive"}</span><span className="font-mono text-sm text-slate-200">{c.code}</span><span className="text-xs text-slate-400">{c.label} — {c.duration_days}d · {c.redeemed_count}/{c.max_redemptions} used</span><span className="ml-auto text-xs text-slate-500">{timeAgo(c.created_at)}</span>{c.is_active && <button onClick={() => handleDeactivateCoupon(c.id)} className="btn-ghost text-xs px-2 py-1 text-severity-critical"><XCircle size={12} /></button>}</div></Card>
+                <Card key={c.id}><div className="flex flex-wrap items-center gap-3"><span className={cx("chip", c.is_active ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{c.is_active ? "Active" : "Inactive"}</span><span className="font-mono text-sm text-slate-200">{c.code}</span><span className="text-xs text-slate-400">{c.label} — {c.duration_days}d · {c.redemption_count}{c.max_redemptions ? `/${c.max_redemptions}` : ""} used</span><span className="ml-auto text-xs text-slate-500">{timeAgo(c.created_at)}</span>{c.is_active && <button onClick={() => handleDeactivateCoupon(c.id)} className="btn-ghost text-xs px-2 py-1 text-severity-critical"><XCircle size={12} /></button>}</div></Card>
               ))}
             </div>
           )}
@@ -159,7 +166,7 @@ export default function BillingAdmin() {
       {tab === "redemptions" && (
         <div className="space-y-2">
           {redemptions.length === 0 ? <EmptyState icon={<CheckCircle2 size={24} />} title="No redemptions" body="No organizations have redeemed coupons yet." /> : (
-            <Card className="!p-0 overflow-hidden"><table className="w-full"><thead><tr className="border-b border-phantix-700/40"><th className="th">Code</th><th className="th">Org ID</th><th className="th">Redeemed</th><th className="th">Expires</th><th className="th">Status</th></tr></thead><tbody>{redemptions.map(r => <tr key={r.id} className="border-b border-phantix-800/40"><td className="td font-mono text-xs text-gold-300">{r.code}</td><td className="td text-xs">#{r.organization_id}</td><td className="td text-xs text-slate-400">{timeAgo(r.redeemed_at)}</td><td className="td text-xs text-slate-400">{timeAgo(r.access_ends_at)}</td><td className="td"><span className={cx("chip text-[10px]", r.status === "active" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{r.status}</span></td></tr>)}</tbody></table></Card>
+            <Card className="!p-0 overflow-hidden"><table className="w-full"><thead><tr className="border-b border-phantix-700/40"><th className="th">Code</th><th className="th">Org ID</th><th className="th">Redeemed</th><th className="th">Expires</th><th className="th">Status</th></tr></thead><tbody>{redemptions.map(r => <tr key={r.id} className="border-b border-phantix-800/40"><td className="td font-mono text-xs text-gold-300">{r.code_snapshot}</td><td className="td text-xs">#{r.organization_id}</td><td className="td text-xs text-slate-400">{timeAgo(r.redeemed_at)}</td><td className="td text-xs text-slate-400">{timeAgo(r.access_ends_at)}</td><td className="td"><span className={cx("chip text-[10px]", r.status === "active" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{r.status}</span></td></tr>)}</tbody></table></Card>
           )}
         </div>
       )}

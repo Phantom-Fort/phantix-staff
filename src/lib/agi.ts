@@ -184,8 +184,10 @@ export async function publishAgiPolicy(payload: { version: string; title: string
 // ── Grants ────────────────────────────────────────────────────────────────────
 export async function loadAgiGrants(): Promise<any[]> {
   if (DEMO_MODE) { await delay(250); return demoGrants; }
-  const res = await api.get<any[]>("/admin/agi/grants");
-  return Array.isArray(res) ? res : [];
+  // List ALL staff (admin+ accessible) so a superadmin can grant/revoke agi_admin
+  // on any admin user — the /admin/agi/grants list only returns those already flagged.
+  const staff = await api.get<any[]>("/staff");
+  return Array.isArray(staff) ? staff : [];
 }
 
 export async function setAgiGrant(staffId: number, agiAdmin: boolean): Promise<any> {

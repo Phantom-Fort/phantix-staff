@@ -894,17 +894,27 @@ export default function AgiAdmin() {
               <Card className="mb-3">
                 <p className="flex items-center gap-1.5 text-xs text-slate-400"><Users size={13} className="text-gold-400" /> Grant or revoke <span className="font-mono text-gold-300">agi_admin</span> on staff. Superadmins always have AGI Management access.</p>
               </Card>
-              {grants.loading ? <TableSkeleton rows={3} /> : grants.data.map((s: any) => (
-                <div key={s.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-phantix-800/70 text-slate-300">{s.full_name?.slice(0, 1) ?? "?"}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-100">{s.full_name || s.email}</p>
-                    <p className="text-xs text-slate-500">{s.email} · <span className="capitalize">{s.role}</span></p>
+              {grants.loading ? <TableSkeleton rows={3} /> : grants.data.length === 0 ? (
+                <EmptyState icon={<Users size={24} />} title="No staff found" body="Create staff users from the Staff Users page to grant AGI Management access." />
+              ) : grants.data.map((s: any) => {
+                const isSuper = String(s.role).toLowerCase() === "superadmin";
+                const granted = Boolean(s.agi_admin) || isSuper;
+                return (
+                  <div key={s.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-phantix-800/70 text-slate-300">{s.full_name?.slice(0, 1) ?? "?"}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-100">{s.full_name || s.email}</p>
+                      <p className="text-xs text-slate-500">{s.email} · <span className="capitalize">{s.role}</span>{!s.is_active && <span className="text-severity-critical"> · inactive</span>}</p>
+                    </div>
+                    <StatusBadge status={granted ? "active" : "rejected"} />
+                    {isSuper ? (
+                      <span className="chip border-gold-400/30 bg-gold-400/10 text-[10px] text-gold-300">always</span>
+                    ) : (
+                      <button onClick={() => void toggleGrant(s)} disabled={!s.is_active} className={cx("!px-3 !py-1.5 !text-[11px]", s.agi_admin ? "btn-ghost" : "btn-primary")}>{s.agi_admin ? "Revoke AGI admin" : "Grant AGI admin"}</button>
+                    )}
                   </div>
-                  <StatusBadge status={s.agi_admin ? "active" : "rejected"} />
-                  <button onClick={() => void toggleGrant(s)} className="btn-ghost !px-3 !py-1.5 !text-[11px]">{s.agi_admin ? "Revoke" : "Grant AGI admin"}</button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
