@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 import { cx, titleCase, severityColor } from "@/lib/utils";
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status }: { status: string | null | undefined }) {
   const colorMap: Record<string, string> = {
     active: "text-severity-low bg-severity-low/10 border-severity-low/30",
     ready: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30",
@@ -19,7 +19,7 @@ export function StatusBadge({ status }: { status: string }) {
     not_bootstrapped: "text-severity-medium bg-severity-medium/10 border-severity-medium/30",
     approved: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30",
   };
-  const cls = colorMap[status] ?? "text-slate-400 bg-slate-400/10 border-slate-500/30";
+  const cls = colorMap[status ?? ""] ?? "text-slate-400 bg-slate-400/10 border-slate-500/30";
   return (
     <span className={cx("chip capitalize", cls)}>
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
