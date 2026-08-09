@@ -21,6 +21,7 @@ import BusDiagnostics from "@/pages/admin/BusDiagnostics";
 import SuperLogs from "@/pages/admin/SuperLogs";
 import EngineJobs from "@/pages/admin/EngineJobs";
 import SuperadminTerminal from "@/pages/admin/Terminal";
+import AgiAdmin from "@/pages/admin/AgiAdmin";
 
 function RequireStaff({ children }: { children: React.ReactNode }) {
   const { session } = useStore();
@@ -41,6 +42,14 @@ function RequireSuperadmin({ children }: { children: React.ReactNode }) {
   const { session, isSuperadmin } = useStore();
   if (!session?.authenticated) return <Navigate to="/login" replace />;
   if (!isSuperadmin) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
+function RequireAgiAdmin({ children }: { children: React.ReactNode }) {
+  const { session, isAgiAdmin } = useStore();
+  const location = useLocation();
+  if (!session?.authenticated) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!isAgiAdmin) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -69,6 +78,7 @@ export default function App() {
             <Route path="/experience" element={<RequireAdmin><ExperienceAdmin /></RequireAdmin>} />
             <Route path="/ai" element={<RequireAdmin><AiAdmin /></RequireAdmin>} />
             <Route path="/vapt-admin" element={<RequireAdmin><VaptAdmin /></RequireAdmin>} />
+            <Route path="/agi" element={<RequireAgiAdmin><AgiAdmin /></RequireAgiAdmin>} />
 
             {/* Superadmin */}
             <Route path="/super-logs" element={<RequireSuperadmin><SuperLogs /></RequireSuperadmin>} />

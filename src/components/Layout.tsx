@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Shield, Building2, MessageSquare, Server, Brain,
   Users, FileCheck, Wrench, Search, Activity, LogOut, Menu, X,
   Zap, Globe, AlertTriangle, ScanLine, BarChart3, RefreshCw,
-  Crosshair, Radio, FileText, TerminalSquare,
+  Crosshair, Radio, FileText, TerminalSquare, Radar,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { APP_URL } from "@/lib/links";
@@ -21,6 +21,7 @@ const navSections: {
     icon: React.ReactNode;
     adminOnly?: boolean;
     superadminOnly?: boolean;
+    agiOnly?: boolean;
   }[];
 }[] = [
   {
@@ -61,6 +62,13 @@ const navSections: {
     ],
   },
   {
+    label: "Pentest Agent",
+    role: "admin",
+    items: [
+      { to: "/agi", label: "AGI Management", icon: <Radar size={18} />, agiOnly: true },
+    ],
+  },
+  {
     label: "Operations",
     role: "superadmin",
     items: [
@@ -74,7 +82,7 @@ const navSections: {
 ];
 
 export default function Layout() {
-  const { session, logout, isAdmin, isSuperadmin } = useStore();
+  const { session, logout, isAdmin, isSuperadmin, isAgiAdmin } = useStore();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -106,6 +114,7 @@ export default function Layout() {
             const visibleItems = section.items.filter((item) => {
               if (item.superadminOnly && !isSuperadmin) return false;
               if (item.adminOnly && !isAdmin) return false;
+              if (item.agiOnly && !isAgiAdmin) return false;
               return true;
             });
             if (!visibleItems.length) return null;
@@ -194,6 +203,7 @@ export default function Layout() {
                 const visibleItems = section.items.filter((item) => {
                   if (item.superadminOnly && !isSuperadmin) return false;
                   if (item.adminOnly && !isAdmin) return false;
+                  if (item.agiOnly && !isAgiAdmin) return false;
                   return true;
                 });
                 if (!visibleItems.length) return null;

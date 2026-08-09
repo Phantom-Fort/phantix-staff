@@ -1,0 +1,1201 @@
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import {
+  ShieldCheck, Activity, RefreshCw, Play, Square, Send, Plus, Loader2,
+  Globe2, Crosshair, Boxes, FileText, Wrench, Users, Terminal, CheckCircle2, XCircle,
+  Brain, GitBranch, ShieldAlert, Eye, X, Clock, Pencil, SlidersHorizontal, BookOpen,
+} from "lucide-react";
+import { PageHeader, Card, CardHeader, StatCard, StatusBadge, SeverityBadge, TableSkeleton, EmptyState, Tabs, Modal } from "@/components/ui";
+import MarkdownView from "@/components/MarkdownView";
+import { AGI_CONTRIBUTOR_GUIDE_MD } from "@/lib/agiContributorGuide";
+import { useResource } from "@/lib/useResource";
+import { useStore } from "@/lib/store";
+import { api, DEMO_MODE } from "@/lib/api";
+import { cx, formatDateTime } from "@/lib/utils";
+import {
+  loadAgiStatus, loadAgiEngagements, createAgiEngagement, startAgiSession, stopAgiSession,
+  agiChat, loadAgiTranscript, loadAgiPendingActions, decideAgiAction,
+  loadAgiToolInstalls, decideAgiToolInstall, loadAgiGrants, setAgiGrant,
+  loadAgiPolicies, loadAgiActivePolicy, publishAgiPolicy,
+  loadAgiSkills, upsertAgiSkill, resolvedAgiSkills, loadAgiFindings, promoteAgiFinding, setAgiFindingStatus,
+  setAgiCredentials, setAgiRegistration, getAgiPreflight, provideAgiInfo, provideAgiOtp, runAgiShell, listAgiJobs,
+  agiErrorDetail, streamAgiSession,
+} from "@/lib/agi";
+import type {
+  AgiAction, AgiEngagement, AgiFinding, AgiPolicy, AgiSession, AgiSkill, AgiToolInstallRequest, AgiTranscriptChunk,
+} from "@/lib/types";
+
+// ── Terminal line renderer ────────────────────────────────────────────────────
+function TxLine({ t, last }: { t: AgiTranscriptChunk; last: boolean }) {
+  const isTool = t.role === "tool";
+  const isSystem = t.role === "system";
+  const isOperator = t.role === "operator";
+  return (
+    <div className={cx("flex", isOperator ? "justify-end" : "justify-start")}>
+      <div className={cx(
+        "max-w-[92%] rounded-xl px-3 py-2 text-[12.5px] leading-5",
+        isOperator && "bg-gold-400/15 border border-gold-400/20 text-gold-100",
+        !isOperator && isTool && "border border-phantix-700/40 bg-phantix-950/70 font-mono text-[11px] text-slate-300",
+        !isOperator && isSystem && "font-mono text-[11px] text-slate-500",
+        !isOperator && !isTool && !isSystem && "border border-phantix-700/40 bg-phantix-800/60 text-slate-200",
+      )}>
+        {isTool && <span className="mb-1 flex items-center gap-1.5 text-[10px] text-gold-400"><Terminal size={10} /> {String((t.meta as any)?.tool ?? "tool")}</span>}
+        {isSystem && <span className="mr-1 text-[10px] text-slate-600">engine</span>}
+        <span className="whitespace-pre-wrap break-words">{t.content}</span>
+        {last && !isOperator && <span className="ml-0.5 inline-block h-3 w-[6px] animate-pulse rounded-sm bg-gold-400/70 align-middle" />}
+      </div>
+    </div>
+  );
+}
+
+// ── Session terminal (live stream + transcript poll + chat + approvals) ───────
+function SessionTerminal({ session }: { session: AgiSession }) {
+  const { toast } = useStore();
+  const [transcript, setTranscript] = useState<AgiTranscriptChunk[]>([]);
+  const afterSeqRef = useRef(0);
+  const [actions, setActions] = useState<AgiAction[]>([]);
+  const [input, setInput] = useState("");
+  const [running, setRunning] = useState(session.status === "running" || session.status === "provisioning");
+  const [stopping, setStopping] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [deciding, setDeciding] = useState<number | null>(null);
+  const [liveLine, setLiveLine] = useState<string>("");
+  const [showControls, setShowControls] = useState(false);
+  const endRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const poll = useCallback(async (initialSeq = 0) => {
+    try {
+      const chunks = await loadAgiTranscript(session.id, afterSeqRef.current);
+      if (chunks.length) {
+        setTranscript((prev) => [...prev, ...chunks]);
+        afterSeqRef.current = Math.max(afterSeqRef.current, ...chunks.map((c) => c.seq));
+      }
+      if (initialSeq === 0 && chunks.length) afterSeqRef.current = Math.max(afterSeqRef.current, ...chunks.map((c) => c.seq));
+    } catch { /* transient */ }
+  }, [session.id]);
+
+  // Transcript poll fallback + pending approvals while running
+  useEffect(() => {
+    if (!running) return;
+    void poll(0);
+    const t = setInterval(() => void poll(), 2500);
+    const a = setInterval(async () => {
+      try { setActions(await loadAgiPendingActions(session.id)); } catch { /* transient */ }
+    }, 3500);
+    return () => { clearInterval(t); clearInterval(a); };
+  }, [running, session.id, poll]);
+
+  // SSE live stream (staff) — appends raw terminal frames
+  useEffect(() => {
+    if (!running || DEMO_MODE) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    void streamAgiSession(session.id, (event, data) => {
+      if (event === "token") setLiveLine((prev) => prev + data);
+      else if (event === "assistant_done") { if (liveLine) setLiveLine(""); }
+      else if (event === "action_pending") { void poll(0); }
+      else if (event === "ping") { /* keep-alive */ }
+      else if (event === "teardown") setRunning(false);
+    }, controller.signal).catch(() => { /* SSE fallback: transcript poll continues */ });
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running, session.id]);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [transcript, liveLine, actions]);
+
+  const send = async () => {
+    const msg = input.trim();
+    if (!msg || !running) return;
+    setInput("");
+    setTranscript((prev) => [...prev, { seq: -1, role: "operator", content: msg, meta: null, created_at: new Date().toISOString() }]);
+    setSending(true);
+    try {
+      await agiChat(session.id, msg);
+    } catch (e) { toast("error", "Chat failed", agiErrorDetail(e).message); }
+    finally { setSending(false); }
+  };
+
+  const stop = async () => {
+    setStopping(true);
+    try {
+      const s = await stopAgiSession(session.id);
+      setRunning(false);
+      setLiveLine("");
+      toast("success", "Session stopped", s.status === "stopped" ? "Container destroyed" : s.status);
+    } catch (e) { toast("error", "Stop failed", agiErrorDetail(e).message); }
+    finally { setStopping(false); }
+  };
+
+  const decide = async (action: AgiAction, approve: boolean) => {
+    setDeciding(action.id);
+    try {
+      await decideAgiAction(action.id, approve, approve ? "Within ROE" : "", true);
+      setActions((prev) => prev.filter((x) => x.id !== action.id));
+      toast("success", approve ? "Action approved" : "Action rejected");
+    } catch (e) { toast("error", "Decision failed", agiErrorDetail(e).message); }
+    finally { setDeciding(null); }
+  };
+
+  return (
+    <div className="flex h-[68vh] flex-col overflow-hidden rounded-2xl border border-phantix-700/40">
+      {/* Terminal header */}
+      <div className="flex items-center gap-2.5 border-b border-phantix-700/40 bg-phantix-950/80 px-4 py-3">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-phantix-800/80 text-gold-400"><Terminal size={15} /></span>
+        <div className="min-w-0">
+          <p className="font-display text-sm font-semibold text-white">Session #{session.id}</p>
+          <p className="text-[10px] text-slate-500">engagement #{session.engagement_id}{session.container_id ? ` · ${session.container_id}` : ""}</p>
+        </div>
+        <StatusBadge status={running ? "running" : session.status} />
+        <div className="ml-auto flex items-center gap-1.5">
+          <button onClick={() => setShowControls((v) => !v)} className={cx("btn-ghost !px-2.5 !py-1.5 !text-[11px]", showControls && "text-gold-300")}><SlidersHorizontal size={12} className="mr-1 inline" /> Controls</button>
+          <button onClick={() => void poll()} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><RefreshCw size={12} /> Refresh</button>
+          <button onClick={() => void stop()} disabled={stopping} className="btn-secondary !px-3 !py-1.5 !text-[11px]"><Square size={12} className="mr-1 inline" /> {stopping ? "Stopping..." : "Stop"}</button>
+        </div>
+      </div>
+
+      {/* Transcript */}
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 font-mono">
+        {transcript.length === 0 && <p className="py-8 text-center text-[11px] text-slate-600">Connecting to engagement container…</p>}
+        {transcript.map((t, i) => <TxLine key={i} t={t} last={i === transcript.length - 1 && running} />)}
+        {liveLine && running && (
+          <div className="border border-phantix-700/40 bg-phantix-950/70 px-3 py-2 font-mono text-[11px] text-slate-300">
+            {liveLine}<span className="ml-0.5 inline-block h-3 w-[6px] animate-pulse rounded-sm bg-gold-400/70 align-middle" />
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      {/* Pending approvals */}
+      {actions.length > 0 && (
+        <div className="max-h-[32%] space-y-2 overflow-y-auto border-t border-phantix-700/40 bg-phantix-950/70 p-3">
+          <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-severity-medium"><ShieldCheck size={11} /> Awaiting approval ({actions.length})</p>
+          {actions.map((a) => (
+            <div key={a.id} className="rounded-xl border border-severity-medium/30 bg-severity-medium/5 p-3">
+              <div className="flex items-start gap-2">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-severity-medium/15 text-severity-medium"><ShieldCheck size={13} /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-amber-200">{a.action_type === "tool_install" ? "Tool install (container only)" : "State-changing step"}</p>
+                  <p className="mt-1 rounded-lg bg-phantix-950/70 px-2.5 py-1.5 font-mono text-[11px] text-slate-200">{a.proposed_command}</p>
+                  {a.rationale && <p className="mt-1.5 text-[11px] text-slate-400">{a.rationale}</p>}
+                  <div className="mt-2 flex items-center gap-2">
+                    <button onClick={() => void decide(a, true)} disabled={deciding === a.id} className="btn-primary !px-2.5 !py-1.5 !text-[11px]"><CheckCircle2 size={12} className="mr-1 inline" /> Approve</button>
+                    <button onClick={() => void decide(a, false)} disabled={deciding === a.id} className="btn-ghost !px-2.5 !py-1.5 !text-[11px] text-severity-critical hover:text-severity-critical"><XCircle size={12} className="mr-1 inline" /> Reject</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Session controls (preflight / auth / otp / shell) */}
+      {showControls && <SessionControls session={session} running={running} />}
+
+      {/* Composer */}
+      <div className="border-t border-phantix-700/40 bg-phantix-950/60 p-3">
+        <div className="flex items-center gap-2 rounded-xl border border-phantix-700/50 bg-phantix-950/70 px-3 py-2 focus-within:border-gold-400/40">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) void send(); }}
+            placeholder={running ? "Further operator instruction…" : "Session stopped"}
+            disabled={!running}
+            className="flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500 disabled:opacity-50"
+          />
+          <button onClick={() => void send()} disabled={!running || !input.trim() || sending} className="btn-primary !px-3 !py-1.5 !text-xs">
+            {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+          </button>
+        </div>
+        <p className="mt-2 flex items-center gap-1.5 text-[10px] text-slate-600"><ShieldCheck size={10} /> Read-only steps stream live · state-changing steps wait for your approval · container destroyed on stop</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Session controls (preflight / credentials / registration / OTP / shell / jobs) ──
+function SessionControls({ session, running }: { session: AgiSession; running: boolean }) {
+  const { toast } = useStore();
+  const [tab, setTab] = useState<"preflight" | "auth" | "otp" | "shell">("preflight");
+
+  // Preflight
+  const [preflight, setPreflight] = useState<any>(null);
+  const [preflightLoading, setPreflightLoading] = useState(false);
+  const [infoFields, setInfoFields] = useState<Record<string, string>>({});
+  const [infoNote, setInfoNote] = useState("");
+  const [infoSaving, setInfoSaving] = useState(false);
+
+  // Credentials
+  const [creds, setCreds] = useState({ login_url: "", username: "", password: "" });
+  const [credsSaving, setCredsSaving] = useState(false);
+
+  // Registration
+  const [reg, setReg] = useState({ register_url: "", email: "", username: "", password: "" });
+  const [regSaving, setRegSaving] = useState(false);
+
+  // OTP
+  const [otp, setOtp] = useState("");
+  const [otpJob, setOtpJob] = useState("");
+  const [otpSaving, setOtpSaving] = useState(false);
+
+  // Shell
+  const [shellCmd, setShellCmd] = useState("");
+  const [shellBg, setShellBg] = useState(false);
+  const [shellWaitOtp, setShellWaitOtp] = useState(false);
+  const [shellOut, setShellOut] = useState("");
+  const [shellSaving, setShellSaving] = useState(false);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+
+  const loadPreflight = useCallback(async () => {
+    setPreflightLoading(true);
+    try {
+      const res = await getAgiPreflight(session.id);
+      setPreflight(res.preflight);
+      setInfoFields((prev) => {
+        const next = { ...prev };
+        (res.info_requests ?? []).forEach((r: any) => { if (!(r.key in next)) next[r.key] = ""; });
+        return next;
+      });
+    } catch (e) { toast("error", "Preflight check failed", agiErrorDetail(e).message); }
+    finally { setPreflightLoading(false); }
+  }, [session.id, toast]);
+
+  useEffect(() => { void loadPreflight(); }, [loadPreflight]);
+
+  const submitInfo = async () => {
+    const fields: Record<string, unknown> = {};
+    (preflight?.info_requests ?? []).forEach((r: any) => {
+      const v = (infoFields[r.key] ?? "").trim();
+      if (r.key === "roe_confirmed") fields[r.key] = v.toLowerCase() === "true" || v === "yes";
+      else if (v) fields[r.key] = v;
+    });
+    setInfoSaving(true);
+    try {
+      await provideAgiInfo(session.id, fields, infoNote);
+      toast("success", "Info provided", "Re-checking preflight readiness…");
+      await loadPreflight();
+      setInfoNote("");
+    } catch (e) { toast("error", "Info submit failed", agiErrorDetail(e).message); }
+    finally { setInfoSaving(false); }
+  };
+
+  const saveCreds = async () => {
+    if (!creds.login_url || !creds.username || !creds.password) { toast("error", "Login URL, username and password are required"); return; }
+    setCredsSaving(true);
+    try {
+      await setAgiCredentials(session.id, creds);
+      toast("success", "Credentials set", "Password redacted — never logged or returned.");
+      setCreds({ login_url: "", username: "", password: "" });
+    } catch (e) { toast("error", "Credentials failed", agiErrorDetail(e).message); }
+    finally { setCredsSaving(false); }
+  };
+
+  const saveReg = async () => {
+    if (!reg.register_url || !reg.password) { toast("error", "Register URL and password are required"); return; }
+    setRegSaving(true);
+    try {
+      await setAgiRegistration(session.id, { register_url: reg.register_url, email: reg.email, username: reg.username, password: reg.password });
+      toast("success", "Registration configured", "Approve the pending auth_register action to proceed.");
+      setReg({ register_url: "", email: "", username: "", password: "" });
+    } catch (e) { toast("error", "Registration failed", agiErrorDetail(e).message); }
+    finally { setRegSaving(false); }
+  };
+
+  const sendOtp = async () => {
+    if (!otp.trim()) { toast("error", "Enter the OTP / MFA code"); return; }
+    setOtpSaving(true);
+    try {
+      await provideAgiOtp(session.id, otp.trim(), otpJob.trim() || undefined);
+      toast("success", "OTP delivered", "Background job will continue.");
+      setOtp("");
+      setOtpJob("");
+    } catch (e) { toast("error", "OTP failed", agiErrorDetail(e).message); }
+    finally { setOtpSaving(false); }
+  };
+
+  const runShell = async () => {
+    if (!shellCmd.trim()) { toast("error", "Enter a shell command"); return; }
+    setShellSaving(true);
+    try {
+      const out = await runAgiShell(session.id, shellCmd.trim(), shellBg, shellWaitOtp);
+      setShellOut(typeof out === "string" ? out : JSON.stringify(out));
+      if (shellWaitOtp || shellBg) toast("success", "Background job started", "Track it under Jobs.");
+      setShellCmd("");
+    } catch (e) { toast("error", "Shell failed", agiErrorDetail(e).message); }
+    finally { setShellSaving(false); }
+  };
+
+  const loadJobs = async () => {
+    setJobsLoading(true);
+    try { setJobs(await listAgiJobs(session.id)); }
+    catch (e) { toast("error", "Jobs failed", agiErrorDetail(e).message); }
+    finally { setJobsLoading(false); }
+  };
+
+  const ready = preflight?.ready === true;
+  const requests: { key: string; label: string; hint?: string }[] = preflight?.info_requests ?? [];
+  const field = "w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40";
+
+  return (
+    <div className="border-t border-phantix-700/40 bg-phantix-950/70 p-3">
+      <div className="mb-2 flex flex-wrap items-center gap-1">
+        {(["preflight", "auth", "otp", "shell"] as const).map((t) => (
+          <button key={t} onClick={() => setTab(t)} className={cx("rounded-lg px-2.5 py-1.5 text-[11px] transition-colors", tab === t ? "bg-phantix-800/80 text-white" : "text-slate-500 hover:text-slate-300")}>
+            {t === "preflight" ? "Preflight" : t === "auth" ? "Auth (login / register)" : t === "otp" ? "OTP" : "Shell & jobs"}
+          </button>
+        ))}
+      </div>
+
+      {/* Preflight */}
+      {tab === "preflight" && (
+        <div className="space-y-2">
+          {preflightLoading ? <p className="py-2 text-center text-[11px] text-slate-500">Checking skill readiness…</p> : ready ? (
+            <p className="flex items-center gap-1.5 text-[11px] text-emerald-300"><CheckCircle2 size={12} /> {preflight?.message ?? "Preflight ready — no additional info required."}</p>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 rounded-lg border border-severity-medium/30 bg-severity-medium/5 px-3 py-2">
+                <ShieldCheck size={13} className="text-severity-medium" />
+                <p className="text-[11px] text-amber-200">Additional information required to proceed with {preflight?.missing?.length ?? requests.length} field(s).</p>
+                <button onClick={() => void loadPreflight()} className="ml-auto btn-ghost !px-2 !py-1 !text-[10px]"><RefreshCw size={11} /> Re-check</button>
+              </div>
+              {requests.map((r) => (
+                <div key={r.key}>
+                  <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">{r.label}</label>
+                  <input value={infoFields[r.key] ?? ""} onChange={(e) => setInfoFields((prev) => ({ ...prev, [r.key]: e.target.value }))} placeholder={r.hint ?? r.key} className={field} />
+                </div>
+              ))}
+              <input value={infoNote} onChange={(e) => setInfoNote(e.target.value)} placeholder="Note (optional)" className={field} />
+              <button onClick={() => void submitInfo()} disabled={infoSaving} className="btn-primary w-full !py-2 !text-[11px]">{infoSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Send size={12} className="mr-1 inline" />} Provide info & re-check</button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Auth */}
+      {tab === "auth" && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2 rounded-xl border border-phantix-700/40 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Login (authenticated testing)</p>
+            <input value={creds.login_url} onChange={(e) => setCreds({ ...creds, login_url: e.target.value })} placeholder="Login URL" className={field} />
+            <input value={creds.username} onChange={(e) => setCreds({ ...creds, username: e.target.value })} placeholder="Username" className={field} />
+            <input type="password" value={creds.password} onChange={(e) => setCreds({ ...creds, password: e.target.value })} placeholder="Password" className={field} />
+            <button onClick={() => void saveCreds()} disabled={credsSaving} className="btn-secondary w-full !py-2 !text-[11px]">{credsSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <ShieldCheck size={12} className="mr-1 inline" />} Set credentials</button>
+            <p className="text-[10px] text-slate-500">Password is never returned by the API or written to transcripts.</p>
+          </div>
+          <div className="space-y-2 rounded-xl border border-phantix-700/40 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Test-user registration</p>
+            <input value={reg.register_url} onChange={(e) => setReg({ ...reg, register_url: e.target.value })} placeholder="Register URL" className={field} />
+            <input value={reg.email} onChange={(e) => setReg({ ...reg, email: e.target.value })} placeholder="Email (optional)" className={field} />
+            <input value={reg.username} onChange={(e) => setReg({ ...reg, username: e.target.value })} placeholder="Username (optional)" className={field} />
+            <input type="password" value={reg.password} onChange={(e) => setReg({ ...reg, password: e.target.value })} placeholder="Password" className={field} />
+            <button onClick={() => void saveReg()} disabled={regSaving} className="btn-secondary w-full !py-2 !text-[11px]">{regSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Users size={12} className="mr-1 inline" />} Configure registration</button>
+            <p className="text-[10px] text-slate-500">Then approve the pending <span className="font-mono text-gold-300">auth_register</span> action above.</p>
+          </div>
+        </div>
+      )}
+
+      {/* OTP */}
+      {tab === "otp" && (
+        <div className="space-y-2">
+          <p className="text-[11px] text-slate-400">Deliver an MFA / OTP code to a waiting background job in the container.</p>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex-1">
+              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">OTP / MFA code</label>
+              <input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="e.g. 123456" className={field} />
+            </div>
+            <div className="flex-1">
+              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Job id (optional)</label>
+              <input value={otpJob} onChange={(e) => setOtpJob(e.target.value)} placeholder="job id for the waiting wait_otp job" className={field} />
+            </div>
+            <button onClick={() => void sendOtp()} disabled={otpSaving} className="btn-primary !px-4 !py-2 !text-[11px]">{otpSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Send size={12} className="mr-1 inline" />} Deliver OTP</button>
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] text-slate-500">The code is delivered to the container job; it is not written to the transcript.</p>
+            <button onClick={() => void loadJobs()} className="btn-ghost !px-2 !py-1 !text-[10px]"><RefreshCw size={11} /> Jobs</button>
+          </div>
+        </div>
+      )}
+
+      {/* Shell */}
+      {tab === "shell" && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[220px] flex-1">
+              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Command (inside container)</label>
+              <input value={shellCmd} onChange={(e) => setShellCmd(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void runShell(); }} placeholder="e.g. nmap -Pn target.example" className={field} />
+            </div>
+            <label className="flex items-center gap-1.5 text-[11px] text-slate-400"><input type="checkbox" checked={shellBg} onChange={(e) => setShellBg(e.target.checked)} className="accent-[rgb(var(--gold-400))]" /> Background</label>
+            <label className="flex items-center gap-1.5 text-[11px] text-slate-400"><input type="checkbox" checked={shellWaitOtp} onChange={(e) => setShellWaitOtp(e.target.checked)} className="accent-[rgb(var(--gold-400))]" /> Wait for OTP</label>
+            <button onClick={() => void runShell()} disabled={shellSaving || !running} className="btn-primary !px-4 !py-2 !text-[11px]">{shellSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Terminal size={12} className="mr-1 inline" />} Run</button>
+          </div>
+          {shellOut && <pre className="max-h-40 overflow-auto rounded-lg bg-phantix-950/80 border border-phantix-700/40 p-2.5 font-mono text-[11px] text-slate-300">{shellOut}</pre>}
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Background jobs</p>
+              <button onClick={() => void loadJobs()} className="btn-ghost !px-2 !py-1 !text-[10px]"><RefreshCw size={11} /> Refresh</button>
+            </div>
+            {jobsLoading ? <p className="text-[11px] text-slate-500">Loading jobs…</p> : jobs.length === 0 ? <p className="text-[11px] text-slate-600">No background jobs.</p> : (
+              <div className="space-y-1.5">
+                {jobs.map((j, i) => (
+                  <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg bg-phantix-950/60 px-2.5 py-2 text-[11px]">
+                    <span className="font-mono text-slate-300">{String(j.command ?? j.job_id ?? "job")}</span>
+                    {j.waiting_otp && <span className="chip !text-[9px] border-severity-medium/30 bg-severity-medium/10 text-severity-medium">waiting OTP</span>}
+                    <span className="ml-auto text-[10px] capitalize text-slate-500">{String(j.status ?? "running")}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Engagement create modal ───────────────────────────────────────────────────
+function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string }[]; onCreated: (e: AgiEngagement) => void }) {
+  const { toast } = useStore();
+  const [form, setForm] = useState({ organization_id: orgs[0]?.id ?? 0, name: "", description: "", allowlist: "", forbidden: "dos\nransomware\ndata_exfil_bulk", roe: "", max_minutes: 120 });
+  const [creating, setCreating] = useState(false);
+
+  const create = async () => {
+    const targets = form.allowlist.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+    if (!form.name.trim() || targets.length === 0 || !form.organization_id) {
+      toast("error", "Organization, name and at least one target are required");
+      return;
+    }
+    setCreating(true);
+    try {
+      const eng = await createAgiEngagement({
+        organization_id: Number(form.organization_id),
+        name: form.name.trim(),
+        description: form.description.trim(),
+        scope: {
+          target_allowlist: targets,
+          forbidden_actions: form.forbidden.split(/[\n,]/).map((s) => s.trim()).filter(Boolean),
+          rules_of_engagement: form.roe.trim(),
+          max_session_minutes: Number(form.max_minutes) || 120,
+        },
+      });
+      toast("success", "Engagement created", eng.name);
+      onCreated(eng);
+    } catch (e) {
+      const { message, code } = agiErrorDetail(e);
+      if (code === "scope_empty") toast("error", "Scope required", "Add at least one target to the allowlist.");
+      else toast("error", "Create failed", message);
+    } finally { setCreating(false); }
+  };
+
+  const field = "w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40";
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="mb-1 block text-[11px] font-semibold text-slate-400">Organization</label>
+        <select value={form.organization_id} onChange={(e) => setForm({ ...form, organization_id: Number(e.target.value) })} className={field}>
+          <option value={0}>Select organization…</option>
+          {orgs.map((o) => <option key={o.id} value={o.id}>{o.name} (#{o.id})</option>)}
+        </select>
+      </div>
+      <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Name (e.g. Acme Q3 external web)" className={field} />
+      <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description / ROE reference" className={field} />
+      <div>
+        <label className="mb-1 block text-[11px] font-semibold text-slate-400">Target allowlist (immutable after create)</label>
+        <textarea value={form.allowlist} onChange={(e) => setForm({ ...form, allowlist: e.target.value })} rows={3} placeholder={"203.0.113.10\napp.acme-lab.example\nhttps://app.acme-lab.example"} className={cx(field, "font-mono text-[11px]")} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="mb-1 block text-[11px] font-semibold text-slate-400">Forbidden actions</label>
+          <textarea value={form.forbidden} onChange={(e) => setForm({ ...form, forbidden: e.target.value })} rows={2} className={cx(field, "font-mono text-[11px]")} />
+        </div>
+        <div>
+          <label className="mb-1 block text-[11px] font-semibold text-slate-400">Max session minutes</label>
+          <input type="number" min={15} max={1440} value={form.max_minutes} onChange={(e) => setForm({ ...form, max_minutes: Number(e.target.value) })} className={field} />
+        </div>
+      </div>
+      <div>
+        <label className="mb-1 block text-[11px] font-semibold text-slate-400">Rules of engagement</label>
+        <textarea value={form.roe} onChange={(e) => setForm({ ...form, roe: e.target.value })} rows={2} placeholder="Business hours only. Stop on PII. No production DB writes." className={field} />
+      </div>
+      <button onClick={() => void create()} disabled={creating} className="btn-primary w-full !py-2.5 !text-xs">
+        {creating ? <Loader2 size={13} className="mr-1 inline animate-spin" /> : <Plus size={13} className="mr-1 inline" />} Create engagement
+      </button>
+    </div>
+  );
+}
+
+// ── Findings panel ────────────────────────────────────────────────────────────
+function FindingsPanel({ sessionId }: { sessionId: number }) {
+  const { toast } = useStore();
+  const findings = useResource<AgiFinding[]>(
+    async () => { if (DEMO_MODE) return []; return loadAgiFindings(sessionId); },
+    [] as AgiFinding[],
+  );
+
+  const act = async (f: AgiFinding, kind: "promote" | "verified" | "dismissed") => {
+    try {
+      if (kind === "promote") await promoteAgiFinding(sessionId, f.finding_id);
+      else await setAgiFindingStatus(sessionId, f.finding_id, kind, kind === "verified" ? "Verified by operator" : "");
+      toast("success", kind === "promote" ? "Finding promoted" : kind === "verified" ? "Finding verified" : "Finding dismissed");
+      findings.refresh();
+    } catch (e) { toast("error", "Action failed", agiErrorDetail(e).message); }
+  };
+
+  const list = findings.data ?? [];
+  return (
+    <div className="space-y-2.5">
+      {findings.loading && <TableSkeleton rows={2} />}
+      {!findings.loading && list.length === 0 && <EmptyState icon={<ShieldAlert size={22} />} title="No findings yet" body="Evidence-backed findings from this session will appear here." />}
+      {list.map((f) => (
+        <div key={f.id} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <SeverityBadge severity={f.severity} />
+            <span className="text-sm font-semibold text-slate-100">{f.title}</span>
+            <span className="chip text-[10px] text-slate-500">{f.tool ?? f.source}</span>
+            {f.risk_id && <span className="chip border-emerald-400/30 bg-emerald-400/10 text-[10px] text-emerald-300">risk #{f.risk_id}</span>}
+          </div>
+          {f.target && <p className="mt-1 font-mono text-[11px] text-slate-500">{f.target}</p>}
+          <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-400">{f.evidence}</p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            {!f.risk_id && (
+              <button onClick={() => void act(f, "promote")} className="btn-secondary !px-2.5 !py-1.5 !text-[11px]"><GitBranch size={12} className="mr-1 inline" /> Promote to risk</button>
+            )}
+            <button onClick={() => void act(f, "verified")} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><CheckCircle2 size={12} className="mr-1 inline" /> Verify</button>
+            <button onClick={() => void act(f, "dismissed")} className="btn-ghost !px-2.5 !py-1.5 !text-[11px] text-slate-500"><XCircle size={12} className="mr-1 inline" /> Dismiss</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+export default function AgiAdmin() {
+  const { toast, isSuperadmin, isAgiAdmin } = useStore();
+  const [tab, setTab] = useState("status");
+  const [status, setStatus] = useState<any>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedEng, setSelectedEng] = useState<AgiEngagement | null>(null);
+  const [activeSession, setActiveSession] = useState<AgiSession | null>(null);
+  const [instruction, setInstruction] = useState("");
+  const [starting, setStarting] = useState(false);
+  const [resolved, setResolved] = useState<AgiSkill[]>([]);
+  const [skillOpen, setSkillOpen] = useState(false);
+  const [editingSkill, setEditingSkill] = useState<AgiSkill | null>(null);
+  const [autonomy, setAutonomy] = useState<"low" | "medium" | "high">("medium");
+  const [includeOrgAssets, setIncludeOrgAssets] = useState(true);
+  const [startCreds, setStartCreds] = useState({ login_url: "", username: "", password: "" });
+  const [credsOpen, setCredsOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+
+  const loadStatus = useCallback(async () => {
+    setStatusLoading(true);
+    setStatusError(null);
+    const s = await loadAgiStatus();
+    if (!s) setStatusError("PHANTIX AGI is disabled or the runner is unreachable.");
+    setStatus(s);
+    setStatusLoading(false);
+  }, []);
+
+  useEffect(() => { void loadStatus(); }, [loadStatus]);
+
+  const engagements = useResource<AgiEngagement[]>(
+    async () => loadAgiEngagements(),
+    [] as AgiEngagement[],
+  );
+
+  const policies = useResource<AgiPolicy[]>(async () => loadAgiPolicies(), [] as AgiPolicy[]);
+  const grants = useResource<any[]>(async () => loadAgiGrants(), [] as any[]);
+  const skills = useResource<AgiSkill[]>(async () => loadAgiSkills(), [] as AgiSkill[]);
+  const toolInstalls = useResource<AgiToolInstallRequest[]>(async () => loadAgiToolInstalls("pending_admin"), [] as AgiToolInstallRequest[]);
+
+  const orgs = useResource<{ id: number; name: string }[]>(
+    async () => {
+      if (DEMO_MODE) return [{ id: 42, name: "Acme Financial Group" }, { id: 11, name: "Finlab" }];
+      try {
+        const res = await api.get<any[]>("/admin/clients");
+        return (Array.isArray(res) ? res : []).map((c) => ({ id: Number(c.id ?? c.organization_id ?? 0), name: String(c.name ?? c.organization_name ?? `Org #${c.id}`) }));
+      } catch { return []; }
+    },
+    [] as { id: number; name: string }[],
+  );
+
+  const start = async (eng: AgiEngagement, msg?: string) => {
+    const instructionText = msg?.trim() ?? instruction.trim();
+    if (!instructionText) { toast("warning", "Instruction required", "An explicit operator instruction is required to start a session."); return; }
+    setStarting(true);
+    try {
+      const s = await startAgiSession(eng.id, instructionText, {
+        autonomy,
+        include_org_assets: includeOrgAssets,
+        credentials: credsOpen && startCreds.login_url && startCreds.username && startCreds.password ? {
+          login_url: startCreds.login_url,
+          username: startCreds.username,
+          password: startCreds.password,
+        } : undefined,
+      });
+      setActiveSession(s);
+      setInstruction("");
+      setStartCreds({ login_url: "", username: "", password: "" });
+      setCredsOpen(false);
+      toast("success", "Session started", `Session #${s.id} — streaming live from the engagement container.`);
+      setResolved(await resolvedAgiSkills(eng.id));
+    } catch (e) { toast("error", "Start failed", agiErrorDetail(e).message); }
+    finally { setStarting(false); }
+  };
+
+  const decideInstall = async (req: AgiToolInstallRequest, provision: boolean) => {
+    try {
+      await decideAgiToolInstall(req.id, provision, provision ? "Provisioned into sandbox image" : "Rejected by admin");
+      toast("success", provision ? "Tool provisioned" : "Tool rejected", req.tool_name);
+      toolInstalls.refresh();
+    } catch (e) { toast("error", "Decision failed", agiErrorDetail(e).message); }
+  };
+
+  const toggleGrant = async (staff: any) => {
+    try {
+      await setAgiGrant(staff.id, !staff.agi_admin);
+      toast("success", staff.agi_admin ? "AGI admin revoked" : "AGI admin granted", staff.email);
+      grants.refresh();
+    } catch (e) { toast("error", "Grant failed", agiErrorDetail(e).message); }
+  };
+
+  const selectedForSession = activeSession ? engagements.data.find((e) => e.id === activeSession.engagement_id) ?? null : selectedEng;
+
+  return (
+    <div>
+      <PageHeader
+        title="PHANTIX AGI Management"
+        description="Scope engagements, run sessions, approve state-changing steps, provision tools and manage skills. Autonomous pentest agent for your orgs."
+        actions={
+          <button onClick={() => { loadStatus(); engagements.refresh(); toolInstalls.refresh(); skills.refresh(); }} className="btn-ghost text-sm px-3 py-1.5">
+            <RefreshCw size={14} className={statusLoading ? "animate-spin" : ""} />
+          </button>
+        }
+      />
+
+      {!isAgiAdmin ? (
+        <Card className="text-center">
+          <ShieldCheck size={26} className="mx-auto text-slate-500" />
+          <h2 className="mt-3 font-display text-lg font-semibold text-white">AGI Management access required</h2>
+          <p className="mx-auto mt-1 max-w-md text-sm text-slate-400">Only superadmins or staff granted <span className="font-mono text-gold-300">agi_admin</span> can operate PHANTIX AGI. Ask a superadmin to grant access from the Grants tab.</p>
+        </Card>
+      ) : (
+        <>
+          <Tabs
+            tabs={[
+              { id: "status", label: "Status" },
+              { id: "engagements", label: "Engagements", count: engagements.data.length },
+              { id: "sessions", label: "Session", count: activeSession ? 1 : 0 },
+              { id: "approvals", label: "Tool Queue", count: toolInstalls.data.length },
+              { id: "skills", label: "Skills", count: skills.data.length },
+              { id: "policies", label: "Agreement" },
+              { id: "findings", label: "Findings", count: activeSession ? 1 : 0 },
+              ...(isSuperadmin ? [{ id: "grants", label: "Grants", count: grants.data.length }] : []),
+              { id: "guide", label: "Contributor Guide" },
+            ]}
+            active={tab}
+            onChange={setTab}
+          />
+
+          {tab === "status" && (
+            <div className="space-y-4">
+              {statusLoading ? <TableSkeleton rows={3} /> : statusError && !status ? (
+                <EmptyState icon={<Activity size={24} />} title="AGI not ready" body={statusError} action={<button onClick={() => void loadStatus()} className="btn-primary !text-xs"><RefreshCw size={12} className="mr-1 inline" /> Retry</button>} />
+              ) : status ? (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <StatCard label="Platform" value={status.enabled ? "Enabled" : "Disabled"} icon={<Activity size={18} />} />
+                    <StatCard label="Runner" value={status.runner_reachable ? "Connected" : "Unreachable"} icon={<Terminal size={18} />} className={status.runner_reachable ? undefined : "border-severity-critical/40"} />
+                    <StatCard label="Model" value={status.deepseek_only ? "DeepSeek only" : "Provider mesh"} icon={<Brain size={18} />} />
+                    <StatCard label="Sandbox image" value={status.default_image.split(":")[0]} icon={<Boxes size={18} />} />
+                  </div>
+                  <Card>
+                    <CardHeader title="Runner" subtitle={status.runner_url} action={<StatusBadge status={status.runner_reachable ? "ready" : "failed"} />} />
+                    <p className="text-sm text-slate-300">{status.runner_detail || "No detail from runner."}</p>
+                  </Card>
+                </>
+              ) : null}
+            </div>
+          )}
+
+          {tab === "engagements" && (
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <button onClick={() => setShowCreate(true)} className="btn-primary !px-3.5 !py-2 !text-xs"><Plus size={13} className="mr-1 inline" /> New engagement</button>
+              </div>
+              {engagements.loading ? <TableSkeleton rows={4} /> : engagements.data.length === 0 ? (
+                <EmptyState icon={<Crosshair size={24} />} title="No engagements" body="Create a scoped engagement to start live testing." />
+              ) : (
+                <div className="space-y-2.5">
+                  {engagements.data.map((e) => (
+                    <motion.div key={e.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Globe2 size={15} className="text-gold-400" />
+                        <span className="text-sm font-semibold text-slate-100">{e.name}</span>
+                        <StatusBadge status={e.status} />
+                        <span className="chip text-[10px] text-slate-500">org #{e.organization_id}</span>
+                      </div>
+                      {e.description && <p className="mt-1 text-xs text-slate-400">{e.description}</p>}
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {e.scope_definition.target_allowlist.map((t) => (
+                          <span key={t} className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[10px] text-slate-400">{t}</span>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <button onClick={() => setSelectedEng(e)} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><Eye size={12} className="mr-1 inline" /> Detail</button>
+                        <button onClick={() => setTab("sessions")} className="btn-secondary !px-2.5 !py-1.5 !text-[11px]"><Play size={12} className="mr-1 inline" /> Run session</button>
+                        {e.scope_definition.max_session_minutes && <span className="ml-auto flex items-center gap-1 text-[10px] text-slate-500"><Clock size={10} /> {e.scope_definition.max_session_minutes} min max</span>}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === "sessions" && (
+            <div className="space-y-4">
+              {/* Engagement selector + instruction */}
+              <Card>
+                <CardHeader title="Start a session" subtitle="An explicit instruction is required — the agent only starts after you tell it what to do." />
+                <div className="grid gap-3 lg:grid-cols-[1fr_2fr_auto]">
+                  <select
+                    value={selectedEng?.id ?? ""}
+                    onChange={(e) => setSelectedEng(engagements.data.find((x) => x.id === Number(e.target.value)) ?? null)}
+                    className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none focus:border-gold-400/40"
+                  >
+                    <option value="">Select engagement…</option>
+                    {engagements.data.map((e) => <option key={e.id} value={e.id}>{e.name} (#{e.id})</option>)}
+                  </select>
+                  <input
+                    value={instruction}
+                    onChange={(e) => setInstruction(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && selectedEng) void start(selectedEng); }}
+                    placeholder='Instruction, e.g. "Perform read-only recon of the allowlisted hosts; propose active checks for approval."'
+                    className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40"
+                  />
+                  <button onClick={() => selectedEng && void start(selectedEng)} disabled={!selectedEng || !instruction.trim() || starting} className="btn-primary !px-4 !py-2 !text-xs">
+                    {starting ? <Loader2 size={13} className="mr-1 inline animate-spin" /> : <Play size={13} className="mr-1 inline" />} Start
+                  </button>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Autonomy</label>
+                    <select value={autonomy} onChange={(e) => setAutonomy(e.target.value as "low" | "medium" | "high")} className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-2.5 py-1.5 text-[11px] text-slate-200 outline-none focus:border-gold-400/40">
+                      <option value="low">low — operator-driven</option>
+                      <option value="medium">medium — auto recon, gate auth</option>
+                      <option value="high">high — reserved</option>
+                    </select>
+                  </div>
+                  <label className="flex items-center gap-1.5 pt-4 text-[11px] text-slate-400">
+                    <input type="checkbox" checked={includeOrgAssets} onChange={(e) => setIncludeOrgAssets(e.target.checked)} className="accent-[rgb(var(--gold-400))]" />
+                    Include org assets (Asset Engine) in plan
+                  </label>
+                  <button onClick={() => setCredsOpen((v) => !v)} className={cx("pt-4 btn-ghost !px-2.5 !py-1.5 !text-[11px]", credsOpen && "text-gold-300")}>
+                    <ShieldCheck size={12} className="mr-1 inline" /> Login credentials
+                  </button>
+                </div>
+                {credsOpen && (
+                  <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                    <input value={startCreds.login_url} onChange={(e) => setStartCreds({ ...startCreds, login_url: e.target.value })} placeholder="Login URL" className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
+                    <input value={startCreds.username} onChange={(e) => setStartCreds({ ...startCreds, username: e.target.value })} placeholder="Username" className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
+                    <input type="password" value={startCreds.password} onChange={(e) => setStartCreds({ ...startCreds, password: e.target.value })} placeholder="Password" className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
+                  </div>
+                )}
+                {resolved.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] text-slate-500">Ranked skills:</span>
+                    {resolved.slice(0, 6).map((s) => <span key={s.skill_id} className="chip border-gold-400/20 bg-gold-400/5 font-mono text-[10px] text-gold-300">{s.skill_id}</span>)}
+                  </div>
+                )}
+              </Card>
+
+              {/* Active session terminal */}
+              {activeSession ? <SessionTerminal session={activeSession} /> : (
+                <EmptyState icon={<Terminal size={24} />} title="No active session" body="Select an engagement, enter an instruction, and press Start. Read-only steps stream live; state-changing steps wait for your approval." />
+              )}
+            </div>
+          )}
+
+          {tab === "approvals" && (
+            <div className="space-y-3">
+              <Card className="mb-3">
+                <p className="flex items-center gap-1.5 text-xs text-slate-400"><Wrench size={13} className="text-gold-400" /> Tools installed inside a session container are not automatically on the shared sandbox image. Rebuild <span className="font-mono text-gold-300">phantix-agi-sandbox</span> with the package, then mark it provisioned.</p>
+              </Card>
+              {toolInstalls.loading ? <TableSkeleton rows={3} /> : toolInstalls.data.length === 0 ? (
+                <EmptyState icon={<Wrench size={24} />} title="Tool provision queue empty" body="No AGI sessions requested a missing tool recently." />
+              ) : (
+                toolInstalls.data.map((req) => (
+                  <div key={req.id} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Wrench size={14} className="text-gold-400" />
+                      <span className="font-mono text-sm font-semibold text-white">{req.tool_name}</span>
+                      <StatusBadge status={req.status} />
+                      <span className="chip text-[10px] text-slate-500">org #{req.organization_id}</span>
+                    </div>
+                    <p className="mt-1.5 text-xs text-slate-400">{req.rationale}</p>
+                    {req.install_command && <p className="mt-1.5 rounded-lg bg-phantix-950/70 px-2.5 py-1.5 font-mono text-[11px] text-slate-300">{req.install_command}</p>}
+                    <div className="mt-3 flex items-center gap-2">
+                      <button onClick={() => void decideInstall(req, true)} className="btn-primary !px-3 !py-1.5 !text-[11px]"><CheckCircle2 size={12} className="mr-1 inline" /> Provision server-wide</button>
+                      <button onClick={() => void decideInstall(req, false)} className="btn-ghost !px-3 !py-1.5 !text-[11px] text-severity-critical hover:text-severity-critical"><XCircle size={12} className="mr-1 inline" /> Reject</button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {tab === "skills" && (
+            <div className="space-y-2.5">
+              <div className="flex justify-end">
+                <button onClick={() => { setEditingSkill(null); setSkillOpen(true); }} className="btn-primary !px-3.5 !py-2 !text-xs"><Plus size={13} className="mr-1 inline" /> New skill</button>
+              </div>
+              {skills.loading ? <TableSkeleton rows={3} /> : skills.data.length === 0 ? (
+                <EmptyState icon={<Brain size={24} />} title="No skills yet" body="Skills are versioned playbooks the agent learns from. Create your first one." action={<button onClick={() => { setEditingSkill(null); setSkillOpen(true); }} className="btn-primary !text-xs"><Plus size={12} className="mr-1 inline" /> New skill</button>} />
+              ) : (
+                skills.data.map((s) => (
+                  <div key={s.id} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-[13px] font-semibold text-white">{s.skill_id}</span>
+                      <span className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[10px] text-slate-400">v{s.version}</span>
+                      <StatusBadge status={s.status} />
+                      <span className="chip border-phantix-600/40 bg-phantix-800/50 text-[10px] text-slate-400">{s.kind}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-400">{s.title}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                      <span className="flex items-center gap-1"><Brain size={11} className="text-gold-400" /> Score {(s.score * 100).toFixed(0)}%</span>
+                      <span className="flex items-center gap-1"><Activity size={11} /> {s.uses} uses</span>
+                      <span className="flex items-center gap-1"><CheckCircle2 size={11} className="text-emerald-400" /> {s.successes} ok</span>
+                      <span className="flex items-center gap-1"><XCircle size={11} className="text-severity-critical" /> {s.failures} fail</span>
+                    </div>
+                    <div className="mt-2.5 flex items-center gap-1.5">
+                      <button onClick={() => { setEditingSkill(s); setSkillOpen(true); }} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><Pencil size={12} className="mr-1 inline" /> Edit</button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {tab === "policies" && (
+            <PolicyPanel toast={toast} policies={policies} />
+          )}
+
+          {tab === "findings" && (activeSession ? <FindingsPanel sessionId={activeSession.id} /> : (
+            <EmptyState icon={<ShieldAlert size={24} />} title="No session selected" body="Start a session to view evidence-backed findings and promote them to the org risk register." />
+          ))}
+
+          {tab === "grants" && isSuperadmin && (
+            <div className="space-y-2.5">
+              <Card className="mb-3">
+                <p className="flex items-center gap-1.5 text-xs text-slate-400"><Users size={13} className="text-gold-400" /> Grant or revoke <span className="font-mono text-gold-300">agi_admin</span> on staff. Superadmins always have AGI Management access.</p>
+              </Card>
+              {grants.loading ? <TableSkeleton rows={3} /> : grants.data.map((s: any) => (
+                <div key={s.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-phantix-800/70 text-slate-300">{s.full_name?.slice(0, 1) ?? "?"}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-100">{s.full_name || s.email}</p>
+                    <p className="text-xs text-slate-500">{s.email} · <span className="capitalize">{s.role}</span></p>
+                  </div>
+                  <StatusBadge status={s.agi_admin ? "active" : "rejected"} />
+                  <button onClick={() => void toggleGrant(s)} className="btn-ghost !px-3 !py-1.5 !text-[11px]">{s.agi_admin ? "Revoke" : "Grant AGI admin"}</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab === "guide" && (
+            <Card className="!p-0 overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-phantix-700/40 px-5 py-3.5">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-phantix-800/70 text-gold-400"><BookOpen size={17} /></span>
+                  <div>
+                    <p className="font-display text-sm font-semibold text-white">AGI Contributor Guide</p>
+                    <p className="text-[11px] text-slate-500">Internal engineering reference — visible to AGI admins only. Architecture, security model, APIs, deploy, and how to extend.</p>
+                  </div>
+                </div>
+                <span className="chip border-gold-400/30 bg-gold-400/10 text-[10px] text-gold-300">agi_admin gated</span>
+              </div>
+              <div className="max-h-[70vh] overflow-y-auto p-5">
+                <MarkdownView source={AGI_CONTRIBUTOR_GUIDE_MD} />
+              </div>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Create engagement modal */}
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Create AGI engagement" wide>
+        <EngagementForm orgs={orgs.data} onCreated={(e) => { setShowCreate(false); engagements.refresh(); setSelectedEng(e); setTab("sessions"); }} />
+      </Modal>
+
+      {/* Engagement detail modal */}
+      <Modal open={Boolean(selectedEng && !activeSession)} onClose={() => setSelectedEng(null)} title="Engagement detail" wide>
+        {selectedEng && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-display text-base font-semibold text-white">{selectedEng.name}</h3>
+              <StatusBadge status={selectedEng.status} />
+              <span className="chip text-[10px] text-slate-500">org #{selectedEng.organization_id}</span>
+            </div>
+            {selectedEng.description && <p className="text-sm text-slate-300">{selectedEng.description}</p>}
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Target allowlist</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {selectedEng.scope_definition.target_allowlist.map((t) => <span key={t} className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[11px] text-slate-300">{t}</span>)}
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Forbidden actions</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {selectedEng.scope_definition.forbidden_actions.map((t) => <span key={t} className="chip border-severity-critical/30 bg-severity-critical/10 font-mono text-[11px] text-severity-critical">{t}</span>)}
+              </div>
+            </div>
+            {selectedEng.scope_definition.rules_of_engagement && (
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Rules of engagement</p>
+                <p className="mt-1.5 rounded-lg bg-phantix-950/60 p-3 text-xs leading-5 text-slate-300">{selectedEng.scope_definition.rules_of_engagement}</p>
+              </div>
+            )}
+            {selectedEng.config && Object.keys(selectedEng.config).length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Config</p>
+                <pre className="mt-1.5 overflow-x-auto rounded-lg bg-phantix-950/60 p-3 text-[11px] text-slate-400">{JSON.stringify(selectedEng.config, null, 2)}</pre>
+              </div>
+            )}
+            <div className="flex items-center justify-between border-t border-phantix-700/40 pt-3">
+              <p className="text-[11px] text-slate-500">Created {formatDateTime(selectedEng.created_at)}</p>
+              <button onClick={() => { setTab("sessions"); }} className="btn-primary !px-3 !py-1.5 !text-[11px]"><Play size={12} className="mr-1 inline" /> Run session</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Skill create/edit modal */}
+      <SkillFormModal
+        open={skillOpen}
+        skill={editingSkill}
+        onClose={() => { setSkillOpen(false); setEditingSkill(null); }}
+        onSaved={() => skills.refresh()}
+        toast={toast}
+      />
+    </div>
+  );
+}
+
+// ── Skill create / edit form (AgiSkillDocument authoring) ────────────────────
+const SKILL_KINDS = ["recon", "web", "api", "network", "mobile", "cloud", "exploit_verify", "reporting", "general"];
+const ACTION_CLASSES = ["read", "state_changing", "either"];
+const SKILL_STATUSES = ["candidate", "active", "quarantined", "deprecated"];
+
+function SkillFormModal({
+  open,
+  skill,
+  onClose,
+  onSaved,
+  toast,
+}: {
+  open: boolean;
+  skill: AgiSkill | null;
+  onClose: () => void;
+  onSaved: () => void;
+  toast: (k: "success" | "error" | "info" | "warning", t: string, b?: string) => void;
+}) {
+  const [raw, setRaw] = useState("");
+  const [status, setStatus] = useState("active");
+  const [orgScope, setOrgScope] = useState("platform");
+  const [saving, setSaving] = useState(false);
+  const [parsed, setParsed] = useState<Record<string, unknown> | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    if (skill) {
+      const doc = { ...(skill.document ?? {}) };
+      setStatus(skill.status);
+      setOrgScope(skill.organization_id ? "org" : "platform");
+      setRaw(JSON.stringify(doc, null, 2));
+    } else {
+      setStatus("active");
+      setOrgScope("platform");
+      setRaw(JSON.stringify({
+        skill_id: "agi.general.example",
+        version: "1.0.0",
+        title: "Example playbook",
+        kind: "general",
+        summary: "Short summary of what this skill optimizes for.",
+        action_class: "read",
+        body_md: "# Purpose\n\nExplain what the playbook does.\n\n## Steps\n1. First step\n2. Second step\n\n## Evidence rules\nRecord exact command output and timestamps.\n\n## Stop conditions\nAbort on PII or production writes.",
+        tools: [{ name: "httpx", action_class: "read", required: false }],
+        scope_affinity: { target_kinds: ["url"], protocols: ["http", "https"], ports: [80, 443] },
+        requires_approval: false,
+        forbidden_overlap: [],
+        tags: ["recon"],
+        author: "staff",
+        source: "manual",
+      }, null, 2));
+    }
+    setParseError(null);
+    setParsed(null);
+  }, [open, skill]);
+
+  const parse = () => {
+    try {
+      const doc = JSON.parse(raw);
+      if (!doc || typeof doc !== "object" || Array.isArray(doc)) throw new Error("document must be a JSON object");
+      setParsed(doc);
+      setParseError(null);
+      return true;
+    } catch (e) {
+      setParseError(e instanceof Error ? e.message : "Invalid JSON");
+      setParsed(null);
+      return false;
+    }
+  };
+
+  const save = async () => {
+    if (!parse()) return;
+    setSaving(true);
+    try {
+      await upsertAgiSkill({
+        document: parsed as Record<string, unknown>,
+        status,
+        organization_id: orgScope === "org" ? (skill?.organization_id ?? null) : null,
+      });
+      toast("success", skill ? "Skill updated" : "Skill created", String((parsed as any)?.skill_id ?? ""));
+      onSaved();
+      onClose();
+    } catch (e) {
+      const { message, code } = agiErrorDetail(e);
+      if (code === "skill_schema") toast("error", "Invalid skill document", message.replace(/^Invalid skill document: /, ""));
+      else toast("error", "Save failed", message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const field = "w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 font-mono text-[11px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40";
+
+  return (
+    <Modal open={open} onClose={onClose} title={skill ? `Edit skill — ${skill.skill_id}` : "Create skill"} wide>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold text-slate-400">Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none focus:border-gold-400/40">
+              {SKILL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold text-slate-400">Scope</label>
+            <select value={orgScope} onChange={(e) => setOrgScope(e.target.value)} className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none focus:border-gold-400/40">
+              <option value="platform">Platform template</option>
+              <option value="org">Org-private{skill?.organization_id ? ` (#${skill.organization_id})` : ""}</option>
+            </select>
+          </div>
+          <p className="ml-auto text-[10px] text-slate-500">Schema: <span className="font-mono text-gold-300">GET /admin/agi/skills/schema</span></p>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-[11px] font-semibold text-slate-400">Skill document (JSON — AgiSkillDocument)</label>
+          <textarea
+            value={raw}
+            onChange={(e) => { setRaw(e.target.value); setParsed(null); setParseError(null); }}
+            rows={16}
+            spellCheck={false}
+            className={cx(field, "resize-y", parseError && "border-severity-critical/50")}
+          />
+          {parseError && <p className="mt-1 text-[11px] text-severity-critical">{parseError}</p>}
+          {parsed && <p className="mt-1 text-[11px] text-emerald-400">Valid JSON ✓ — will be validated against the skill schema on save.</p>}
+        </div>
+
+        <p className="text-[10px] leading-4 text-slate-500">
+          Required: <span className="font-mono">skill_id</span> (lowercase, <span className="font-mono">agi.&lt;kind&gt;.&lt;slug&gt;</span>), <span className="font-mono">title</span>, <span className="font-mono">body_md</span> (≥20 chars). Optional: <span className="font-mono">kind</span> (recon/web/api/network/mobile/cloud/exploit_verify/reporting/general), <span className="font-mono">action_class</span>, <span className="font-mono">tools[]</span>, <span className="font-mono">scope_affinity</span>, <span className="font-mono">requires_approval</span>, <span className="font-mono">tags</span>. Auto-mined skills use <span className="font-mono">source: "auto_mint"</span>.
+        </p>
+
+        <div className="flex items-center gap-2">
+          <button onClick={() => void save()} disabled={saving || !raw.trim()} className="btn-primary flex-1 !py-2.5 !text-xs">
+            {saving ? <Loader2 size={13} className="mr-1 inline animate-spin" /> : <Brain size={13} className="mr-1 inline" />} {skill ? "Save skill" : "Create skill"}
+          </button>
+          <button onClick={onClose} className="btn-ghost !px-4 !py-2.5 !text-xs">Cancel</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Policy (agreement) panel ──────────────────────────────────────────────────
+function PolicyPanel({ toast, policies }: { toast: (k: "success" | "error" | "info" | "warning", t: string, b?: string) => void; policies: ReturnType<typeof useResource<AgiPolicy[]>> }) {
+  const [active, setActive] = useState<any>(null);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ version: "", title: "Autonomous Pentest Agent Usage Agreement", body_md: "", activate: true });
+  const [publishing, setPublishing] = useState(false);
+
+  const loadActive = useCallback(async () => {
+    const a = await loadAgiActivePolicy();
+    setActive(a);
+  }, []);
+  useEffect(() => { void loadActive(); }, [loadActive]);
+
+  const publish = async () => {
+    if (!form.version.trim() || !form.body_md.trim()) { toast("error", "Version and body are required"); return; }
+    setPublishing(true);
+    try {
+      const res = await publishAgiPolicy({ version: form.version.trim(), title: form.title.trim(), body_md: form.body_md.trim(), activate: form.activate });
+      toast("success", "Policy published", res.message);
+      setOpen(false);
+      setForm({ version: "", title: "Autonomous Pentest Agent Usage Agreement", body_md: "", activate: true });
+      policies.refresh();
+      void loadActive();
+    } catch (e) { toast("error", "Publish failed", agiErrorDetail(e).message); }
+    finally { setPublishing(false); }
+  };
+
+  return (
+    <div className="space-y-3">
+      {active && (
+        <Card>
+          <CardHeader title={active.title} subtitle={`Version ${active.version} · published ${active.published_at ? formatDateTime(active.published_at) : "—"}`} action={<StatusBadge status="active" />} />
+          <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-xl bg-phantix-950/60 p-4 text-xs leading-6 text-slate-300">{active.body_md}</div>
+        </Card>
+      )}
+      <div className="flex justify-end">
+        <button onClick={() => setOpen(true)} className="btn-primary !px-3.5 !py-2 !text-xs"><Plus size={13} className="mr-1 inline" /> Publish new version</button>
+      </div>
+      <Card>
+        <CardHeader title="Version history" />
+        <div className="space-y-2">
+          {policies.loading ? <TableSkeleton rows={2} /> : (policies.data ?? []).map((p) => (
+            <div key={p.id} className="flex flex-wrap items-center gap-3 rounded-lg bg-phantix-800/40 px-3 py-2.5">
+              <FileText size={14} className="text-gold-400" />
+              <span className="text-sm font-semibold text-slate-100">{p.title}</span>
+              <span className="chip font-mono text-[10px] text-slate-400">v{p.version}</span>
+              {p.is_active && <StatusBadge status="active" />}
+              <span className="ml-auto text-[11px] text-slate-500">{p.published_at ? formatDateTime(p.published_at) : "draft"}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-[11px] text-slate-500">When a new active version is published, customers must accept again before using the Autonomous Pentest Agent.</p>
+      </Card>
+
+      <Modal open={open} onClose={() => setOpen(false)} title="Publish AGI usage agreement" wide>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <input value={form.version} onChange={(e) => setForm({ ...form, version: e.target.value })} placeholder="Version (e.g. 1.1.0)" className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
+            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Title" className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
+          </div>
+          <textarea value={form.body_md} onChange={(e) => setForm({ ...form, body_md: e.target.value })} rows={10} placeholder={"# Title\n\nMarkdown body shown in the customer accept modal…"} className="w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 font-mono text-[11px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
+            <input type="checkbox" checked={form.activate} onChange={(e) => setForm({ ...form, activate: e.target.checked })} className="accent-[rgb(var(--gold-400))]" />
+            Activate immediately (customers must re-accept)
+          </label>
+          <button onClick={() => void publish()} disabled={publishing} className="btn-primary w-full !py-2.5 !text-xs">{publishing ? <Loader2 size={13} className="mr-1 inline animate-spin" /> : <FileText size={13} className="mr-1 inline" />} Publish</button>
+        </div>
+      </Modal>
+    </div>
+  );
+}

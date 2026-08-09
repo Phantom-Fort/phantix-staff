@@ -454,3 +454,145 @@ export interface StaffUserDetail {
   created_at: string;
   created_by: number | null;
 }
+
+// ── PHANTIX AGI Management (staff) — admin/agi/* ──────────────────────────────
+export interface AgiStatus {
+  enabled: boolean;
+  runner_url: string;
+  runner_reachable: boolean;
+  runner_detail: string;
+  deepseek_only: boolean;
+  default_image: string;
+}
+
+export interface AgiPolicy {
+  id: number;
+  version: string;
+  title: string;
+  is_active: boolean;
+  published_at: string | null;
+  created_at: string | null;
+}
+
+export interface AgiActivePolicy {
+  id: number;
+  version: string;
+  title: string;
+  body_md: string;
+  security_policy: Record<string, unknown> | null;
+  is_active: boolean;
+  published_at: string | null;
+}
+
+export interface AgiEngagement {
+  id: number;
+  organization_id: number;
+  created_by_staff_id: number | null;
+  name: string;
+  description: string | null;
+  scope_definition: {
+    target_allowlist: string[];
+    forbidden_actions: string[];
+    rules_of_engagement?: string;
+    window_start?: string | null;
+    window_end?: string | null;
+    max_session_minutes?: number | null;
+  };
+  status: string;
+  config: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+  torn_down_at: string | null;
+}
+
+export interface AgiSession {
+  id: number;
+  engagement_id: number;
+  started_by_staff_id: number | null;
+  container_id: string | null;
+  runner_session_id: string | null;
+  status: string;
+  started_at: string;
+  ended_at: string | null;
+  teardown_reason: string | null;
+  meta: Record<string, unknown> | null;
+}
+
+export interface AgiTranscriptChunk {
+  seq: number;
+  role: string;
+  content: string;
+  meta: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface AgiAction {
+  id: number;
+  session_id: number;
+  action_type: string;
+  tool_name: string | null;
+  proposed_command: string;
+  rationale: string | null;
+  status: string;
+  approved_by_staff_id: number | null;
+  decision_notes: string | null;
+  result_summary: string | null;
+  created_at: string;
+  decided_at: string | null;
+  executed_at: string | null;
+}
+
+export interface AgiSkill {
+  id: number;
+  skill_id: string;
+  version: string;
+  title: string;
+  kind: string;
+  status: string;
+  document: Record<string, unknown>;
+  skill_md: string;
+  organization_id: number | null;
+  parent_skill_id: string | null;
+  source: string;
+  score: number;
+  uses: number;
+  successes: number;
+  failures: number;
+  approvals: number;
+  rejections: number;
+  source_session_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgiToolInstallRequest {
+  id: number;
+  session_id: number;
+  engagement_id: number;
+  organization_id: number;
+  tool_name: string;
+  package_hint: string;
+  install_command: string;
+  rationale: string;
+  skill_id: string | null;
+  status: string;
+  result_summary: string | null;
+  created_at: string;
+  decided_at: string | null;
+}
+
+export interface AgiFinding {
+  id: number;
+  session_id: number;
+  finding_id: string;
+  title: string;
+  severity: string;
+  evidence: string;
+  source: string;
+  tool: string | null;
+  target: string | null;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  risk_id: number | null;
+}

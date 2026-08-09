@@ -9,6 +9,7 @@ type StaffSession = {
   email: string;
   fullName: string;
   role: StaffRole;
+  agi_admin?: boolean;
 } | null;
 
 type ToastKind = "success" | "error" | "info" | "warning";
@@ -21,6 +22,7 @@ type Store = {
   hydrateSession: () => void;
   isAdmin: boolean;
   isSuperadmin: boolean;
+  isAgiAdmin: boolean;
   toasts: Toast[];
   toast: (kind: ToastKind, title: string, body?: string) => void;
   dismissToast: (id: number) => void;
@@ -78,13 +80,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     // Fetch full profile
     let fullName = res.full_name || email;
     let role: StaffRole = res.role || "support";
+    let agiAdmin = false;
     try {
-      const me = await api.get<{ full_name: string; role: StaffRole; email: string; is_active: boolean }>("/staff/me");
+      const me = await api.get<{ full_name: string; role: StaffRole; email: string; is_active: boolean; agi_admin?: boolean }>("/staff/me");
       fullName = me.full_name || fullName;
       role = me.role || role;
+      agiAdmin = Boolean(me.agi_admin);
       if (me.email) tokens.email = me.email;
     } catch { /* keep login response values */ }
-    setSession({ authenticated: true, email: tokens.email || email, fullName, role });
+    setSession({ authenticated: true, email: tokens.email || email, fullName, role, agi_admin: agiAdmin });
   }, []);
 
   const logout = useCallback(() => {
@@ -96,10 +100,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const hydrateSession = useCallback(async () => {
     if (!tokens.staff) return;
     try {
-      const me = await api.get<{ full_name: string; role: StaffRole; email: string; is_active: boolean }>("/staff/me");
+      const me = await api.get<{ full_name: string; role: StaffRole; email: string; is_active: boolean; agi_admin?: boolean }>("/staff/me");
       const email = me.email || tokens.email || emailFromToken() || "";
       tokens.email = email;
-      setSession({ authenticated: true, email, fullName: me.full_name || "", role: me.role || "support" });
+      setSession({ authenticated: true, email, fullName: me.full_name || "", role: me.role || "support", agi_admin: Boolean(me.agi_admin) });
     } catch {
       const email = tokens.email || emailFromToken() || "";
       if (email) setSession({ authenticated: true, email, fullName: "", role: "support" });
@@ -108,6 +112,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const isAdmin = session?.role === "admin" || session?.role === "superadmin";
   const isSuperadmin = session?.role === "superadmin";
+  const isAgiAdmin = Boolean(session?.agi_admin) || isSuperadmin;
 
   // Auto-redirect to login when token expires (401 clears tokens via api client)
   useEffect(() => {
@@ -125,7 +130,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   return (
-    <Ctx.Provider value={{ session, login, logout, hydrateSession, isAdmin, isSuperadmin, toasts, toast, dismissToast }}>
+    <Ctx.Provider value={{ session, login, logout, hydrateSession, isAdmin, isSuperadmin, isAgiAdmin, toasts, toast, dismissToast }}>
       {children}
     </Ctx.Provider>
   );
