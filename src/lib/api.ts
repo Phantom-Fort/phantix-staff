@@ -14,6 +14,9 @@ export const API_BASE = (() => {
 export const DEMO_MODE = !API_BASE;
 import { dedupedRequest } from "./dedupe";
 
+/** Build-time master switch — mirrors backend PHANTIX_AGI_ENABLED (default on). */
+export const AGI_ENABLED = (import.meta.env.VITE_AGI_ENABLED ?? "true") !== "false";
+
 // ── Token stores ────────────────────────────────────────────────────────────
 export const tokens = {
   get staff() { return sessionStorage.getItem("staff_access_token"); },

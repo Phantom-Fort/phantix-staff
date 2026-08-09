@@ -11,6 +11,7 @@ import { useStore } from "@/lib/store";
 import { APP_URL } from "@/lib/links";
 import { cx } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AGI_ENABLED } from "@/lib/api";
 
 const navSections: {
   label: string;
@@ -115,6 +116,7 @@ export default function Layout() {
               if (item.superadminOnly && !isSuperadmin) return false;
               if (item.adminOnly && !isAdmin) return false;
               if (item.agiOnly && !isAgiAdmin) return false;
+              if (item.agiOnly && !AGI_ENABLED) return false;
               return true;
             });
             if (!visibleItems.length) return null;
@@ -204,6 +206,7 @@ export default function Layout() {
                   if (item.superadminOnly && !isSuperadmin) return false;
                   if (item.adminOnly && !isAdmin) return false;
                   if (item.agiOnly && !isAgiAdmin) return false;
+                  if (item.agiOnly && !AGI_ENABLED) return false;
                   return true;
                 });
                 if (!visibleItems.length) return null;
