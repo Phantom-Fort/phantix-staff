@@ -63,10 +63,10 @@ const navSections: {
     ],
   },
   {
-    label: "Pentest Agent",
+    label: "Autonomous Agent",
     role: "admin",
     items: [
-      { to: "/agi", label: "AGI Management", icon: <Radar size={18} />, agiOnly: true },
+      { to: "/agi", label: "Agent Management", icon: <Radar size={18} />, agiOnly: true },
     ],
   },
   {

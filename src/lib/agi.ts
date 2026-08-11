@@ -24,7 +24,7 @@ const demoStatus: AgiStatus = {
   enabled: true,
   runner_url: "http://127.0.0.1:8095",
   runner_reachable: true,
-  runner_detail: "PHANTIX AGI runner is healthy",
+  runner_detail: "Autonomous Agent runner is healthy",
   deepseek_only: true,
   default_image: "phantix-agi-sandbox:latest",
 };

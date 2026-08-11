@@ -3,7 +3,7 @@
 // Source: backend docs/PHANTIX_AGI_CONTRIBUTOR_GUIDE.md
 export const AGI_CONTRIBUTOR_GUIDE_MD = `# PHANTIX AGI — Contributor Guide
 
-**Audience:** Backend, runner, frontend, and ops engineers extending PHANTIX AGI
+**Audience:** Backend, runner, frontend, and ops engineers extending the Phantix Autonomous Agent
 **Status:** Product capability (management plane + separate runner)
 **Last aligned with codebase:** AGI runner v0.3+, migrations through \`i5d6e7f8a9b0\`
 
@@ -13,7 +13,7 @@ This document is the **single technical source of truth** for contributors. Prod
 
 ## Table of contents
 
-1. [What AGI is (and is not)](#1-what-agi-is-and-is-not)
+1. [What the Autonomous Agent is (and is not)](#1-what-the-autonomous-agent-is-and-is-not)
 2. [Architecture](#2-architecture)
 3. [Repository map](#3-repository-map)
 4. [Security model (non-negotiable)](#4-security-model-non-negotiable)
@@ -38,7 +38,7 @@ This document is the **single technical source of truth** for contributors. Prod
 
 ---
 
-## 1. What AGI is (and is not)
+## 1. What the Autonomous Agent is (and is not)
 
 ### Is
 
@@ -526,7 +526,7 @@ For each Asset Engine asset, steps may include \`http_get\`, \`dns_lookup\`, \`n
 On **session stop**, \`report_handoff.generate_agi_report\`:
 
 - \`report_type\`: \`agi_session\`
-- Title prefix: \`[PHANTIX AGI]\`
+- Title prefix: \`[Autonomous Agent]\`
 - \`sections.source\` / tags: **\`phantix_agi\`**
 - Org-scoped only
 

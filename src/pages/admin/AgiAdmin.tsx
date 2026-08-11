@@ -25,6 +25,21 @@ import type {
   AgiAction, AgiEngagement, AgiFinding, AgiPolicy, AgiSession, AgiSkill, AgiToolInstallRequest, AgiTranscriptChunk,
 } from "@/lib/types";
 
+// Auto-growing textarea: expands as the operator types so long allowlists,
+// rules of engagement, and instructions are never cramped into a fixed box.
+function AutoGrow(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { minRows?: number }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const { minRows = 3, className, value, ...rest } = props;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const min = (minRows ?? 3) * 20 + 16;
+    el.style.height = `${Math.max(min, el.scrollHeight)}px`;
+  }, [value, minRows]);
+  return <textarea ref={ref} value={value} className={className} style={{ resize: "vertical", overflow: "hidden" }} {...rest} />;
+}
+
 // ── Terminal line renderer ────────────────────────────────────────────────────
 function TxLine({ t, last }: { t: AgiTranscriptChunk; last: boolean }) {
   const isTool = t.role === "tool";
@@ -487,7 +502,7 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
     } finally { setCreating(false); }
   };
 
-  const field = "w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40";
+  const field = "w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3.5 py-2.5 text-sm text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40";
 
   return (
     <div className="space-y-3">
@@ -502,12 +517,12 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
       <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description / ROE reference" className={field} />
       <div>
         <label className="mb-1 block text-[11px] font-semibold text-slate-400">Target allowlist (immutable after create)</label>
-        <textarea value={form.allowlist} onChange={(e) => setForm({ ...form, allowlist: e.target.value })} rows={3} placeholder={"203.0.113.10\napp.acme-lab.example\nhttps://app.acme-lab.example"} className={cx(field, "font-mono text-[11px]")} />
+        <AutoGrow value={form.allowlist} onChange={(e) => setForm({ ...form, allowlist: e.target.value })} minRows={4} placeholder={"203.0.113.10\napp.acme-lab.example\nhttps://app.acme-lab.example"} className={cx(field, "font-mono text-[11px]")} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="mb-1 block text-[11px] font-semibold text-slate-400">Forbidden actions</label>
-          <textarea value={form.forbidden} onChange={(e) => setForm({ ...form, forbidden: e.target.value })} rows={2} className={cx(field, "font-mono text-[11px]")} />
+          <AutoGrow value={form.forbidden} onChange={(e) => setForm({ ...form, forbidden: e.target.value })} minRows={3} className={cx(field, "font-mono text-[11px]")} />
         </div>
         <div>
           <label className="mb-1 block text-[11px] font-semibold text-slate-400">Max session minutes</label>
@@ -516,7 +531,7 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
       </div>
       <div>
         <label className="mb-1 block text-[11px] font-semibold text-slate-400">Rules of engagement</label>
-        <textarea value={form.roe} onChange={(e) => setForm({ ...form, roe: e.target.value })} rows={2} placeholder="Business hours only. Stop on PII. No production DB writes." className={field} />
+        <AutoGrow value={form.roe} onChange={(e) => setForm({ ...form, roe: e.target.value })} minRows={3} placeholder="Business hours only. Stop on PII. No production DB writes." className={field} />
       </div>
       <button onClick={() => void create()} disabled={creating} className="btn-primary w-full !py-2.5 !text-xs">
         {creating ? <Loader2 size={13} className="mr-1 inline animate-spin" /> : <Plus size={13} className="mr-1 inline" />} Create engagement
@@ -595,7 +610,7 @@ export default function AgiAdmin() {
     setStatusLoading(true);
     setStatusError(null);
     const s = await loadAgiStatus();
-    if (!s) setStatusError("PHANTIX AGI is disabled or the runner is unreachable.");
+    if (!s) setStatusError("The Autonomous Agent is disabled or the runner is unreachable.");
     setStatus(s);
     setStatusLoading(false);
   }, []);
@@ -658,7 +673,7 @@ export default function AgiAdmin() {
   const toggleGrant = async (staff: any) => {
     try {
       await setAgiGrant(staff.id, !staff.agi_admin);
-      toast("success", staff.agi_admin ? "AGI admin revoked" : "AGI admin granted", staff.email);
+      toast("success", staff.agi_admin ? "Agent admin revoked" : "Agent admin granted", staff.email);
       grants.refresh();
     } catch (e) { toast("error", "Grant failed", agiErrorDetail(e).message); }
   };
@@ -668,8 +683,8 @@ export default function AgiAdmin() {
   return (
     <div>
       <PageHeader
-        title="PHANTIX AGI Management"
-        description="Scope engagements, run sessions, approve state-changing steps, provision tools and manage skills. Autonomous pentest agent for your orgs."
+        title="Phantix Autonomous Agent Management"
+        description="Scope engagements, run sessions, approve state-changing steps, provision tools and manage skills for the autonomous agent."
         actions={
           <button onClick={() => { loadStatus(); engagements.refresh(); toolInstalls.refresh(); skills.refresh(); }} className="btn-ghost text-sm px-3 py-1.5">
             <RefreshCw size={14} className={statusLoading ? "animate-spin" : ""} />
@@ -680,8 +695,8 @@ export default function AgiAdmin() {
       {!isAgiAdmin ? (
         <Card className="text-center">
           <ShieldCheck size={26} className="mx-auto text-slate-500" />
-          <h2 className="mt-3 font-display text-lg font-semibold text-white">AGI Management access required</h2>
-          <p className="mx-auto mt-1 max-w-md text-sm text-slate-400">Only superadmins or staff granted <span className="font-mono text-gold-300">agi_admin</span> can operate PHANTIX AGI. Ask a superadmin to grant access from the Grants tab.</p>
+          <h2 className="mt-3 font-display text-lg font-semibold text-white">Agent Management access required</h2>
+          <p className="mx-auto mt-1 max-w-md text-sm text-slate-400">Only superadmins or staff granted <span className="font-mono text-gold-300">agent admin</span> can operate the Autonomous Agent. Ask a superadmin to grant access from the Grants tab.</p>
         </Card>
       ) : (
         <>
@@ -704,7 +719,7 @@ export default function AgiAdmin() {
           {tab === "status" && (
             <div className="space-y-4">
               {statusLoading ? <TableSkeleton rows={3} /> : statusError && !status ? (
-                <EmptyState icon={<Activity size={24} />} title="AGI not ready" body={statusError} action={<button onClick={() => void loadStatus()} className="btn-primary !text-xs"><RefreshCw size={12} className="mr-1 inline" /> Retry</button>} />
+                <EmptyState icon={<Activity size={24} />} title="Autonomous Agent not ready" body={statusError} action={<button onClick={() => void loadStatus()} className="btn-primary !text-xs"><RefreshCw size={12} className="mr-1 inline" /> Retry</button>} />
               ) : status ? (
                 <>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -762,25 +777,34 @@ export default function AgiAdmin() {
               {/* Engagement selector + instruction */}
               <Card>
                 <CardHeader title="Start a session" subtitle="An explicit instruction is required — the agent only starts after you tell it what to do." />
-                <div className="grid gap-3 lg:grid-cols-[1fr_2fr_auto]">
-                  <select
-                    value={selectedEng?.id ?? ""}
-                    onChange={(e) => setSelectedEng(engagements.data.find((x) => x.id === Number(e.target.value)) ?? null)}
-                    className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none focus:border-gold-400/40"
-                  >
-                    <option value="">Select engagement…</option>
-                    {engagements.data.map((e) => <option key={e.id} value={e.id}>{e.name} (#{e.id})</option>)}
-                  </select>
-                  <input
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold text-slate-400">Engagement</label>
+                    <select
+                      value={selectedEng?.id ?? ""}
+                      onChange={(e) => setSelectedEng(engagements.data.find((x) => x.id === Number(e.target.value)) ?? null)}
+                      className="w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none focus:border-gold-400/40"
+                    >
+                      <option value="">Select engagement…</option>
+                      {engagements.data.map((e) => <option key={e.id} value={e.id}>{e.name} (#{e.id})</option>)}
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    <button onClick={() => selectedEng && void start(selectedEng)} disabled={!selectedEng || !instruction.trim() || starting} className="btn-primary w-full !px-4 !py-2 !text-xs">
+                      {starting ? <Loader2 size={13} className="mr-1 inline animate-spin" /> : <Play size={13} className="mr-1 inline" />} Start session
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <label className="mb-1 block text-[11px] font-semibold text-slate-400">Instruction</label>
+                  <AutoGrow
                     value={instruction}
                     onChange={(e) => setInstruction(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && selectedEng) void start(selectedEng); }}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && selectedEng) void start(selectedEng); }}
+                    minRows={3}
                     placeholder='Instruction, e.g. "Perform read-only recon of the allowlisted hosts; propose active checks for approval."'
-                    className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40"
+                    className="w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs leading-6 text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40"
                   />
-                  <button onClick={() => selectedEng && void start(selectedEng)} disabled={!selectedEng || !instruction.trim() || starting} className="btn-primary !px-4 !py-2 !text-xs">
-                    {starting ? <Loader2 size={13} className="mr-1 inline animate-spin" /> : <Play size={13} className="mr-1 inline" />} Start
-                  </button>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <div>
@@ -827,7 +851,7 @@ export default function AgiAdmin() {
                 <p className="flex items-center gap-1.5 text-xs text-slate-400"><Wrench size={13} className="text-gold-400" /> Tools installed inside a session container are not automatically on the shared sandbox image. Rebuild <span className="font-mono text-gold-300">phantix-agi-sandbox</span> with the package, then mark it provisioned.</p>
               </Card>
               {toolInstalls.loading ? <TableSkeleton rows={3} /> : toolInstalls.data.length === 0 ? (
-                <EmptyState icon={<Wrench size={24} />} title="Tool provision queue empty" body="No AGI sessions requested a missing tool recently." />
+                <EmptyState icon={<Wrench size={24} />} title="Tool provision queue empty" body="No agent sessions requested a missing tool recently." />
               ) : (
                 toolInstalls.data.map((req) => (
                   <div key={req.id} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
@@ -892,10 +916,10 @@ export default function AgiAdmin() {
           {tab === "grants" && isSuperadmin && (
             <div className="space-y-2.5">
               <Card className="mb-3">
-                <p className="flex items-center gap-1.5 text-xs text-slate-400"><Users size={13} className="text-gold-400" /> Grant or revoke <span className="font-mono text-gold-300">agi_admin</span> on staff. Superadmins always have AGI Management access.</p>
+                <p className="flex items-center gap-1.5 text-xs text-slate-400"><Users size={13} className="text-gold-400" /> Grant or revoke <span className="font-mono text-gold-300">agent admin</span> on staff. Superadmins always have Agent Management access.</p>
               </Card>
               {grants.loading ? <TableSkeleton rows={3} /> : grants.data.length === 0 ? (
-                <EmptyState icon={<Users size={24} />} title="No staff found" body="Create staff users from the Staff Users page to grant AGI Management access." />
+                <EmptyState icon={<Users size={24} />} title="No staff found" body="Create staff users from the Staff Users page to grant Agent Management access." />
               ) : grants.data.map((s: any) => {
                 const isSuper = String(s.role).toLowerCase() === "superadmin";
                 const granted = Boolean(s.agi_admin) || isSuper;
@@ -910,7 +934,7 @@ export default function AgiAdmin() {
                     {isSuper ? (
                       <span className="chip border-gold-400/30 bg-gold-400/10 text-[10px] text-gold-300">always</span>
                     ) : (
-                      <button onClick={() => void toggleGrant(s)} disabled={!s.is_active} className={cx("!px-3 !py-1.5 !text-[11px]", s.agi_admin ? "btn-ghost" : "btn-primary")}>{s.agi_admin ? "Revoke AGI admin" : "Grant AGI admin"}</button>
+                      <button onClick={() => void toggleGrant(s)} disabled={!s.is_active} className={cx("!px-3 !py-1.5 !text-[11px]", s.agi_admin ? "btn-ghost" : "btn-primary")}>{s.agi_admin ? "Revoke agent admin" : "Grant agent admin"}</button>
                     )}
                   </div>
                 );
@@ -924,11 +948,11 @@ export default function AgiAdmin() {
                 <div className="flex items-center gap-2.5">
                   <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-phantix-800/70 text-gold-400"><BookOpen size={17} /></span>
                   <div>
-                    <p className="font-display text-sm font-semibold text-white">AGI Contributor Guide</p>
-                    <p className="text-[11px] text-slate-500">Internal engineering reference — visible to AGI admins only. Architecture, security model, APIs, deploy, and how to extend.</p>
+                    <p className="font-display text-sm font-semibold text-white">Autonomous Agent Contributor Guide</p>
+                    <p className="text-[11px] text-slate-500">Internal engineering reference — visible to agent admins only. Architecture, security model, APIs, deploy, and how to extend.</p>
                   </div>
                 </div>
-                <span className="chip border-gold-400/30 bg-gold-400/10 text-[10px] text-gold-300">agi_admin gated</span>
+                <span className="chip border-gold-400/30 bg-gold-400/10 text-[10px] text-gold-300">agent admin gated</span>
               </div>
               <div className="max-h-[70vh] overflow-y-auto p-5">
                 <MarkdownView source={AGI_CONTRIBUTOR_GUIDE_MD} />
@@ -939,7 +963,7 @@ export default function AgiAdmin() {
       )}
 
       {/* Create engagement modal */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Create AGI engagement" wide>
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Create engagement" wide>
         <EngagementForm orgs={orgs.data} onCreated={(e) => { setShowCreate(false); engagements.refresh(); setSelectedEng(e); setTab("sessions"); }} />
       </Modal>
 
@@ -1142,7 +1166,7 @@ function SkillFormModal({
 function PolicyPanel({ toast, policies }: { toast: (k: "success" | "error" | "info" | "warning", t: string, b?: string) => void; policies: ReturnType<typeof useResource<AgiPolicy[]>> }) {
   const [active, setActive] = useState<any>(null);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ version: "", title: "Autonomous Pentest Agent Usage Agreement", body_md: "", activate: true });
+  const [form, setForm] = useState({ version: "", title: "Autonomous Agent Usage Agreement", body_md: "", activate: true });
   const [publishing, setPublishing] = useState(false);
 
   const loadActive = useCallback(async () => {
@@ -1158,7 +1182,7 @@ function PolicyPanel({ toast, policies }: { toast: (k: "success" | "error" | "in
       const res = await publishAgiPolicy({ version: form.version.trim(), title: form.title.trim(), body_md: form.body_md.trim(), activate: form.activate });
       toast("success", "Policy published", res.message);
       setOpen(false);
-      setForm({ version: "", title: "Autonomous Pentest Agent Usage Agreement", body_md: "", activate: true });
+      setForm({ version: "", title: "Autonomous Agent Usage Agreement", body_md: "", activate: true });
       policies.refresh();
       void loadActive();
     } catch (e) { toast("error", "Publish failed", agiErrorDetail(e).message); }
@@ -1189,16 +1213,16 @@ function PolicyPanel({ toast, policies }: { toast: (k: "success" | "error" | "in
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[11px] text-slate-500">When a new active version is published, customers must accept again before using the Autonomous Pentest Agent.</p>
+        <p className="mt-3 text-[11px] text-slate-500">When a new active version is published, customers must accept again before using the Autonomous Agent.</p>
       </Card>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Publish AGI usage agreement" wide>
+      <Modal open={open} onClose={() => setOpen(false)} title="Publish agent usage agreement" wide>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <input value={form.version} onChange={(e) => setForm({ ...form, version: e.target.value })} placeholder="Version (e.g. 1.1.0)" className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Title" className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
           </div>
-          <textarea value={form.body_md} onChange={(e) => setForm({ ...form, body_md: e.target.value })} rows={10} placeholder={"# Title\n\nMarkdown body shown in the customer accept modal…"} className="w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 font-mono text-[11px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
+          <AutoGrow value={form.body_md} onChange={(e) => setForm({ ...form, body_md: e.target.value })} minRows={10} placeholder={"# Title\n\nMarkdown body shown in the customer accept modal…"} className="w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 font-mono text-[11px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
           <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
             <input type="checkbox" checked={form.activate} onChange={(e) => setForm({ ...form, activate: e.target.checked })} className="accent-[rgb(var(--gold-400))]" />
             Activate immediately (customers must re-accept)
