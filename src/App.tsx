@@ -1,4 +1,4 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { StoreProvider, ToastViewport, useStore } from "@/lib/store";
 import Layout from "@/components/Layout";
@@ -19,6 +19,7 @@ import StaffUsers from "@/pages/admin/StaffUsersPage";
 import DevLogs from "@/pages/admin/DevLogs";
 import DiscoveryAdmin from "@/pages/admin/Discovery";
 import VaptAdmin from "@/pages/admin/VaptAdmin";
+const ApiDocs = lazy(() => import("@/pages/admin/ApiDocs"));
 import BusDiagnostics from "@/pages/admin/BusDiagnostics";
 import SuperLogs from "@/pages/admin/SuperLogs";
 import EngineJobs from "@/pages/admin/EngineJobs";
@@ -83,6 +84,7 @@ export default function App() {
             <Route path="/experience" element={<RequireAdmin><ExperienceAdmin /></RequireAdmin>} />
             <Route path="/ai" element={<RequireAdmin><AiAdmin /></RequireAdmin>} />
             <Route path="/vapt-admin" element={<RequireAdmin><VaptAdmin /></RequireAdmin>} />
+            <Route path="/docs" element={<RequireAdmin><Suspense fallback={<div className="p-6 text-sm text-slate-400">Loading API reference…</div>}><ApiDocs /></Suspense></RequireAdmin>} />
             {AGI_ENABLED && <Route path="/agi" element={<RequireAgiAdmin><AgiAdmin /></RequireAgiAdmin>} />}
 
             {/* Superadmin */}

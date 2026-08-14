@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Shield, Building2, MessageSquare, Server, Brain,
   Users, FileCheck, Wrench, Search, Activity, LogOut, Menu, X,
   Zap, Globe, AlertTriangle, ScanLine, BarChart3, RefreshCw,
-  Crosshair, Radio, FileText, TerminalSquare, Radar,
+  Crosshair, Radio, FileText, TerminalSquare, Radar, BookOpen,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { APP_URL } from "@/lib/links";
@@ -42,6 +42,7 @@ const navSections: {
       { to: "/server", label: "Server", icon: <Server size={18} /> },
       { to: "/scanner-tools", label: "Scanner Tools", icon: <ScanLine size={18} /> },
       { to: "/bus", label: "Event Bus", icon: <Radio size={18} /> },
+      { to: "/docs", label: "API Reference", icon: <BookOpen size={18} /> },
     ],
   },
   {
