@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { StoreProvider, ToastViewport, useStore } from "@/lib/store";
 import Layout from "@/components/Layout";
 import Login from "@/pages/Login";
+import StaffPasswordResetRequest from "@/pages/StaffPasswordResetRequest";
+import StaffPasswordResetComplete from "@/pages/StaffPasswordResetComplete";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/admin/Clients";
 import SupportTickets from "@/pages/admin/Support";
@@ -60,6 +62,8 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/password-reset" element={<StaffPasswordResetRequest />} />
+          <Route path="/reset-password" element={<StaffPasswordResetComplete />} />
           <Route element={<Layout />}>
             {/* All staff */}
             <Route path="/dashboard" element={<RequireStaff><Dashboard /></RequireStaff>} />

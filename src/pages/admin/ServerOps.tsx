@@ -216,6 +216,21 @@ const sevClass: Record<string, string> = {
   critical: "text-severity-critical border-severity-critical/30 bg-severity-critical/10",
 };
 
+type HealthTone = "healthy" | "warning" | "critical";
+
+function healthTone(label: string, score: number): HealthTone {
+  const value = label.toLowerCase().replace(/[_-]/g, " ");
+  if (/critical|failed|down|unhealthy|offline|error/.test(value) || score < 50) return "critical";
+  if (/warning|degraded|elevated|attention|unknown/.test(value) || score < 85) return "warning";
+  return "healthy";
+}
+
+const healthToneClass: Record<HealthTone, string> = {
+  healthy: "text-emerald-400",
+  warning: "text-severity-medium",
+  critical: "text-severity-critical",
+};
+
 export default function ServerOps() {
   const { toast } = useStore();
   const [optimizing, setOptimizing] = useState<string | null>(null);
@@ -284,7 +299,7 @@ export default function ServerOps() {
     }
   };
 
-  const healthOk = d.health === "healthy";
+  const serverHealthTone = healthTone(d.health, d.healthScore);
 
   return (
     <div>
@@ -310,7 +325,7 @@ export default function ServerOps() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard
               label="Health"
-              value={<span className={cx("flex items-center gap-1.5 capitalize", healthOk ? "text-emerald-400" : "text-severity-critical")}>{healthOk ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />} {d.health}</span>}
+              value={<span className={cx("flex items-center gap-1.5 capitalize", healthToneClass[serverHealthTone])}>{serverHealthTone === "healthy" ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />} {d.health || "unknown"}</span>}
               icon={<Activity size={18} />}
               trend="up"
               trendLabel={`score ${d.healthScore}/100`}

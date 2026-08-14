@@ -1,5 +1,5 @@
 ﻿import React, { useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Shield, Mail, Lock, Eye, EyeOff, Loader2, AlertTriangle } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -108,6 +108,9 @@ export default function Login() {
             {loading && <Loader2 size={16} className="animate-spin" />}
             Sign In
           </button>
+          <p className="mt-3 text-center text-xs">
+            <Link to="/password-reset" className="text-slate-500 hover:text-slate-300">Forgot password?</Link>
+          </p>
         </form>
 
         <p className="text-center text-xs text-slate-500 mt-6">

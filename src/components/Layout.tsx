@@ -159,7 +159,7 @@ export default function Layout() {
       </aside>
 
       {/* Main area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Topbar */}
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-phantix-700/30 bg-phantix-950/60 backdrop-blur-xl px-4 lg:px-6">
           <button
@@ -169,11 +169,11 @@ export default function Layout() {
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
-          <div className="flex-1" />
+          <div className="min-w-0 flex-1" />
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <ThemeToggle />
-            <span className={cx("chip capitalize", roleBadge)}>
+            <span className={cx("chip hidden capitalize sm:inline-flex", roleBadge)}>
               {session?.role || "staff"}
             </span>
             <div className="hidden sm:block text-right">
@@ -196,7 +196,7 @@ export default function Layout() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden bg-phantix-950/95 border-b border-phantix-700/30 overflow-y-auto max-h-[60vh]"
+            className="fixed inset-x-0 top-16 z-50 max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-phantix-700/30 bg-phantix-950/98 shadow-card lg:hidden"
           >
             <nav className="px-4 py-3 space-y-2">
               {navSections.map((section) => {
@@ -232,7 +232,7 @@ export default function Layout() {
         )}
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main className="min-w-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
           <Outlet />
         </main>
       </div>
