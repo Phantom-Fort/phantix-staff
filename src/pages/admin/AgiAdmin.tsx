@@ -76,6 +76,7 @@ function SessionTerminal({ session }: { session: AgiSession }) {
   const [deciding, setDeciding] = useState<number | null>(null);
   const [liveLine, setLiveLine] = useState<string>("");
   const [showControls, setShowControls] = useState(false);
+  const [view, setView] = useState<"chat" | "terminal">("chat");
   const endRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -154,22 +155,93 @@ function SessionTerminal({ session }: { session: AgiSession }) {
 
   return (
     <div className="flex h-[68vh] flex-col overflow-hidden rounded-2xl border border-phantix-700/40">
-      {/* Terminal header */}
+      {/* Chat header */}
       <div className="flex items-center gap-2.5 border-b border-phantix-700/40 bg-phantix-950/80 px-4 py-3">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-phantix-800/80 text-gold-400"><Terminal size={15} /></span>
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 text-phantix-950"><Brain size={17} /></span>
         <div className="min-w-0">
-          <p className="font-display text-sm font-semibold text-white">Session #{session.id}</p>
-          <p className="text-[10px] text-slate-500">engagement #{session.engagement_id}{session.container_id ? ` · ${session.container_id}` : ""}</p>
+          <p className="font-display text-sm font-semibold text-white">Autonomous Pentest Agent</p>
+          <p className="text-[10px] text-slate-500">session #{session.id} · engagement #{session.engagement_id}{session.container_id ? ` · ${session.container_id}` : ""}</p>
         </div>
         <StatusBadge status={running ? "running" : session.status} />
         <div className="ml-auto flex items-center gap-1.5">
+          <div className="flex items-center rounded-lg border border-phantix-700/40 bg-phantix-950/50 p-0.5">
+            <button onClick={() => setView("chat")} className={cx("rounded-md px-2.5 py-1 text-[11px] font-medium", view === "chat" ? "bg-gold-400/15 text-gold-300" : "text-slate-500 hover:text-slate-300")}>Chat</button>
+            <button onClick={() => setView("terminal")} className={cx("rounded-md px-2.5 py-1 text-[11px] font-medium", view === "terminal" ? "bg-gold-400/15 text-gold-300" : "text-slate-500 hover:text-slate-300")}>Terminal</button>
+          </div>
           <button onClick={() => setShowControls((v) => !v)} className={cx("btn-ghost !px-2.5 !py-1.5 !text-[11px]", showControls && "text-gold-300")}><SlidersHorizontal size={12} className="mr-1 inline" /> Controls</button>
           <button onClick={() => void poll()} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><RefreshCw size={12} /> Refresh</button>
           <button onClick={() => void stop()} disabled={stopping} className="btn-secondary !px-3 !py-1.5 !text-[11px]"><Square size={12} className="mr-1 inline" /> {stopping ? "Stopping..." : "Stop"}</button>
         </div>
       </div>
 
-      {/* Transcript */}
+      {/* Chat transcript — bubbles like the main app */}
+      {view === "chat" ? (
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-phantix-950/40 p-4">
+        {transcript.length === 0 && !liveLine && (
+          <p className="py-8 text-center text-[11px] text-slate-600">Connecting to the agent…</p>
+        )}
+        {transcript.map((t, i) => {
+          const isOperator = t.role === "operator";
+          const isTool = t.role === "tool";
+          const isSystem = t.role === "system";
+          if (isOperator) {
+            return (
+              <div key={i} className="flex justify-end">
+                <div className="max-w-[82%] rounded-2xl rounded-br-sm border border-gold-400/25 bg-gold-400/15 px-3.5 py-2 text-[13px] leading-6 text-gold-100">
+                  {t.content}
+                </div>
+              </div>
+            );
+          }
+          if (isSystem) {
+            return (
+              <div key={i} className="flex justify-center">
+                <span className="max-w-[90%] rounded-full bg-phantix-800/50 px-3 py-1 text-center font-mono text-[10px] leading-4 text-slate-500">{t.content}</span>
+              </div>
+            );
+          }
+          if (isTool) {
+            return (
+              <div key={i} className="flex justify-start">
+                <div className="max-w-[82%] rounded-2xl border border-phantix-700/40 bg-phantix-950/70 px-3.5 py-2">
+                  <span className="flex items-center gap-1.5 font-mono text-[10px] text-gold-400">
+                    <Terminal size={11} /> {String((t.meta as any)?.tool ?? "tool")}
+                  </span>
+                  <p className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-slate-300">{t.content}</p>
+                </div>
+              </div>
+            );
+          }
+          // assistant
+          return (
+            <div key={i} className="flex justify-start">
+              <div className="max-w-[85%] rounded-2xl rounded-tl-sm border border-phantix-700/40 bg-phantix-800/60 px-3.5 py-2.5 text-[13px] leading-6 text-slate-200">
+                <MarkdownView source={t.content} />
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Live streaming bubble — typing + thinking state */}
+        {running && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] min-w-[220px] rounded-2xl rounded-tl-sm border border-phantix-700/40 bg-phantix-800/60 px-3.5 py-2.5 text-[13px] leading-6 text-slate-200">
+              {liveLine ? (
+                <>
+                  <p className="whitespace-pre-wrap">{liveLine}<span className="ml-0.5 inline-block h-3.5 w-[7px] animate-pulse rounded-sm bg-gold-400/70 align-middle" /></p>
+                  <p className="mt-1 flex items-center gap-1.5 text-[10px] text-gold-300"><Loader2 size={11} className="animate-spin" /> agent is responding…</p>
+                </>
+              ) : (
+                <p className="flex items-center gap-2 text-[11px] text-slate-400">
+                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold-400" /> agent is thinking…</span>
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+      ) : (
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 font-mono">
         {transcript.length === 0 && <p className="py-8 text-center text-[11px] text-slate-600">Connecting to engagement container…</p>}
         {transcript.map((t, i) => <TxLine key={i} t={t} last={i === transcript.length - 1 && running} />)}
@@ -180,6 +252,7 @@ function SessionTerminal({ session }: { session: AgiSession }) {
         )}
         <div ref={endRef} />
       </div>
+      )}
 
       {/* Pending approvals */}
       {actions.length > 0 && (
@@ -471,13 +544,17 @@ function SessionControls({ session, running }: { session: AgiSession; running: b
 // ── Engagement create modal ───────────────────────────────────────────────────
 function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string }[]; onCreated: (e: AgiEngagement) => void }) {
   const { toast } = useStore();
-  const [form, setForm] = useState({ organization_id: orgs[0]?.id ?? 0, name: "", description: "", allowlist: "", forbidden: "dos\nransomware\ndata_exfil_bulk", roe: "", max_minutes: 120 });
+  const [form, setForm] = useState({ organization_id: orgs[0]?.id ?? 0, name: "", description: "", allowlist: "", forbidden: "dos\nransomware\ndata_exfil_bulk", roe: "", max_minutes: 120, environment: "staging" as "staging" | "production", production_ack: false });
   const [creating, setCreating] = useState(false);
 
   const create = async () => {
     const targets = form.allowlist.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
     if (!form.name.trim() || targets.length === 0 || !form.organization_id) {
       toast("error", "Organization, name and at least one target are required");
+      return;
+    }
+    if (form.environment === "production" && !form.production_ack) {
+      toast("error", "Production requires acknowledgement", "Confirm you are authorized to test production targets.");
       return;
     }
     setCreating(true);
@@ -491,6 +568,8 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
           forbidden_actions: form.forbidden.split(/[\n,]/).map((s) => s.trim()).filter(Boolean),
           rules_of_engagement: form.roe.trim(),
           max_session_minutes: Number(form.max_minutes) || 120,
+          target_environment: form.environment,
+          production_ack: form.environment === "production" ? form.production_ack : false,
         },
       });
       toast("success", "Engagement created", eng.name);
@@ -498,6 +577,7 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
     } catch (e) {
       const { message, code } = agiErrorDetail(e);
       if (code === "scope_empty") toast("error", "Scope required", "Add at least one target to the allowlist.");
+      else if (code === "production_ack_required") toast("error", "Production requires acknowledgement", "Confirm you are authorized to test production targets.");
       else toast("error", "Create failed", message);
     } finally { setCreating(false); }
   };
@@ -515,6 +595,23 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
       </div>
       <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Name (e.g. Acme Q3 external web)" className={field} />
       <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description / ROE reference" className={field} />
+      <div>
+        <label className="mb-1 block text-[11px] font-semibold text-slate-400">Target environment</label>
+        <div className="flex gap-2">
+          {(["staging", "production"] as const).map((env) => (
+            <label key={env} className={cx("flex flex-1 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors", form.environment === env ? "border-gold-400/50 bg-gold-400/10 text-gold-200" : "border-phantix-700/50 bg-phantix-950/60 text-slate-300")}>
+              <input type="radio" name="target_environment" checked={form.environment === env} onChange={() => setForm({ ...form, environment: env, production_ack: false })} className="accent-[rgb(var(--gold-400))]" />
+              <span className="capitalize">{env}</span>
+            </label>
+          ))}
+        </div>
+        {form.environment === "production" && (
+          <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-lg border border-severity-medium/40 bg-severity-medium/10 px-3 py-2.5 text-[11px] text-slate-300">
+            <input type="checkbox" checked={form.production_ack} onChange={(e) => setForm({ ...form, production_ack: e.target.checked })} className="mt-0.5 accent-[rgb(var(--severity-medium))]" />
+            <span>I confirm the targets above are <strong>production</strong> and that I am authorized to test them.</span>
+          </label>
+        )}
+      </div>
       <div>
         <label className="mb-1 block text-[11px] font-semibold text-slate-400">Target allowlist (immutable after create)</label>
         <AutoGrow value={form.allowlist} onChange={(e) => setForm({ ...form, allowlist: e.target.value })} minRows={4} placeholder={"203.0.113.10\napp.acme-lab.example\nhttps://app.acme-lab.example"} className={cx(field, "font-mono text-[11px]")} />

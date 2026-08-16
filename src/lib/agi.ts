@@ -206,7 +206,14 @@ export async function createAgiEngagement(payload: {
   organization_id: number;
   name: string;
   description?: string;
-  scope: { target_allowlist: string[]; forbidden_actions: string[]; rules_of_engagement?: string; max_session_minutes?: number };
+  scope: {
+    target_allowlist: string[];
+    forbidden_actions: string[];
+    rules_of_engagement?: string;
+    max_session_minutes?: number;
+    target_environment?: "staging" | "production";
+    production_ack?: boolean;
+  };
   config?: Record<string, unknown>;
 }): Promise<AgiEngagement> {
   if (DEMO_MODE) {
@@ -220,7 +227,17 @@ export async function createAgiEngagement(payload: {
     };
     return eng;
   }
-  return api.post<AgiEngagement>("/admin/agi/engagements", payload);
+  return api.post<AgiEngagement>("/admin/agi/engagements", {
+    ...payload,
+    scope: {
+      target_allowlist: payload.scope.target_allowlist,
+      forbidden_actions: payload.scope.forbidden_actions,
+      rules_of_engagement: payload.scope.rules_of_engagement ?? "",
+      max_session_minutes: payload.scope.max_session_minutes,
+      target_environment: payload.scope.target_environment ?? "staging",
+      production_ack: payload.scope.target_environment === "production" ? (payload.scope.production_ack ?? false) : false,
+    },
+  });
 }
 
 export async function patchAgiEngagement(id: number, payload: { name?: string; description?: string; config?: Record<string, unknown>; status?: string }): Promise<AgiEngagement> {
