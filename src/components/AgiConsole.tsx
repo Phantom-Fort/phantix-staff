@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ArrowDown, Ban, BrainCircuit, CheckCircle2, Crosshair, FileCode2,
+  ArrowDown, Ban, BrainCircuit, CheckCircle2, ChevronRight, Crosshair, FileCode2,
   Globe2, Loader2, Lock, Pause, Play, Radar, Send, ShieldAlert, ShieldCheck, Square,
   Terminal, XCircle,
 } from "lucide-react";
@@ -20,7 +20,7 @@ import {
   type AttackNode,
   type NodeStatus,
 } from "@/lib/agiGraph";
-import type { AgiAction, AgiEngagement, AgiSession, AgiSkillPlan, AgiTranscriptChunk, Severity } from "@/lib/types";
+import type { AgiAction, AgiEngagement, AgiSession, AgiSkillPlan, AgiTranscriptChunk, EngineCallEvent, Severity } from "@/lib/types";
 import { SkillPlanSidePanel } from "@/components/AgiCoevolution";
 import { cx } from "@/lib/utils";
 import { useStickToBottom } from "@/lib/useStickToBottom";
@@ -44,7 +44,7 @@ const NODE_RING: Record<NodeStatus, string> = {
 
 const SEV_ORDER: Severity[] = ["critical", "high", "medium", "low", "info"];
 
-function TxLine({ t, last }: { t: AgiTranscriptChunk; last: boolean }) {
+function TxLine({ t }: { t: AgiTranscriptChunk }) {
   const isTool = t.role === "tool";
   const isSystem = t.role === "system";
   const isOperator = t.role === "operator";
@@ -67,7 +67,6 @@ function TxLine({ t, last }: { t: AgiTranscriptChunk; last: boolean }) {
         )}
         {isSystem && <span className="mr-1 text-[10px] text-slate-600">engine</span>}
         {!isTool && !isSystem && !isOperator ? <MarkdownView source={t.content} /> : <span className="whitespace-pre-wrap break-words">{t.content}</span>}
-        {last && !isOperator && <span className="ml-0.5 inline-block h-3 w-[6px] animate-pulse rounded-sm bg-gold-400/70 align-middle" />}
       </div>
     </div>
   );
@@ -202,6 +201,7 @@ export type AgiConsoleProps = {
   overrideDrafts: Record<number, string>;
   onOverrideDraft: (id: number, cmd: string) => void;
   skillPlan?: AgiSkillPlan | null;
+  engineCalls?: EngineCallEvent[];
 };
 
 export default function AgiConsole({
@@ -226,10 +226,12 @@ export default function AgiConsole({
   overrideDrafts,
   onOverrideDraft,
   skillPlan,
+  engineCalls = [],
 }: AgiConsoleProps) {
   const [persona, setPersona] = useState<AgentPersona | "all">("all");
   const [lanes, setLanes] = useState(false);
   const [showTerm, setShowTerm] = useState(false);
+  const [skillPlanOpen, setSkillPlanOpen] = useState(false);
   const [leftW, setLeftW] = useState(340);
   const [rightW, setRightW] = useState(240);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -242,6 +244,21 @@ export default function AgiConsole({
   const findings = useMemo(() => deriveFindings(transcript, actions, engagement), [transcript, actions, engagement]);
   const counts = useMemo(() => severityCounts(findings), [findings]);
   const selected = nodes.find((n) => n.id === selectedId) ?? nodes.find((n) => n.status === "active" || n.status === "blocked") ?? nodes[0];
+  const activeNode = useMemo(
+    () => nodes.find((n) => n.status === "active") ?? nodes.find((n) => n.status === "blocked") ?? null,
+    [nodes],
+  );
+  const runningStatus = useMemo(() => {
+    if (!running || paused) return null;
+    if (activeNode) {
+      return {
+        label: activeNode.status === "blocked" ? `awaiting approval — ${activeNode.label}` : activeNode.label,
+        tool: activeNode.tool,
+      };
+    }
+    if (thinking) return { label: "reasoning over the attack tree", tool: undefined };
+    return { label: "planning the next step", tool: undefined };
+  }, [running, paused, activeNode, thinking]);
   const openFinding = findings.find((f) => f.id === findingId) ?? null;
   const allowlist = engagement?.scope_definition.target_allowlist ?? [];
   const forbidden = engagement?.scope_definition.forbidden_actions ?? [];
@@ -392,7 +409,7 @@ export default function AgiConsole({
                   <div key={lane} className="min-h-0 space-y-1.5 overflow-y-auto p-2">
                     <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">{PERSONAS.find((p) => p.id === lane)?.label}</p>
                     {transcript.filter((t) => personaForChunk(t) === lane).map((t, i) => (
-                      <TxLine key={`${lane}-${i}`} t={t} last={false} />
+                      <TxLine key={`${lane}-${i}`} t={t} />
                     ))}
                   </div>
                 ))}
@@ -407,12 +424,15 @@ export default function AgiConsole({
                 )}
                 {filtered.length === 0 && !connError && <p className="py-8 text-center text-[11px] text-slate-600">Waiting for orchestrator output…</p>}
                 {filtered.map((t, i) => (
-                  <TxLine key={`st-${i}`} t={t} last={i === filtered.length - 1 && running && !paused} />
+                  <TxLine key={`st-${i}`} t={t} />
                 ))}
-                {thinking && !paused && (
-                  <p className="flex items-center gap-2 text-[11px] text-gold-300">
-                    <Loader2 size={12} className="animate-spin" /> thinking…
-                  </p>
+                {runningStatus && (
+                  <div className="flex items-center gap-2 rounded-lg border border-phantix-700/40 bg-phantix-900/60 px-3 py-2">
+                    <Loader2 size={12} className="shrink-0 animate-spin text-gold-400" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-gold-300">running …</span>
+                    <span className="min-w-0 truncate text-[11px] text-slate-300">{runningStatus.label}</span>
+                    {runningStatus.tool && <span className="chip !px-1.5 !py-0 !text-[9px] font-mono text-gold-300">{runningStatus.tool}</span>}
+                  </div>
                 )}
                 {paused && <p className="text-[10px] text-severity-medium">Loop paused — agent will not advance.</p>}
                 <div ref={thoughtsStick.endRef} />
@@ -421,13 +441,33 @@ export default function AgiConsole({
 
             {showTerm && (
               <div className="absolute inset-x-2 bottom-2 z-10 max-h-[42%] overflow-hidden rounded-lg border border-phantix-700/40 bg-phantix-950/95 shadow-card">
-                <p className="flex items-center gap-1.5 border-b border-phantix-700/30 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-slate-500">
+                <div className="flex items-center gap-1.5 border-b border-phantix-700/30 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-slate-500">
                   <Terminal size={10} /> Terminal
-                </p>
+                  <button
+                    type="button"
+                    onClick={() => onInstruction("From now on, run tool commands directly in the sandbox terminal and stream the raw output — prefer that over engine calls where it is safe.")}
+                    className="ml-auto rounded px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-gold-300 hover:bg-phantix-800"
+                    title="Prefill the instruction box to make the agent prefer direct AI terminal execution over engine delegation."
+                  >
+                    Prefer AI terminal execution
+                  </button>
+                </div>
                 <div ref={toolsStick.scrollerRef} onScroll={toolsStick.onScroll} className="max-h-40 space-y-1.5 overflow-y-auto p-2 font-mono">
-                  {tools.length === 0 && <p className="py-3 text-center text-[10px] text-slate-600">No tool output yet.</p>}
+                  {tools.length === 0 && engineCalls.length === 0 && (
+                    <p className="py-3 text-center text-[10px] text-slate-600">
+                      No terminal output yet — the agent is executing via engines. Ask it to run commands in the container for raw output.
+                    </p>
+                  )}
                   {tools.map((t, i) => (
-                    <TxLine key={`tl-${i}`} t={t} last={false} />
+                    <TxLine key={`tl-${i}`} t={t} />
+                  ))}
+                  {engineCalls.map((e, i) => (
+                    <p key={`ec-${i}`} className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                      {e.ok ? <CheckCircle2 size={10} className="text-emerald-400" /> : <XCircle size={10} className="text-severity-critical" />}
+                      <span className="text-slate-500">engine</span>
+                      {e.engine_id}.{e.op}
+                      {e.latency_ms != null && <span className="text-slate-600">{e.latency_ms}ms</span>}
+                    </p>
                   ))}
                   <div ref={toolsStick.endRef} />
                 </div>
@@ -482,8 +522,23 @@ export default function AgiConsole({
         />
 
         <aside className="flex shrink-0 flex-col border-l border-phantix-700/40 bg-phantix-900/40" style={{ width: rightW }}>
-          <div className="min-h-0 shrink-0 overflow-y-auto border-b border-phantix-700/30 p-1.5">
-            <SkillPlanSidePanel plan={skillPlan ?? null} />
+          <div className="shrink-0 border-b border-phantix-700/30">
+            <button
+              type="button"
+              onClick={() => setSkillPlanOpen((v) => !v)}
+              className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left transition-colors hover:bg-phantix-800/40"
+            >
+              <ChevronRight size={11} className={cx("shrink-0 text-slate-500 transition-transform duration-150", skillPlanOpen && "rotate-90")} />
+              <BrainCircuit size={10} className="text-gold-400" />
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Skill plan</p>
+              {skillPlan && (skillPlan.skills?.length ?? 0) > 0 && <span className="chip !px-1 !py-0 !text-[8px] text-gold-300">{skillPlan.skills?.length ?? 0}</span>}
+              <span className="ml-auto text-[9px] text-slate-600">{skillPlanOpen ? "Hide" : "Show"}</span>
+            </button>
+            {skillPlanOpen && (
+              <div className="min-h-0 overflow-y-auto border-t border-phantix-700/25 p-1.5">
+                <SkillPlanSidePanel plan={skillPlan ?? null} hideTitle />
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1 border-b border-phantix-700/30 px-2 py-1.5">
             <ShieldAlert size={10} className="text-severity-high" />

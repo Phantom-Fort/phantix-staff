@@ -342,6 +342,7 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
           overrideDrafts={overrideDrafts}
           onOverrideDraft={(id, cmd) => setOverrideDrafts((prev) => ({ ...prev, [id]: cmd }))}
           skillPlan={skillPlan}
+          engineCalls={engineCalls}
         />
       </div>
 

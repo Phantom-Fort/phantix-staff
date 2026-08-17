@@ -119,11 +119,11 @@ export function AgiToolsToProvisionStrip({
   );
 }
 
-export function SkillPlanSidePanel({ plan }: { plan: AgiSkillPlan | null }) {
+export function SkillPlanSidePanel({ plan, hideTitle = false }: { plan: AgiSkillPlan | null; hideTitle?: boolean }) {
   if (!plan) return null;
   return (
     <div className="rounded-lg border border-phantix-700/30 bg-phantix-950/50 p-2">
-      <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-slate-500">Skill plan</p>
+      {!hideTitle && <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-slate-500">Skill plan</p>}
       {(plan.skills ?? []).map((s) => (
         <div key={s.skill_id} className="flex items-center gap-1.5 py-1 text-[10px] text-slate-300">
           <span className="w-4 text-right text-slate-600">{s.rank}</span>
