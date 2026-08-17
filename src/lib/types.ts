@@ -648,6 +648,60 @@ export interface AgiApkAsset {
   environment?: string;
 }
 
+export interface AgiSkillPlanItem {
+  rank: number;
+  skill_id: string;
+  title?: string;
+  kind?: string;
+  efficiency?: number;
+  objective_score?: number;
+  body_loaded?: boolean;
+  requires_approval?: boolean;
+  tools?: string[];
+  match_reason?: string;
+  matched_intents?: string[];
+  role?: "primary" | "playbook" | "card";
+}
+
+export interface AgiToolToProvision {
+  tool: string;
+  package: string;
+  required: boolean;
+  skill_ids: string[];
+  engine_id?: string;
+  rationale?: string;
+}
+
+export interface AgiToolPlan {
+  available: string[];
+  to_provision: AgiToolToProvision[];
+  to_provision_count: number;
+  required_missing?: AgiToolToProvision[];
+}
+
+export interface AgiSkillPlan {
+  objective?: string;
+  intents: string[];
+  skills: AgiSkillPlanItem[];
+  skill_ids: string[];
+  primary_skill_id?: string | null;
+  count: number;
+  full_body_count?: number;
+  stream_message?: string;
+  tools?: AgiToolPlan;
+}
+
+export interface AgiSelectedSkillChip {
+  skill_id: string;
+  version?: string;
+  efficiency?: number;
+  objective_score?: number;
+  kind?: string;
+  title?: string;
+  body_loaded?: boolean;
+  rank?: number;
+}
+
 export interface AgiFinding {
   id: number;
   session_id: number;

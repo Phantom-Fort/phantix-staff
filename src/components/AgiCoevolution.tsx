@@ -1,10 +1,73 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Activity, CheckCircle2, Cpu, Loader2, Wrench, XCircle } from "lucide-react";
+import { Activity, CheckCircle2, Cpu, Loader2, Star, Wrench, XCircle } from "lucide-react";
 import { Card, CardHeader, StatusBadge } from "@/components/ui";
 import { confirmAgiJob, loadAgiEngineCatalog, loadAgiEngineLearning, waiveAgiJobObjective } from "@/lib/agi";
-import type { AgiEngineCapability, AgiEngineOp, AgiSessionJob, AgiToolInstallRequest, EngineCallEvent } from "@/lib/types";
+import type { AgiEngineCapability, AgiEngineOp, AgiSessionJob, AgiSkillPlan, AgiToolInstallRequest, AgiToolPlan, AgiToolToProvision, EngineCallEvent } from "@/lib/types";
 import { cx } from "@/lib/utils";
 import { useStore } from "@/lib/store";
+
+export function AgiSkillPlanBanner({ plan }: { plan: AgiSkillPlan | null }) {
+  if (!plan) return null;
+  const skills = plan.skills ?? [];
+  return (
+    <div className="border-b border-phantix-700/40 bg-phantix-950/80 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
+        <span className="font-semibold uppercase tracking-wider text-slate-400">Skills for this objective</span>
+        {(plan.intents ?? []).map((i) => <span key={i} className="chip !px-1.5 !py-0 !text-[9px] text-gold-300">{i}</span>)}
+        {plan.objective && <span className="truncate text-[10px] text-slate-500">{plan.objective}</span>}
+      </div>
+      {plan.stream_message && <p className="mt-1 text-[11px] leading-4 text-slate-400">{plan.stream_message}</p>}
+      {skills.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {skills.map((s) => (
+            <span key={s.skill_id} title={`${s.match_reason ?? ""} · eff ${s.efficiency ?? "-"} · obj ${s.objective_score ?? "-"} · ${(s.tools ?? []).join(", ")}`} className="chip !text-[9px]">
+              {s.role === "primary" || s.rank === 1 ? <Star size={9} className="fill-gold-400 text-gold-400" /> : null}
+              <span className={cx(s.role === "primary" && "text-gold-200")}>{s.skill_id}</span>
+              {s.body_loaded ? <span className="text-emerald-400">· Full</span> : <span className="text-slate-500">· Card</span>}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function AgiToolsToProvisionStrip({ toolPlan, onOpenApprovals }: { toolPlan: AgiToolPlan | null; onOpenApprovals?: () => void }) {
+  const list: AgiToolToProvision[] = toolPlan?.to_provision ?? [];
+  if (!toolPlan || list.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-severity-medium/25 bg-severity-medium/5 px-3 py-2">
+      <Wrench size={12} className="text-severity-medium" />
+      <span className="text-[11px] text-amber-200">Tools needed for matched skills:</span>
+      {list.map((t) => (
+        <span key={t.tool} className={cx("chip !text-[9px]", t.required ? "border-severity-medium/40 text-severity-medium" : "border-phantix-600/40 text-slate-400")}>
+          {t.tool} <span className="opacity-70">({t.package})</span>{t.required ? " · required" : ""}
+        </span>
+      ))}
+      {onOpenApprovals && (
+        <button onClick={onOpenApprovals} className="ml-auto btn-secondary !px-2.5 !py-1 !text-[10px]">Review approvals</button>
+      )}
+    </div>
+  );
+}
+
+export function SkillPlanSidePanel({ plan }: { plan: AgiSkillPlan | null }) {
+  if (!plan) return null;
+  return (
+    <div className="rounded-lg border border-phantix-700/30 bg-phantix-950/50 p-2">
+      <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-slate-500">Skill plan</p>
+      {(plan.skills ?? []).map((s) => (
+        <div key={s.skill_id} className="flex items-center gap-1.5 py-1 text-[10px] text-slate-300">
+          <span className="w-4 text-right text-slate-600">{s.rank}</span>
+          <span className={cx("min-w-0 flex-1 truncate", s.role === "primary" && "text-gold-200")}>{s.skill_id}</span>
+          {s.efficiency != null && <span className="font-mono text-emerald-400">{(s.efficiency * 100).toFixed(0)}%</span>}
+          {s.body_loaded ? <span className="text-emerald-400">Full</span> : <span className="text-slate-600">Card</span>}
+        </div>
+      ))}
+      {(plan.skills ?? []).length === 0 && <p className="text-[10px] text-slate-600">No skills auto-matched — AGI will use general recon and skill_search.</p>}
+    </div>
+  );
+}
 
 function scoreCls(score: number): string {
   if (score >= 0.7) return "text-emerald-300";

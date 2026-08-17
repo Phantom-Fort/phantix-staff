@@ -18,6 +18,10 @@ import type {
   AgiEngineCapability,
   AgiSessionJob,
   AgiApkAsset,
+  AgiSkillPlan,
+  AgiSkillPlanItem,
+  AgiToolToProvision,
+  AgiSelectedSkillChip,
 } from "./types";
 
 const ACTIVE_SESSION_KEY = "phantix_staff_agi_active_session";
@@ -595,6 +599,55 @@ export async function loadAgiSessionJob(sessionId: number): Promise<AgiSessionJo
     };
   }
   try { return await api.get<AgiSessionJob>(`/admin/agi/sessions/${sessionId}/job`); } catch { return null; }
+}
+
+export async function loadAgiSessionSkillPlan(sessionId: number): Promise<{ skill_plan: AgiSkillPlan | null; tools_to_provision: AgiToolToProvision[]; selected_skills: AgiSelectedSkillChip[] }> {
+  if (DEMO_MODE) {
+    await delay(200);
+    const plan: AgiSkillPlan = {
+      objective: "Recon + HTTP surface of allowlisted hosts",
+      intents: ["recon", "web"],
+      primary_skill_id: "agi.recon.http-surface",
+      skill_ids: ["agi.recon.http-surface", "agi.web.http-fingerprint"],
+      count: 2,
+      full_body_count: 1,
+      stream_message: "Using skill agi.recon.http-surface (HTTP surface) [match: intents=recon,web]. Supporting: agi.web.http-fingerprint.",
+      skills: [
+        { rank: 1, skill_id: "agi.recon.http-surface", title: "HTTP surface mapping", kind: "recon", role: "primary", efficiency: 0.9, objective_score: 0.84, body_loaded: true, match_reason: "intents=recon,web; core_skill", tools: ["http_get", "httpx"] },
+        { rank: 2, skill_id: "agi.web.http-fingerprint", title: "HTTP fingerprinting", kind: "web", role: "playbook", efficiency: 0.82, objective_score: 0.71, body_loaded: false, match_reason: "title_hits=2", tools: ["httpx"] },
+      ],
+      tools: {
+        available: ["http_get", "shell", "nmap_top"],
+        to_provision: [{ tool: "whatweb", package: "whatweb", required: true, skill_ids: ["agi.web.http-fingerprint"], engine_id: "scanner_engine", rationale: "Required by skill(s): agi.web.http-fingerprint for this engagement objective" }],
+        to_provision_count: 1,
+      },
+    };
+    return { skill_plan: plan, tools_to_provision: plan.tools?.to_provision ?? [], selected_skills: [] };
+  }
+  try {
+    const s = await api.get<{ meta?: Record<string, unknown> }>(`/admin/agi/sessions/${sessionId}`);
+    const meta = s?.meta ?? {};
+    const skillPlan = (meta.skill_plan as AgiSkillPlan) ?? null;
+    const toolsToProvision = Array.isArray(meta.tools_to_provision) ? (meta.tools_to_provision as AgiToolToProvision[]) : (skillPlan?.tools?.to_provision ?? []);
+    const selected = Array.isArray(meta.selected_skills) ? (meta.selected_skills as AgiSelectedSkillChip[]) : [];
+    return { skill_plan: skillPlan, tools_to_provision: toolsToProvision, selected_skills: selected };
+  } catch {
+    return { skill_plan: null, tools_to_provision: [], selected_skills: [] };
+  }
+}
+
+export async function searchAgiSkills(q: string): Promise<AgiSkillPlanItem[]> {
+  if (DEMO_MODE) {
+    await delay(180);
+    return [
+      { rank: 1, skill_id: "agi.web.http-fingerprint", title: "HTTP fingerprinting", kind: "web", efficiency: 0.82, objective_score: 0.7, body_loaded: false },
+      { rank: 2, skill_id: "agi.recon.http-surface", title: "HTTP surface mapping", kind: "recon", efficiency: 0.9, objective_score: 0.84, body_loaded: false },
+    ];
+  }
+  try {
+    const res = await api.get<{ skills?: AgiSkillPlanItem[] } | AgiSkillPlanItem[]>(`/admin/agi/skills/search?q=${encodeURIComponent(q)}`);
+    return Array.isArray(res) ? res : (res?.skills ?? []);
+  } catch { return []; }
 }
 
 export async function confirmAgiJob(sessionId: number, stop = true, notes = ""): Promise<unknown> {

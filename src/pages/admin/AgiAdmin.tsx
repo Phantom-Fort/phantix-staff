@@ -22,9 +22,10 @@ import {
   loadAgiSkills, upsertAgiSkill, resolvedAgiSkills, loadAgiFindings, promoteAgiFinding, setAgiFindingStatus,
   setAgiCredentials, setAgiRegistration, getAgiPreflight, provideAgiInfo, provideAgiOtp, runAgiShell, listAgiJobs,
   agiErrorDetail, streamAgiSession, loadAgiEngineCatalog, loadAgiEngineLearning, loadAgiSessionJob, loadAgiApkAssets, trainAgiSession,
+  loadAgiSessionSkillPlan,
 } from "@/lib/agi";
-import { EngineLearningPanel, EngineSnapshotCards, JobCoveragePanel, EngineCallList } from "@/components/AgiCoevolution";
-import type { AgiEngineCapability, AgiSessionJob, EngineCallEvent } from "@/lib/types";
+import { EngineLearningPanel, EngineSnapshotCards, JobCoveragePanel, EngineCallList, AgiSkillPlanBanner, AgiToolsToProvisionStrip, SkillPlanSidePanel } from "@/components/AgiCoevolution";
+import type { AgiEngineCapability, AgiSessionJob, AgiSkillPlan, AgiToolPlan, AgiToolToProvision, EngineCallEvent } from "@/lib/types";
 import type {
   AgiAction, AgiEngagement, AgiFinding, AgiPolicy, AgiSession, AgiSkill, AgiToolInstallRequest, AgiTranscriptChunk,
 } from "@/lib/types";
@@ -141,8 +142,19 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
   const [showControls, setShowControls] = useState(false);
   const [job, setJob] = useState<AgiSessionJob | null>(null);
   const [engineCalls, setEngineCalls] = useState<EngineCallEvent[]>([]);
+  const [skillPlan, setSkillPlan] = useState<AgiSkillPlan | null>(null);
+  const [toolPlan, setToolPlan] = useState<AgiToolPlan | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const chatSend = useChatSend();
+
+  useEffect(() => {
+    void loadAgiSessionSkillPlan(session.id).then(({ skill_plan, tools_to_provision }) => {
+      if (skill_plan) setSkillPlan(skill_plan);
+      if (tools_to_provision.length > 0) {
+        setToolPlan({ available: [], to_provision: tools_to_provision, to_provision_count: tools_to_provision.length });
+      }
+    });
+  }, [session.id]);
 
   const poll = useCallback(async (initialSeq = 0) => {
     try {
@@ -151,6 +163,30 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
         setTranscript((prev) => [...prev, ...chunks]);
         afterSeqRef.current = Math.max(afterSeqRef.current, ...chunks.map((c) => c.seq));
         setThinking(false);
+        for (const c of chunks) {
+          const ev = (c.meta as { event?: string } | null)?.event;
+          const pl = c.meta as Record<string, unknown> | null;
+          if (ev === "session_start" || ev === "skills_selected") {
+            const skills = Array.isArray(pl?.skills) ? (pl.skills as AgiSkillPlan["skills"]) : [];
+            const ids = Array.isArray(pl?.skill_ids) ? (pl.skill_ids as string[]) : [];
+            if (skills.length || ids.length) {
+              setSkillPlan((prev) => ({
+                objective: typeof pl?.objective === "string" ? pl.objective : prev?.objective,
+                intents: Array.isArray(pl?.intents) ? (pl.intents as string[]) : prev?.intents ?? [],
+                skills: skills.length ? skills : prev?.skills ?? [],
+                skill_ids: ids.length ? ids : skills.map((s) => s.skill_id),
+                primary_skill_id: typeof pl?.primary_skill_id === "string" ? pl.primary_skill_id : prev?.primary_skill_id ?? null,
+                count: Number(pl?.count ?? skills.length ?? prev?.count ?? 0),
+                full_body_count: typeof pl?.full_body_count === "number" ? pl.full_body_count : prev?.full_body_count,
+                stream_message: typeof pl?.stream_message === "string" ? pl.stream_message : prev?.stream_message,
+                tools: (pl?.tools as AgiSkillPlan["tools"]) ?? prev?.tools,
+              }));
+            }
+          } else if (ev === "tools_to_provision") {
+            const list = Array.isArray(pl?.to_provision) ? (pl.to_provision as AgiToolToProvision[]) : [];
+            if (list.length) setToolPlan({ available: Array.isArray(pl?.available) ? (pl.available as string[]) : [], to_provision: list, to_provision_count: list.length });
+          }
+        }
       }
       if (initialSeq === 0 && chunks.length) afterSeqRef.current = Math.max(afterSeqRef.current, ...chunks.map((c) => c.seq));
     } catch { /* transient */ }
@@ -186,6 +222,34 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
         } catch { /* ignore */ }
       }
       else if (event === "job_progress") { void loadAgiSessionJob(session.id).then(setJob); }
+      else if (event === "skills_selected" || event === "session_start") {
+        try {
+          const parsed = JSON.parse(String(data)) as Partial<AgiSkillPlan> & { skills?: AgiSkillPlan["skills"] };
+          if (parsed?.skills || parsed?.skill_ids || parsed?.stream_message) {
+            setSkillPlan((prev) => ({
+              objective: parsed.objective ?? prev?.objective,
+              intents: parsed.intents ?? prev?.intents ?? [],
+              skills: parsed.skills ?? prev?.skills ?? [],
+              skill_ids: parsed.skill_ids ?? parsed.skills?.map((s) => s.skill_id) ?? prev?.skill_ids ?? [],
+              primary_skill_id: parsed.primary_skill_id ?? prev?.primary_skill_id ?? null,
+              count: parsed.count ?? parsed.skills?.length ?? prev?.count ?? 0,
+              full_body_count: parsed.full_body_count ?? prev?.full_body_count,
+              stream_message: parsed.stream_message ?? prev?.stream_message,
+              tools: parsed.tools ?? prev?.tools,
+            }));
+          }
+        } catch { /* ignore */ }
+      }
+      else if (event === "tools_to_provision") {
+        try {
+          const parsed = JSON.parse(String(data)) as { to_provision?: AgiToolToProvision[]; available?: string[]; message?: string };
+          setToolPlan({
+            available: parsed.available ?? [],
+            to_provision: parsed.to_provision ?? [],
+            to_provision_count: parsed.to_provision?.length ?? 0,
+          });
+        } catch { /* ignore */ }
+      }
       else if (event === "teardown") setRunning(false);
     }, controller.signal).catch(() => { /* SSE fallback: transcript poll continues */ });
     return () => controller.abort();
@@ -250,6 +314,8 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
         <button onClick={() => void trainAgiSession(session.id).then(() => toast("success", "Train queued"))} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]">Train now</button>
         <span className="ml-auto font-mono text-[10px] text-slate-500">engagement #{session.engagement_id}{session.container_id ? ` · ${session.container_id}` : ""}</span>
       </div>
+      <AgiSkillPlanBanner plan={skillPlan} />
+      <AgiToolsToProvisionStrip toolPlan={toolPlan} onOpenApprovals={() => setShowControls(true)} />
       <JobCoveragePanel sessionId={session.id} job={job} onRefresh={() => void loadAgiSessionJob(session.id).then(setJob)} />
       <EngineCallList events={engineCalls} />
 
@@ -281,6 +347,7 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
           policyBanner={null}
           overrideDrafts={overrideDrafts}
           onOverrideDraft={(id, cmd) => setOverrideDrafts((prev) => ({ ...prev, [id]: cmd }))}
+          skillPlan={skillPlan}
         />
       </div>
     </div>

@@ -20,7 +20,8 @@ import {
   type AttackNode,
   type NodeStatus,
 } from "@/lib/agiGraph";
-import type { AgiAction, AgiEngagement, AgiSession, AgiTranscriptChunk, Severity } from "@/lib/types";
+import type { AgiAction, AgiEngagement, AgiSession, AgiSkillPlan, AgiTranscriptChunk, Severity } from "@/lib/types";
+import { SkillPlanSidePanel } from "@/components/AgiCoevolution";
 import { cx } from "@/lib/utils";
 import { useStickToBottom } from "@/lib/useStickToBottom";
 import type { SendHint } from "@/lib/useChatSend";
@@ -200,6 +201,7 @@ export type AgiConsoleProps = {
   policyBanner: string | null;
   overrideDrafts: Record<number, string>;
   onOverrideDraft: (id: number, cmd: string) => void;
+  skillPlan?: AgiSkillPlan | null;
 };
 
 export default function AgiConsole({
@@ -223,6 +225,7 @@ export default function AgiConsole({
   policyBanner,
   overrideDrafts,
   onOverrideDraft,
+  skillPlan,
 }: AgiConsoleProps) {
   const [persona, setPersona] = useState<AgentPersona | "all">("all");
   const [lanes, setLanes] = useState(false);
@@ -479,6 +482,9 @@ export default function AgiConsole({
         />
 
         <aside className="flex shrink-0 flex-col border-l border-phantix-700/40 bg-phantix-900/40" style={{ width: rightW }}>
+          <div className="min-h-0 shrink-0 overflow-y-auto border-b border-phantix-700/30 p-1.5">
+            <SkillPlanSidePanel plan={skillPlan ?? null} />
+          </div>
           <div className="flex items-center gap-1 border-b border-phantix-700/30 px-2 py-1.5">
             <ShieldAlert size={10} className="text-severity-high" />
             <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Findings</p>
