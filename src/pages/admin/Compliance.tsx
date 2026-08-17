@@ -61,7 +61,8 @@ export default function ComplianceAdmin() {
       toast("success", "Uploaded", `Framework ${file.name} imported`);
       frameworks.refresh();
     } catch (e) {
-      toast("error", "Upload failed", e instanceof Error ? e.message : "");
+      const st = (e as { status?: number })?.status;
+      toast("error", st === 502 || st === 503 ? "Storage unavailable" : "Upload failed", st === 502 || st === 503 ? "Storage unavailable — retry." : e instanceof Error ? e.message : "");
     } finally {
       setUploadBusy(false);
       if (fileRef.current) fileRef.current.value = "";

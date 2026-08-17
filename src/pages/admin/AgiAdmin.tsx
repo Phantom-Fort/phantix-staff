@@ -1101,26 +1101,30 @@ export default function AgiAdmin() {
               {skills.loading ? <TableSkeleton rows={3} /> : skills.data.filter((s) => skillFilter === "all" || s.status === skillFilter).length === 0 ? (
                 <EmptyState icon={<Brain size={24} />} title="No skills yet" body="Skills are versioned playbooks the agent learns from. Create your first one." action={<button onClick={() => { setEditingSkill(null); setSkillOpen(true); }} className="btn-primary !text-xs"><Plus size={12} className="mr-1 inline" /> New skill</button>} />
               ) : (
-                skills.data.filter((s) => skillFilter === "all" || s.status === skillFilter).map((s) => (
-                  <div key={s.id} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-[13px] font-semibold text-white">{s.skill_id}</span>
-                      <span className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[10px] text-slate-400">v{s.version}</span>
-                      <StatusBadge status={s.status} />
-                      <span className="chip border-phantix-600/40 bg-phantix-800/50 text-[10px] text-slate-400">{s.kind}</span>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+                  {skills.data.filter((s) => skillFilter === "all" || s.status === skillFilter).map((s) => (
+                    <div key={s.id} className="flex flex-col rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="min-w-0 truncate font-mono text-[11px] font-semibold text-white" title={s.skill_id}>{s.skill_id}</span>
+                        <span className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[9px] text-slate-400">v{s.version}</span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <StatusBadge status={s.status} />
+                        <span className="chip border-phantix-600/40 bg-phantix-800/50 text-[9px] text-slate-400">{s.kind}</span>
+                      </div>
+                      <p className="mt-2 line-clamp-2 min-h-[2em] text-[11px] leading-4 text-slate-400" title={s.title}>{s.title}</p>
+                      <div className="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-2 text-[10px] text-slate-500">
+                        <span className="flex items-center gap-1"><Brain size={10} className="text-gold-400" /> {(s.score * 100).toFixed(0)}%</span>
+                        <span className="flex items-center gap-1"><Activity size={10} /> {s.uses}</span>
+                        <span className="flex items-center gap-1"><CheckCircle2 size={10} className="text-emerald-400" /> {s.successes}</span>
+                        <span className="flex items-center gap-1"><XCircle size={10} className="text-severity-critical" /> {s.failures}</span>
+                      </div>
+                      <div className="mt-2.5 flex items-center gap-1.5 border-t border-phantix-700/30 pt-2">
+                        <button onClick={() => { setEditingSkill(s); setSkillOpen(true); }} className="btn-ghost w-full !px-2 !py-1 !text-[10px]"><Pencil size={11} className="mr-1 inline" /> Edit</button>
+                      </div>
                     </div>
-                    <p className="mt-1 text-xs text-slate-400">{s.title}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
-                      <span className="flex items-center gap-1"><Brain size={11} className="text-gold-400" /> Score {(s.score * 100).toFixed(0)}%</span>
-                      <span className="flex items-center gap-1"><Activity size={11} /> {s.uses} uses</span>
-                      <span className="flex items-center gap-1"><CheckCircle2 size={11} className="text-emerald-400" /> {s.successes} ok</span>
-                      <span className="flex items-center gap-1"><XCircle size={11} className="text-severity-critical" /> {s.failures} fail</span>
-                    </div>
-                    <div className="mt-2.5 flex items-center gap-1.5">
-                      <button onClick={() => { setEditingSkill(s); setSkillOpen(true); }} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><Pencil size={12} className="mr-1 inline" /> Edit</button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           )}

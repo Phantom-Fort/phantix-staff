@@ -103,7 +103,7 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-phantix-700/30 bg-phantix-950/80 backdrop-blur-xl">
         <div className="flex h-16 items-center gap-3 px-5 border-b border-phantix-700/30">
-          <img src="/logo-transparent.png" alt="Phantix" className="h-7 w-auto object-contain" />
+          <img src="/logo-white.png" alt="Phantix" className="h-7 w-auto object-contain" />
           <div>
             <p className="font-display text-sm font-bold text-white tracking-tight">Staff Portal</p>
           </div>

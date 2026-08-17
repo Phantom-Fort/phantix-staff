@@ -12,6 +12,17 @@ export const API_BASE = (() => {
 })();
 
 export const DEMO_MODE = !API_BASE;
+
+/** Resolve a media/object path returned by the API to a full URL. */
+export function mediaUrl(path?: string | null): string {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  if (path.startsWith("/") && API_BASE && !API_BASE.startsWith("/")) {
+    return `${API_BASE}${path}`;
+  }
+  return path;
+}
+
 import { dedupedRequest } from "./dedupe";
 
 /** Build-time master switch — mirrors backend PHANTIX_AGI_ENABLED (default on). */
@@ -146,6 +157,7 @@ export const api = {
   async postMultipart<T>(path: string, formData: FormData): Promise<T> {
     const headers: Record<string, string> = {};
     if (tokens.staff) headers["Authorization"] = `Bearer ${tokens.staff}`;
+    headers["X-Device-Id"] = deviceId();
     const res = await fetch(`${API_BASE}${path}`, { method: "POST", headers, body: formData });
     if (!res.ok) {
       let detail: unknown = res.statusText;
