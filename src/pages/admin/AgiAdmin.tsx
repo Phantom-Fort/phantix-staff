@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ShieldCheck, Activity, RefreshCw, Play, Square, Send, Plus, Loader2,
   Globe2, Crosshair, Boxes, FileText, Wrench, Users, Terminal, CheckCircle2, XCircle,
-  Brain, GitBranch, ShieldAlert, Eye, X, Clock, Pencil, SlidersHorizontal, BookOpen,
+  Brain, GitBranch, ShieldAlert, Eye, X, Clock, Pencil, SlidersHorizontal, BookOpen, Search,
 } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatCard, StatusBadge, SeverityBadge, TableSkeleton, EmptyState, Tabs, Modal } from "@/components/ui";
 import MarkdownView from "@/components/MarkdownView";
@@ -25,6 +25,7 @@ import {
   loadAgiSessionSkillPlan,
 } from "@/lib/agi";
 import { EngineLearningPanel, EngineSnapshotCards, JobCoveragePanel, EngineCallList, AgiSkillPlanBanner, AgiToolsToProvisionStrip, SkillPlanSidePanel } from "@/components/AgiCoevolution";
+import AgiPrompts from "@/components/AgiPrompts";
 import type { AgiEngineCapability, AgiSessionJob, AgiSkillPlan, AgiToolPlan, AgiToolToProvision, EngineCallEvent } from "@/lib/types";
 import type {
   AgiAction, AgiEngagement, AgiFinding, AgiPolicy, AgiSession, AgiSkill, AgiToolInstallRequest, AgiTranscriptChunk,
@@ -820,6 +821,31 @@ function EngagementConfigEditor({
   );
 }
 
+function SkillCard({ s, onEdit }: { s: AgiSkill; onEdit: () => void }) {
+  return (
+    <div className="flex flex-col rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="min-w-0 truncate font-mono text-[11px] font-semibold text-white" title={s.skill_id}>{s.skill_id}</span>
+        <span className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[9px] text-slate-400">v{s.version}</span>
+      </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <StatusBadge status={s.status} />
+        <span className="chip border-phantix-600/40 bg-phantix-800/50 text-[9px] text-slate-400">{s.kind}</span>
+      </div>
+      <p className="mt-2 line-clamp-2 min-h-[2em] text-[11px] leading-4 text-slate-400" title={s.title}>{s.title}</p>
+      <div className="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-2 text-[10px] text-slate-500">
+        <span className="flex items-center gap-1"><Brain size={10} className="text-gold-400" /> {(s.score * 100).toFixed(0)}%</span>
+        <span className="flex items-center gap-1"><Activity size={10} /> {s.uses}</span>
+        <span className="flex items-center gap-1"><CheckCircle2 size={10} className="text-emerald-400" /> {s.successes}</span>
+        <span className="flex items-center gap-1"><XCircle size={10} className="text-severity-critical" /> {s.failures}</span>
+      </div>
+      <div className="mt-2.5 flex items-center gap-1.5 border-t border-phantix-700/30 pt-2">
+        <button onClick={onEdit} className="btn-ghost w-full !px-2 !py-1 !text-[10px]"><Pencil size={11} className="mr-1 inline" /> Edit</button>
+      </div>
+    </div>
+  );
+}
+
 export default function AgiAdmin() {
   const { toast, isSuperadmin, isAgiAdmin } = useStore();
   const [tab, setTab] = useState("status");
@@ -843,6 +869,12 @@ export default function AgiAdmin() {
   const [engineOps, setEngineOps] = useState(0);
   const [engineTop, setEngineTop] = useState<AgiEngineCapability[]>([]);
   const [skillFilter, setSkillFilter] = useState<"all" | "candidate" | "active">("all");
+  const [skillQuery, setSkillQuery] = useState("");
+  const [skillKind, setSkillKind] = useState("all");
+  const [skillSort, setSkillSort] = useState<"score" | "uses" | "name">("score");
+  const [skillGroup, setSkillGroup] = useState(false);
+  const [skillPage, setSkillPage] = useState(1);
+  const [skillPageSize, setSkillPageSize] = useState(25);
 
   const loadStatus = useCallback(async () => {
     setStatusLoading(true);
@@ -896,6 +928,39 @@ export default function AgiAdmin() {
     },
     [] as { id: number; name: string }[],
   );
+
+  // ── Skill library browsing (search · kind · status · sort · group · page) ──
+  const skillKinds = useMemo(() => {
+    const set = new Set<string>();
+    skills.data.forEach((s) => set.add(s.kind || "general"));
+    return ["all", ...[...set].sort()];
+  }, [skills.data]);
+
+  const filteredSkills = useMemo(() => {
+    const q = skillQuery.trim().toLowerCase();
+    return skills.data
+      .filter((s) => (skillFilter === "all" || s.status === skillFilter))
+      .filter((s) => skillKind === "all" || s.kind === skillKind)
+      .filter((s) => !q || s.skill_id.toLowerCase().includes(q) || s.title.toLowerCase().includes(q) || s.kind.toLowerCase().includes(q))
+      .sort((a, b) => {
+        if (skillSort === "score") return b.score - a.score;
+        if (skillSort === "uses") return b.uses - a.uses;
+        return a.skill_id.localeCompare(b.skill_id);
+      });
+  }, [skills.data, skillFilter, skillKind, skillQuery, skillSort]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSkills.length / skillPageSize));
+  const pageSkills = useMemo(() => filteredSkills.slice((skillPage - 1) * skillPageSize, skillPage * skillPageSize), [filteredSkills, skillPage, skillPageSize]);
+
+  const groupedSkills = useMemo(() => {
+    const groups = new Map<string, AgiSkill[]>();
+    pageSkills.forEach((s) => {
+      const k = s.kind || "general";
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k)!.push(s);
+    });
+    return [...groups.entries()];
+  }, [pageSkills]);
 
   const start = async (eng: AgiEngagement, msg?: string) => {
     const instructionText = msg?.trim() ?? instruction.trim();
@@ -975,6 +1040,7 @@ export default function AgiAdmin() {
               { id: "approvals", label: "Tool Queue", count: toolInstalls.data.length },
               { id: "engines", label: "Engines" },
               { id: "skills", label: "Skills", count: skills.data.length },
+              { id: "prompts", label: "Prompts" },
               { id: "policies", label: "Agreement" },
               { id: "findings", label: "Findings", count: activeSession ? 1 : 0 },
               ...(isSuperadmin ? [{ id: "grants", label: "Grants", count: grants.data.length }] : []),
@@ -1155,42 +1221,83 @@ export default function AgiAdmin() {
 
           {tab === "engines" && <EngineLearningPanel />}
 
+          {tab === "prompts" && <AgiPrompts />}
+
           {tab === "skills" && (
-            <div className="space-y-2.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="space-y-3">
+              {/* Toolbar */}
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-2.5">
+                <div className="relative min-w-[220px] flex-1">
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    value={skillQuery}
+                    onChange={(e) => { setSkillQuery(e.target.value); setSkillPage(1); }}
+                    placeholder="Search skill id, title, or kind… (e.g. idor, soc, recon)"
+                    className="w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 py-1.5 pl-8 pr-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40"
+                  />
+                </div>
+                <select value={skillKind} onChange={(e) => { setSkillKind(e.target.value); setSkillPage(1); }} className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-gold-400/40">
+                  {skillKinds.map((k) => <option key={k} value={k}>{k === "all" ? "All kinds" : k}</option>)}
+                </select>
+                <select value={skillSort} onChange={(e) => setSkillSort(e.target.value as typeof skillSort)} className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-gold-400/40">
+                  <option value="score">Sort · score</option>
+                  <option value="uses">Sort · uses</option>
+                  <option value="name">Sort · name</option>
+                </select>
+                <select value={skillPageSize} onChange={(e) => { setSkillPageSize(Number(e.target.value)); setSkillPage(1); }} className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-gold-400/40">
+                  <option value={10}>10 / page</option>
+                  <option value={25}>25 / page</option>
+                  <option value={50}>50 / page</option>
+                </select>
+                <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-slate-400">
+                  <input type="checkbox" checked={skillGroup} onChange={(e) => { setSkillGroup(e.target.checked); setSkillPage(1); }} className="accent-[rgb(var(--gold-400))]" />
+                  Group by kind
+                </label>
                 <div className="flex gap-1">
                   {(["all", "candidate", "active"] as const).map((f) => (
-                    <button key={f} onClick={() => setSkillFilter(f)} className={cx("rounded-md px-2.5 py-1 text-[11px] capitalize", skillFilter === f ? "bg-phantix-800 text-gold-200" : "text-slate-500")}>{f}</button>
+                    <button key={f} onClick={() => { setSkillFilter(f); setSkillPage(1); }} className={cx("rounded-md px-2.5 py-1 text-[11px] capitalize", skillFilter === f ? "bg-phantix-800 text-gold-200" : "text-slate-500")}>{f}</button>
                   ))}
                 </div>
-                <button onClick={() => { setEditingSkill(null); setSkillOpen(true); }} className="btn-primary !px-3.5 !py-2 !text-xs"><Plus size={13} className="mr-1 inline" /> New skill</button>
+                <button onClick={() => { setEditingSkill(null); setSkillOpen(true); }} className="btn-primary !px-3 !py-1.5 !text-xs"><Plus size={13} className="mr-1 inline" /> New skill</button>
               </div>
-              {skills.loading ? <TableSkeleton rows={3} /> : skills.data.filter((s) => skillFilter === "all" || s.status === skillFilter).length === 0 ? (
-                <EmptyState icon={<Brain size={24} />} title="No skills yet" body="Skills are versioned playbooks the agent learns from. Create your first one." action={<button onClick={() => { setEditingSkill(null); setSkillOpen(true); }} className="btn-primary !text-xs"><Plus size={12} className="mr-1 inline" /> New skill</button>} />
-              ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
-                  {skills.data.filter((s) => skillFilter === "all" || s.status === skillFilter).map((s) => (
-                    <div key={s.id} className="flex flex-col rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="min-w-0 truncate font-mono text-[11px] font-semibold text-white" title={s.skill_id}>{s.skill_id}</span>
-                        <span className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[9px] text-slate-400">v{s.version}</span>
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <StatusBadge status={s.status} />
-                        <span className="chip border-phantix-600/40 bg-phantix-800/50 text-[9px] text-slate-400">{s.kind}</span>
-                      </div>
-                      <p className="mt-2 line-clamp-2 min-h-[2em] text-[11px] leading-4 text-slate-400" title={s.title}>{s.title}</p>
-                      <div className="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-2 text-[10px] text-slate-500">
-                        <span className="flex items-center gap-1"><Brain size={10} className="text-gold-400" /> {(s.score * 100).toFixed(0)}%</span>
-                        <span className="flex items-center gap-1"><Activity size={10} /> {s.uses}</span>
-                        <span className="flex items-center gap-1"><CheckCircle2 size={10} className="text-emerald-400" /> {s.successes}</span>
-                        <span className="flex items-center gap-1"><XCircle size={10} className="text-severity-critical" /> {s.failures}</span>
-                      </div>
-                      <div className="mt-2.5 flex items-center gap-1.5 border-t border-phantix-700/30 pt-2">
-                        <button onClick={() => { setEditingSkill(s); setSkillOpen(true); }} className="btn-ghost w-full !px-2 !py-1 !text-[10px]"><Pencil size={11} className="mr-1 inline" /> Edit</button>
+
+              {/* Results meta */}
+              <p className="text-[11px] text-slate-500">
+                {filteredSkills.length} skill{filteredSkills.length === 1 ? "" : "s"}
+                {skillKind !== "all" ? ` · kind: ${skillKind}` : ""}
+                {skillFilter !== "all" ? ` · status: ${skillFilter}` : ""}
+                {skillQuery.trim() ? ` · matching “${skillQuery.trim()}”` : ""}
+              </p>
+
+              {skills.loading ? <TableSkeleton rows={4} /> : filteredSkills.length === 0 ? (
+                <EmptyState icon={<Brain size={24} />} title="No skills match" body="Try clearing the search, kind, or status filters — or create a new skill." action={<button onClick={() => { setSkillQuery(""); setSkillKind("all"); setSkillFilter("all"); }} className="btn-primary !text-xs"><RefreshCw size={12} className="mr-1 inline" /> Clear filters</button>} />
+              ) : skillGroup ? (
+                <div className="space-y-4">
+                  {groupedSkills.map(([kind, list]) => (
+                    <div key={kind}>
+                      <p className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-gold-300">
+                        {kind} <span className="text-slate-500">({list.length})</span>
+                      </p>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+                        {list.map((s) => <SkillCard key={s.id} s={s} onEdit={() => { setEditingSkill(s); setSkillOpen(true); }} />)}
                       </div>
                     </div>
                   ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+                  {pageSkills.map((s) => <SkillCard key={s.id} s={s} onEdit={() => { setEditingSkill(s); setSkillOpen(true); }} />)}
+                </div>
+              )}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-phantix-700/40 bg-phantix-900/40 px-3 py-2">
+                  <p className="text-[11px] text-slate-500">Page {skillPage} of {totalPages}</p>
+                  <div className="flex items-center gap-1.5">
+                    <button disabled={skillPage <= 1} onClick={() => setSkillPage((p) => Math.max(1, p - 1))} className="btn-ghost !px-2.5 !py-1 !text-[11px] disabled:opacity-40">Prev</button>
+                    <button disabled={skillPage >= totalPages} onClick={() => setSkillPage((p) => Math.min(totalPages, p + 1))} className="btn-ghost !px-2.5 !py-1 !text-[11px] disabled:opacity-40">Next</button>
+                  </div>
                 </div>
               )}
             </div>
