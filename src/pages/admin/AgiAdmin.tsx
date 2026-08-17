@@ -24,7 +24,7 @@ import {
   agiErrorDetail, streamAgiSession, loadAgiEngineCatalog, loadAgiEngineLearning, loadAgiSessionJob, loadAgiApkAssets, trainAgiSession,
   loadAgiSessionSkillPlan,
 } from "@/lib/agi";
-import { EngineLearningPanel, EngineSnapshotCards, JobCoveragePanel, EngineCallList, AgiSkillPlanBanner, AgiToolsToProvisionStrip, SkillPlanSidePanel } from "@/components/AgiCoevolution";
+import { EngineLearningPanel, EngineSnapshotCards, JobCoveragePanel, EngineCallList, AgiSkillPlanBanner, AgiToolsToProvisionStrip, CollapseCard } from "@/components/AgiCoevolution";
 import AgiPrompts from "@/components/AgiPrompts";
 import type { AgiEngineCapability, AgiSessionJob, AgiSkillPlan, AgiToolPlan, AgiToolToProvision, EngineCallEvent } from "@/lib/types";
 import type {
@@ -141,6 +141,10 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
   const [connError, setConnError] = useState<string | null>(null);
   const [overrideDrafts, setOverrideDrafts] = useState<Record<number, string>>({});
   const [showControls, setShowControls] = useState(false);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ tools: true, engines: true, session: true });
+  const toggleSection = useCallback((key: string) => setCollapsed((p) => ({ ...p, [key]: !p[key] })), []);
+  const expandAll = useCallback(() => setCollapsed({ skills: false, coverage: false, tools: false, engines: false, session: false }), []);
+  const collapseAll = useCallback(() => setCollapsed({ skills: true, coverage: true, tools: true, engines: true, session: true }), []);
   const [job, setJob] = useState<AgiSessionJob | null>(null);
   const [engineCalls, setEngineCalls] = useState<EngineCallEvent[]>([]);
   const [skillPlan, setSkillPlan] = useState<AgiSkillPlan | null>(null);
@@ -315,17 +319,6 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
         <button onClick={() => void trainAgiSession(session.id).then(() => toast("success", "Train queued"))} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]">Train now</button>
         <span className="ml-auto font-mono text-[10px] text-slate-500">engagement #{session.engagement_id}{session.container_id ? ` · ${session.container_id}` : ""}</span>
       </div>
-      <AgiSkillPlanBanner plan={skillPlan} />
-      <AgiToolsToProvisionStrip toolPlan={toolPlan} onOpenApprovals={() => setShowControls(true)} />
-      <JobCoveragePanel sessionId={session.id} job={job} onRefresh={() => void loadAgiSessionJob(session.id).then(setJob)} />
-      <EngineCallList events={engineCalls} />
-
-      {showControls && (
-        <div className="max-h-[38%] shrink-0 overflow-y-auto border-b border-phantix-700/40">
-          <SessionControls session={session} running={running} />
-        </div>
-      )}
-
       <div className="min-h-0 flex-1">
         <AgiConsole
           running={running}
@@ -351,6 +344,28 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
           skillPlan={skillPlan}
         />
       </div>
+
+      {showControls && (
+        <div className="flex max-h-[46%] min-h-0 shrink-0 flex-col border-t border-phantix-700/40 bg-phantix-950/85">
+          <div className="flex shrink-0 items-center gap-2 border-b border-phantix-700/40 px-3 py-2">
+            <SlidersHorizontal size={13} className="text-gold-400" />
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">Controls</p>
+            <span className="ml-auto flex items-center gap-1.5">
+              <button onClick={expandAll} className="btn-ghost !px-2 !py-1 !text-[10px]">Expand all</button>
+              <button onClick={collapseAll} className="btn-ghost !px-2 !py-1 !text-[10px]">Collapse all</button>
+            </span>
+          </div>
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
+            <AgiSkillPlanBanner plan={skillPlan} open={!collapsed.skills} onToggle={() => toggleSection("skills")} />
+            <JobCoveragePanel sessionId={session.id} job={job} onRefresh={() => void loadAgiSessionJob(session.id).then(setJob)} open={!collapsed.coverage} onToggle={() => toggleSection("coverage")} />
+            <AgiToolsToProvisionStrip toolPlan={toolPlan} open={!collapsed.tools} onToggle={() => toggleSection("tools")} />
+            <EngineCallList events={engineCalls} open={!collapsed.engines} onToggle={() => toggleSection("engines")} />
+            <CollapseCard title="Session controls" icon={<ShieldCheck size={13} className="text-slate-400" />} open={!collapsed.session} onToggle={() => toggleSection("session")}>
+              <SessionControls session={session} running={running} />
+            </CollapseCard>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

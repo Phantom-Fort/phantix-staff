@@ -1,21 +1,71 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Activity, CheckCircle2, Cpu, Loader2, Star, Wrench, XCircle } from "lucide-react";
+import { Activity, Brain, CheckCircle2, ChevronRight, Cpu, Crosshair, Loader2, Star, Wrench, XCircle } from "lucide-react";
 import { Card, CardHeader, StatusBadge } from "@/components/ui";
 import { confirmAgiJob, loadAgiEngineCatalog, loadAgiEngineLearning, waiveAgiJobObjective } from "@/lib/agi";
 import type { AgiEngineCapability, AgiEngineOp, AgiSessionJob, AgiSkillPlan, AgiToolInstallRequest, AgiToolPlan, AgiToolToProvision, EngineCallEvent } from "@/lib/types";
 import { cx } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 
-export function AgiSkillPlanBanner({ plan }: { plan: AgiSkillPlan | null }) {
+export function CollapseCard({
+  title,
+  icon,
+  badge,
+  open,
+  onToggle,
+  defaultOpen = true,
+  children,
+}: {
+  title: React.ReactNode;
+  icon?: React.ReactNode;
+  badge?: React.ReactNode;
+  open?: boolean;
+  onToggle?: () => void;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [internal, setInternal] = useState(defaultOpen);
+  const isOpen = open ?? internal;
+  const toggle = () => {
+    if (onToggle) onToggle();
+    else setInternal((v) => !v);
+  };
+  return (
+    <div className="overflow-hidden rounded-xl border border-phantix-700/40 bg-phantix-900/50">
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-phantix-800/40"
+      >
+        <ChevronRight size={14} className={cx("shrink-0 text-slate-500 transition-transform duration-150", isOpen && "rotate-90")} />
+        {icon}
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{title}</span>
+        {badge}
+        <span className="ml-auto text-[10px] text-slate-500">{isOpen ? "Hide" : "Show"}</span>
+      </button>
+      {isOpen && <div className="border-t border-phantix-700/30 px-3 py-2.5">{children}</div>}
+    </div>
+  );
+}
+
+export function AgiSkillPlanBanner({ plan, open, onToggle }: { plan: AgiSkillPlan | null; open?: boolean; onToggle?: () => void }) {
   if (!plan) return null;
   const skills = plan.skills ?? [];
+  const intents = plan.intents ?? [];
   return (
-    <div className="border-b border-phantix-700/40 bg-phantix-950/80 px-3 py-2">
-      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
-        <span className="font-semibold uppercase tracking-wider text-slate-400">Skills for this objective</span>
-        {(plan.intents ?? []).map((i) => <span key={i} className="chip !px-1.5 !py-0 !text-[9px] text-gold-300">{i}</span>)}
-        {plan.objective && <span className="truncate text-[10px] text-slate-500">{plan.objective}</span>}
-      </div>
+    <CollapseCard
+      title="Skills for this objective"
+      icon={<Brain size={13} className="text-gold-400" />}
+      badge={skills.length > 0 ? <span className="chip !text-[9px] text-gold-300">{skills.length} skill{skills.length === 1 ? "" : "s"}</span> : undefined}
+      open={open}
+      onToggle={onToggle}
+    >
+      {intents.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Intents</span>
+          {intents.map((i) => <span key={i} className="chip !px-1.5 !py-0 !text-[9px] text-gold-300">{i}</span>)}
+        </div>
+      )}
+      {plan.objective && <p className="mt-1 text-[11px] leading-4 text-slate-400">{plan.objective}</p>}
       {plan.stream_message && <p className="mt-1 text-[11px] leading-4 text-slate-400">{plan.stream_message}</p>}
       {skills.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
@@ -28,26 +78,44 @@ export function AgiSkillPlanBanner({ plan }: { plan: AgiSkillPlan | null }) {
           ))}
         </div>
       )}
-    </div>
+      {skills.length === 0 && <p className="text-[11px] text-slate-600">No skills auto-matched yet — AGI will general recon and skill_search.</p>}
+    </CollapseCard>
   );
 }
 
-export function AgiToolsToProvisionStrip({ toolPlan, onOpenApprovals }: { toolPlan: AgiToolPlan | null; onOpenApprovals?: () => void }) {
+export function AgiToolsToProvisionStrip({
+  toolPlan,
+  onOpenApprovals,
+  open,
+  onToggle,
+}: {
+  toolPlan: AgiToolPlan | null;
+  onOpenApprovals?: () => void;
+  open?: boolean;
+  onToggle?: () => void;
+}) {
   const list: AgiToolToProvision[] = toolPlan?.to_provision ?? [];
   if (!toolPlan || list.length === 0) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-severity-medium/25 bg-severity-medium/5 px-3 py-2">
-      <Wrench size={12} className="text-severity-medium" />
-      <span className="text-[11px] text-amber-200">Tools needed for matched skills:</span>
-      {list.map((t) => (
-        <span key={t.tool} className={cx("chip !text-[9px]", t.required ? "border-severity-medium/40 text-severity-medium" : "border-phantix-600/40 text-slate-400")}>
-          {t.tool} <span className="opacity-70">({t.package})</span>{t.required ? " · required" : ""}
-        </span>
-      ))}
+    <CollapseCard
+      title="Tools to provision"
+      icon={<Wrench size={13} className="text-severity-medium" />}
+      badge={<span className="chip !text-[9px] text-severity-medium">{list.length}</span>}
+      open={open}
+      onToggle={onToggle}
+    >
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] text-amber-200">Tools needed for matched skills:</span>
+        {list.map((t) => (
+          <span key={t.tool} className={cx("chip !text-[9px]", t.required ? "border-severity-medium/40 text-severity-medium" : "border-phantix-600/40 text-slate-400")}>
+            {t.tool} <span className="opacity-70">({t.package})</span>{t.required ? " · required" : ""}
+          </span>
+        ))}
+      </div>
       {onOpenApprovals && (
-        <button onClick={onOpenApprovals} className="ml-auto btn-secondary !px-2.5 !py-1 !text-[10px]">Review approvals</button>
+        <button onClick={onOpenApprovals} className="mt-2 btn-secondary !px-2.5 !py-1 !text-[10px]">Review approvals</button>
       )}
-    </div>
+    </CollapseCard>
   );
 }
 
@@ -205,7 +273,19 @@ export function EngineSnapshotCards({
   );
 }
 
-export function JobCoveragePanel({ sessionId, job, onRefresh }: { sessionId: number; job: AgiSessionJob | null; onRefresh: () => void }) {
+export function JobCoveragePanel({
+  sessionId,
+  job,
+  onRefresh,
+  open,
+  onToggle,
+}: {
+  sessionId: number;
+  job: AgiSessionJob | null;
+  onRefresh: () => void;
+  open?: boolean;
+  onToggle?: () => void;
+}) {
   const { toast } = useStore();
   const [busy, setBusy] = useState(false);
   if (!job) return null;
@@ -235,17 +315,28 @@ export function JobCoveragePanel({ sessionId, job, onRefresh }: { sessionId: num
   };
 
   const pendingConfirm = job.job_status === "complete_pending_confirm";
+  const objectives = job.objectives ?? [];
+  const done = objectives.filter((o) => o.status === "done").length;
 
   return (
-    <div className="border-b border-phantix-700/40 bg-phantix-950/70 px-3 py-2">
-      <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Coverage</p>
-        <StatusBadge status={job.job_status} />
+    <CollapseCard
+      title="Coverage"
+      icon={<Crosshair size={13} className="text-gold-400" />}
+      badge={
+        <span className="flex items-center gap-1.5">
+          <StatusBadge status={job.job_status} />
+          {objectives.length > 0 && <span className="chip !text-[9px] text-slate-400">{done}/{objectives.length}</span>}
+        </span>
+      }
+      open={open}
+      onToggle={onToggle}
+    >
+      <div className="flex flex-wrap items-center gap-1.5">
         {job.active_phase && <span className="chip !text-[9px] text-gold-300">{job.active_phase}</span>}
         <span className="text-[10px] text-slate-500">{job.tools_run ?? 0} tools · {job.findings_count ?? 0} findings</span>
       </div>
-      <div className="flex flex-wrap gap-1">
-        {(job.objectives ?? []).map((o) => (
+      <div className="mt-1.5 flex flex-wrap gap-1">
+        {objectives.map((o) => (
           <button key={o.id} type="button" onClick={() => o.status !== "done" && o.status !== "waived" ? void waive(o.id) : undefined} className="chip !text-[9px]" title={o.detail}>
             {o.status === "done" ? "[x]" : o.status === "waived" ? "[~]" : o.status === "blocked" ? "[!]" : o.status === "active" ? "[…]" : "[ ]"} {o.title}
             {o.kind === "asset_coverage" && o.total ? ` ${o.covered ?? 0}/${o.total}` : ""}
@@ -259,16 +350,21 @@ export function JobCoveragePanel({ sessionId, job, onRefresh }: { sessionId: num
           <button disabled={busy} onClick={() => void confirm(false)} className="btn-ghost !px-2 !py-1 !text-[10px]">Keep open</button>
         </div>
       )}
-    </div>
+    </CollapseCard>
   );
 }
 
-export function EngineCallList({ events }: { events: EngineCallEvent[] }) {
+export function EngineCallList({ events, open, onToggle }: { events: EngineCallEvent[]; open?: boolean; onToggle?: () => void }) {
   if (events.length === 0) return null;
   return (
-    <div className="max-h-28 overflow-y-auto border-b border-phantix-700/30 px-3 py-1.5">
-      <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-slate-500">Engine calls</p>
-      <div className="space-y-0.5">
+    <CollapseCard
+      title="Engine calls"
+      icon={<Cpu size={13} className="text-slate-400" />}
+      badge={<span className="chip !text-[9px] text-slate-400">{events.length}</span>}
+      open={open}
+      onToggle={onToggle}
+    >
+      <div className="max-h-40 space-y-0.5 overflow-y-auto pr-1">
         {events.slice(-12).map((e, i) => (
           <p key={i} className="flex items-center gap-1.5 font-mono text-[10px] text-slate-400">
             {e.ok ? <CheckCircle2 size={10} className="text-emerald-400" /> : <XCircle size={10} className="text-severity-critical" />}
@@ -277,6 +373,6 @@ export function EngineCallList({ events }: { events: EngineCallEvent[] }) {
           </p>
         ))}
       </div>
-    </div>
+    </CollapseCard>
   );
 }
