@@ -575,10 +575,77 @@ export interface AgiToolInstallRequest {
   install_command: string;
   rationale: string;
   skill_id: string | null;
+  skill_id_minted?: string | null;
+  engine_id?: string | null;
   status: string;
   result_summary: string | null;
+  admin_notes?: string | null;
   created_at: string;
   decided_at: string | null;
+  installed_in_session_at?: string | null;
+  provisioned_at?: string | null;
+}
+
+export type EngineActionClass = "read" | "state_changing";
+
+export interface AgiEngineOp {
+  engine_id: string;
+  op: string;
+  action_class: EngineActionClass;
+  description: string;
+  learned_tools?: string[];
+}
+
+export interface AgiEngineCapability {
+  engine_id: string;
+  op: string;
+  score: number;
+  calls: number;
+  successes?: number;
+  failures?: number;
+  tools: string[];
+  organization_id?: number | null;
+}
+
+export interface AgiJobObjective {
+  id: string;
+  title: string;
+  status: "pending" | "active" | "done" | "waived" | "blocked";
+  kind?: string;
+  covered?: number;
+  total?: number;
+  detail?: string;
+}
+
+export interface AgiSessionJob {
+  job_status: string;
+  active_phase?: string;
+  unlocked_phases?: string[];
+  completed_phases?: string[];
+  objectives?: AgiJobObjective[];
+  tools_run?: number;
+  findings_count?: number;
+  pending_approvals?: number;
+  open_info_requests?: number;
+}
+
+export interface EngineCallEvent {
+  tool: "engine_call";
+  engine_id: string;
+  op: string;
+  ok: boolean;
+  latency_ms?: number;
+  requires_approval?: boolean;
+  result?: unknown;
+  learning?: unknown;
+  message?: string;
+}
+
+export interface AgiApkAsset {
+  id: number;
+  name: string;
+  value: string;
+  environment?: string;
 }
 
 export interface AgiFinding {

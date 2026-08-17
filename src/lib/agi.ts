@@ -14,11 +14,39 @@ import type {
   AgiStatus,
   AgiToolInstallRequest,
   AgiTranscriptChunk,
+  AgiEngineOp,
+  AgiEngineCapability,
+  AgiSessionJob,
+  AgiApkAsset,
 } from "./types";
+
+const ACTIVE_SESSION_KEY = "phantix_staff_agi_active_session";
+
+export function persistAgiSession(s: { id: number; engagement_id: number } | null): void {
+  try {
+    if (!s) localStorage.removeItem(ACTIVE_SESSION_KEY);
+    else localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({ id: s.id, engagement_id: s.engagement_id }));
+  } catch { /* ignore */ }
+}
+
+function readPersistedAgiSession(): { id: number; engagement_id: number } | null {
+  try {
+    const raw = localStorage.getItem(ACTIVE_SESSION_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as { id?: number; engagement_id?: number };
+    if (typeof p.id === "number") return { id: p.id, engagement_id: Number(p.engagement_id ?? 0) };
+  } catch { /* ignore */ }
+  return null;
+}
+
+function isLiveStatus(status: string): boolean {
+  return status === "running" || status === "provisioning" || status === "paused";
+}
 
 // ── Demo fixtures ─────────────────────────────────────────────────────────────
 const demoTx: AgiTranscriptChunk[] = [];
 let demoSeq = 0;
+let liveDemoSession: AgiSession | null = null;
 
 const demoStatus: AgiStatus = {
   enabled: true,
@@ -131,8 +159,8 @@ const demoActions: AgiAction[] = [
 ];
 
 const demoToolInstalls: AgiToolInstallRequest[] = [
-  { id: 1, session_id: 101, engagement_id: 11, organization_id: 42, tool_name: "sqlmap", package_hint: "sqlmap", install_command: "apt-get install -y sqlmap", rationale: "Missing from sandbox image", skill_id: "agi.learned.sqlmap", status: "pending_admin", result_summary: null, created_at: new Date().toISOString(), decided_at: null },
-  { id: 2, session_id: 101, engagement_id: 11, organization_id: 42, tool_name: "feroxbuster", package_hint: "feroxbuster", install_command: "apt-get install -y feroxbuster", rationale: "Directory brute-force tool", skill_id: "agi.learned.feroxbuster", status: "pending_admin", result_summary: null, created_at: new Date(Date.now() - 3600000).toISOString(), decided_at: null },
+  { id: 1, session_id: 101, engagement_id: 11, organization_id: 42, tool_name: "whatweb", package_hint: "whatweb", install_command: "apt-get install -y whatweb", rationale: "fingerprint web tech for recon", skill_id: "agi.tool.whatweb", skill_id_minted: "agi.tool.whatweb", engine_id: "scanner_engine", status: "pending_admin", result_summary: null, created_at: new Date().toISOString(), decided_at: null },
+  { id: 2, session_id: 101, engagement_id: 11, organization_id: 42, tool_name: "feroxbuster", package_hint: "feroxbuster", install_command: "apt-get install -y feroxbuster", rationale: "Directory brute-force tool", skill_id: "agi.learned.feroxbuster", engine_id: "scanner_engine", status: "pending_admin", result_summary: null, created_at: new Date(Date.now() - 3600000).toISOString(), decided_at: null },
 ];
 
 const demoSills: AgiSkill[] = [
@@ -237,6 +265,7 @@ export async function createAgiEngagement(payload: {
     max_session_minutes?: number;
     target_environment?: "staging" | "production";
     production_ack?: boolean;
+    mobile_apk_asset_id?: number;
   };
   config?: Record<string, unknown>;
 }): Promise<AgiEngagement> {
@@ -260,6 +289,7 @@ export async function createAgiEngagement(payload: {
       max_session_minutes: payload.scope.max_session_minutes,
       target_environment: payload.scope.target_environment ?? "staging",
       production_ack: payload.scope.target_environment === "production" ? (payload.scope.production_ack ?? false) : false,
+      mobile_apk_asset_id: payload.scope.mobile_apk_asset_id,
     },
   });
   return normalizeEngagement(created);
@@ -275,31 +305,71 @@ export async function patchAgiEngagement(id: number, payload: { name?: string; d
 export async function startAgiSession(
   engagementId: number,
   instruction: string,
-  opts: { autonomy?: "low" | "medium" | "high"; include_org_assets?: boolean; credentials?: { login_url: string; username: string; password: string; label?: string; otp_mode?: string } } = {},
+  opts: { autonomy?: "low" | "medium" | "high"; include_org_assets?: boolean; credentials?: { login_url: string; username: string; password: string; label?: string; otp_mode?: string }; confirm_environment?: string; mobile_apk_asset_id?: number } = {},
 ): Promise<AgiSession> {
   if (DEMO_MODE) {
     await delay(600);
     const s: AgiSession = { id: 200, engagement_id: engagementId, started_by_staff_id: 1, container_id: "agi-ctr-200", runner_session_id: "rs-200", status: "running", started_at: new Date().toISOString(), ended_at: null, teardown_reason: null, meta: {} };
     demoSeq = 0;
     demoTx.length = 0;
+    liveDemoSession = s;
+    persistAgiSession(s);
     return s;
   }
-  return api.post<AgiSession>(`/admin/agi/engagements/${engagementId}/sessions`, {
+  const started = await api.post<AgiSession>(`/admin/agi/engagements/${engagementId}/sessions`, {
     instruction,
     autonomy: opts.autonomy ?? "medium",
     include_org_assets: opts.include_org_assets ?? true,
     credentials: opts.credentials ?? undefined,
+    confirm_environment: opts.confirm_environment,
+    mobile_apk_asset_id: opts.mobile_apk_asset_id,
   });
+  persistAgiSession(started);
+  return started;
 }
 
 export async function getAgiSession(sessionId: number): Promise<AgiSession | null> {
-  if (DEMO_MODE) { await delay(150); return demoSessions[0] ?? null; }
+  if (DEMO_MODE) {
+    if (liveDemoSession && liveDemoSession.id === sessionId) return liveDemoSession;
+    await delay(150);
+    return demoSessions.find((s) => s.id === sessionId) ?? demoSessions[0] ?? null;
+  }
   try { return await api.get<AgiSession>(`/admin/agi/sessions/${sessionId}`); } catch { return null; }
 }
 
+export async function loadActiveAgiSession(): Promise<AgiSession | null> {
+  const persisted = readPersistedAgiSession();
+  if (persisted) {
+    const s = await getAgiSession(persisted.id);
+    if (s && isLiveStatus(s.status)) return s;
+    persistAgiSession(null);
+  }
+  if (DEMO_MODE) {
+    return liveDemoSession && isLiveStatus(liveDemoSession.status) ? liveDemoSession : null;
+  }
+  try {
+    const res = await api.get<AgiSession[] | { items?: AgiSession[] }>("/admin/agi/sessions?status=running,paused,provisioning");
+    const list = Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : [];
+    const live = list.find((s) => isLiveStatus(s.status)) ?? null;
+    if (live) persistAgiSession(live);
+    return live;
+  } catch {
+    return null;
+  }
+}
+
 export async function stopAgiSession(sessionId: number): Promise<AgiSession> {
-  if (DEMO_MODE) { await delay(350); return { id: sessionId, engagement_id: 11, started_by_staff_id: 1, container_id: null, runner_session_id: null, status: "stopped", started_at: new Date().toISOString(), ended_at: new Date().toISOString(), teardown_reason: "operator_stop", meta: {} }; }
-  return api.post<AgiSession>(`/admin/agi/sessions/${sessionId}/stop`);
+  if (DEMO_MODE) {
+    await delay(350);
+    if (liveDemoSession) {
+      liveDemoSession = { ...liveDemoSession, status: "stopped", ended_at: new Date().toISOString(), teardown_reason: "operator_stop" };
+    }
+    persistAgiSession(null);
+    return liveDemoSession ?? { id: sessionId, engagement_id: 11, started_by_staff_id: 1, container_id: null, runner_session_id: null, status: "stopped", started_at: new Date().toISOString(), ended_at: new Date().toISOString(), teardown_reason: "operator_stop", meta: {} };
+  }
+  const s = await api.post<AgiSession>(`/admin/agi/sessions/${sessionId}/stop`);
+  persistAgiSession(null);
+  return s;
 }
 
 // ── Session controls (login / registration / preflight / OTP / shell / jobs) ─
@@ -465,6 +535,94 @@ export async function loadAgiToolInstalls(status = "pending_admin"): Promise<Agi
   if (DEMO_MODE) { await delay(250); return demoToolInstalls; }
   const res = await api.get<{ items: AgiToolInstallRequest[] }>(`/admin/agi/tool-installs?status=${status}&limit=100`);
   return res?.items ?? [];
+}
+
+export async function loadAgiEngineCatalog(): Promise<AgiEngineOp[]> {
+  if (DEMO_MODE) {
+    await delay(200);
+    return [
+      { engine_id: "asset_engine", op: "assets.list", action_class: "read", description: "List org assets" },
+      { engine_id: "asset_engine", op: "intelligence.summary", action_class: "read", description: "Asset intelligence summary" },
+      { engine_id: "risk_engine", op: "risks.list", action_class: "read", description: "List risks" },
+      { engine_id: "scanner_engine", op: "scans.list", action_class: "read", description: "List scans" },
+      { engine_id: "scanner_engine", op: "scans.start", action_class: "state_changing", description: "Start a scan on an in-scope target" },
+      { engine_id: "vapt_engine", op: "findings.list", action_class: "read", description: "List campaign findings" },
+      { engine_id: "reporting_engine", op: "reports.list", action_class: "read", description: "List reports" },
+      { engine_id: "soc_engine", op: "detections.list", action_class: "read", description: "List detections" },
+    ];
+  }
+  try {
+    const res = await api.get<{ ok?: boolean; ops?: AgiEngineOp[] }>("/admin/agi/engines/catalog");
+    return Array.isArray(res?.ops) ? res.ops : Array.isArray(res) ? (res as unknown as AgiEngineOp[]) : [];
+  } catch { return []; }
+}
+
+export async function loadAgiEngineLearning(organizationId?: number): Promise<{ platform: AgiEngineCapability[]; organization: AgiEngineCapability[] }> {
+  if (DEMO_MODE) {
+    await delay(220);
+    const platform: AgiEngineCapability[] = [
+      { engine_id: "asset_engine", op: "assets.list", score: 0.82, calls: 120, tools: ["httpx", "whatweb"] },
+      { engine_id: "scanner_engine", op: "scans.start", score: 0.74, calls: 48, tools: ["nmap_safe"] },
+      { engine_id: "vapt_engine", op: "findings.list", score: 0.71, calls: 36, tools: [] },
+      { engine_id: "risk_engine", op: "risks.list", score: 0.66, calls: 22, tools: [] },
+    ];
+    return { platform, organization: organizationId ? platform.map((x) => ({ ...x, score: Math.max(0.4, x.score - 0.08), organization_id: organizationId })) : [] };
+  }
+  const q = organizationId ? `?organization_id=${organizationId}` : "";
+  try {
+    const res = await api.get<{ platform?: AgiEngineCapability[]; organization?: AgiEngineCapability[] }>(`/admin/agi/engines/learning${q}`);
+    return { platform: res?.platform ?? [], organization: res?.organization ?? [] };
+  } catch { return { platform: [], organization: [] }; }
+}
+
+export async function loadAgiSessionJob(sessionId: number): Promise<AgiSessionJob | null> {
+  if (DEMO_MODE) {
+    await delay(180);
+    return {
+      job_status: "in_progress",
+      active_phase: "discovery",
+      unlocked_phases: ["recon", "discovery"],
+      completed_phases: ["recon"],
+      tools_run: 4,
+      findings_count: 2,
+      pending_approvals: 1,
+      open_info_requests: 0,
+      objectives: [
+        { id: "recon-hosts", title: "Enumerate allowlisted hosts", status: "done", kind: "recon" },
+        { id: "http-surface", title: "Map HTTP surface", status: "active", kind: "asset_coverage", covered: 2, total: 4 },
+        { id: "auth-gate", title: "Propose auth verification", status: "pending", kind: "auth" },
+      ],
+    };
+  }
+  try { return await api.get<AgiSessionJob>(`/admin/agi/sessions/${sessionId}/job`); } catch { return null; }
+}
+
+export async function confirmAgiJob(sessionId: number, stop = true, notes = ""): Promise<unknown> {
+  if (DEMO_MODE) { await delay(300); return { ok: true, stop }; }
+  return api.post(`/admin/agi/sessions/${sessionId}/job/confirm`, { stop, notes });
+}
+
+export async function waiveAgiJobObjective(sessionId: number, objectiveId: string, reason: string): Promise<unknown> {
+  if (DEMO_MODE) { await delay(250); return { ok: true }; }
+  return api.post(`/admin/agi/sessions/${sessionId}/job/waive`, { objective_id: objectiveId, reason });
+}
+
+export async function trainAgiSession(sessionId: number): Promise<unknown> {
+  if (DEMO_MODE) { await delay(300); return { ok: true, minted: ["agi.learned.http-login"] }; }
+  return api.post(`/admin/agi/sessions/${sessionId}/train`);
+}
+
+export async function loadAgiApkAssets(orgId: number, environment: string): Promise<AgiApkAsset[]> {
+  if (DEMO_MODE) {
+    await delay(200);
+    return environment === "staging"
+      ? [{ id: 915, name: "Acme Staging 4.2.1-rc", value: "ng.acme.mobile.staging", environment: "staging" }]
+      : [{ id: 110, name: "Acme Mobile 4.2.1", value: "ng.acme.mobile", environment: "production" }];
+  }
+  try {
+    const res = await api.get<AgiApkAsset[] | { items?: AgiApkAsset[] }>(`/admin/agi/orgs/${orgId}/apk-assets?environment=${encodeURIComponent(environment)}`);
+    return Array.isArray(res) ? res : res?.items ?? [];
+  } catch { return []; }
 }
 
 export async function decideAgiToolInstall(requestId: number, provision: boolean, notes = ""): Promise<AgiToolInstallRequest> {

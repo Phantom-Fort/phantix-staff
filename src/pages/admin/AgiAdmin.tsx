@@ -15,14 +15,16 @@ import { cx, formatDateTime } from "@/lib/utils";
 import AgiConsole from "@/components/AgiConsole";
 import { useChatSend } from "@/lib/useChatSend";
 import {
-  loadAgiStatus, loadAgiEngagements, createAgiEngagement, patchAgiEngagement, startAgiSession, stopAgiSession,
+  loadAgiStatus, loadAgiEngagements, createAgiEngagement, patchAgiEngagement, startAgiSession, stopAgiSession, loadActiveAgiSession,
   agiChat, loadAgiTranscript, loadAgiPendingActions, decideAgiAction,
   loadAgiToolInstalls, decideAgiToolInstall, loadAgiGrants, setAgiGrant,
   loadAgiPolicies, loadAgiActivePolicy, publishAgiPolicy,
   loadAgiSkills, upsertAgiSkill, resolvedAgiSkills, loadAgiFindings, promoteAgiFinding, setAgiFindingStatus,
   setAgiCredentials, setAgiRegistration, getAgiPreflight, provideAgiInfo, provideAgiOtp, runAgiShell, listAgiJobs,
-  agiErrorDetail, streamAgiSession,
+  agiErrorDetail, streamAgiSession, loadAgiEngineCatalog, loadAgiEngineLearning, loadAgiSessionJob, loadAgiApkAssets, trainAgiSession,
 } from "@/lib/agi";
+import { EngineLearningPanel, EngineSnapshotCards, JobCoveragePanel, EngineCallList } from "@/components/AgiCoevolution";
+import type { AgiEngineCapability, AgiSessionJob, EngineCallEvent } from "@/lib/types";
 import type {
   AgiAction, AgiEngagement, AgiFinding, AgiPolicy, AgiSession, AgiSkill, AgiToolInstallRequest, AgiTranscriptChunk,
 } from "@/lib/types";
@@ -123,7 +125,7 @@ function TxLine({ t, last }: { t: AgiTranscriptChunk; last: boolean }) {
 }
 
 // ── Session terminal (live stream + transcript poll + chat + approvals) ───────
-function SessionTerminal({ session, engagement }: { session: AgiSession; engagement: AgiEngagement | null }) {
+function SessionTerminal({ session, engagement, onStopped }: { session: AgiSession; engagement: AgiEngagement | null; onStopped?: () => void }) {
   const { toast } = useStore();
   const [transcript, setTranscript] = useState<AgiTranscriptChunk[]>([]);
   const afterSeqRef = useRef(0);
@@ -137,6 +139,8 @@ function SessionTerminal({ session, engagement }: { session: AgiSession; engagem
   const [connError, setConnError] = useState<string | null>(null);
   const [overrideDrafts, setOverrideDrafts] = useState<Record<number, string>>({});
   const [showControls, setShowControls] = useState(false);
+  const [job, setJob] = useState<AgiSessionJob | null>(null);
+  const [engineCalls, setEngineCalls] = useState<EngineCallEvent[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const chatSend = useChatSend();
 
@@ -159,7 +163,11 @@ function SessionTerminal({ session, engagement }: { session: AgiSession; engagem
     const a = setInterval(async () => {
       try { setActions(await loadAgiPendingActions(session.id)); } catch { /* transient */ }
     }, 3500);
-    return () => { clearInterval(t); clearInterval(a); };
+    const j = setInterval(async () => {
+      try { setJob(await loadAgiSessionJob(session.id)); } catch { /* transient */ }
+    }, 4000);
+    void loadAgiSessionJob(session.id).then(setJob);
+    return () => { clearInterval(t); clearInterval(a); clearInterval(j); };
   }, [running, paused, session.id, poll]);
 
   // SSE live stream (staff) — appends raw terminal frames
@@ -167,10 +175,17 @@ function SessionTerminal({ session, engagement }: { session: AgiSession; engagem
     if (!running || DEMO_MODE) return;
     const controller = new AbortController();
     abortRef.current = controller;
-    void streamAgiSession(session.id, (event) => {
+    void streamAgiSession(session.id, (event, data) => {
       if (event === "token") setThinking(true);
       else if (event === "assistant_done") { setThinking(false); void poll(0); }
       else if (event === "action_pending") { void poll(0); }
+      else if (event === "engine_call") {
+        try {
+          const parsed = JSON.parse(String(data)) as EngineCallEvent;
+          setEngineCalls((prev) => [...prev.slice(-40), parsed]);
+        } catch { /* ignore */ }
+      }
+      else if (event === "job_progress") { void loadAgiSessionJob(session.id).then(setJob); }
       else if (event === "teardown") setRunning(false);
     }, controller.signal).catch(() => { /* SSE fallback: transcript poll continues */ });
     return () => controller.abort();
@@ -206,6 +221,7 @@ function SessionTerminal({ session, engagement }: { session: AgiSession; engagem
       setRunning(false);
       setThinking(false);
       toast("success", "Session stopped", s.status === "stopped" ? "Container destroyed" : s.status);
+      onStopped?.();
     } catch (e) { toast("error", "Stop failed", agiErrorDetail(e).message); }
     finally { setStopping(false); }
   };
@@ -231,8 +247,11 @@ function SessionTerminal({ session, engagement }: { session: AgiSession; engagem
       <div className="flex shrink-0 items-center gap-2 border-b border-phantix-700/40 bg-phantix-950/80 px-3 py-2">
         <button onClick={() => setShowControls((v) => !v)} className={cx("btn-ghost !px-2.5 !py-1.5 !text-[11px]", showControls && "text-gold-300")}><SlidersHorizontal size={12} className="mr-1 inline" /> Controls</button>
         <button onClick={() => void poll()} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><RefreshCw size={12} /> Refresh</button>
+        <button onClick={() => void trainAgiSession(session.id).then(() => toast("success", "Train queued"))} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]">Train now</button>
         <span className="ml-auto font-mono text-[10px] text-slate-500">engagement #{session.engagement_id}{session.container_id ? ` · ${session.container_id}` : ""}</span>
       </div>
+      <JobCoveragePanel sessionId={session.id} job={job} onRefresh={() => void loadAgiSessionJob(session.id).then(setJob)} />
+      <EngineCallList events={engineCalls} />
 
       {showControls && (
         <div className="max-h-[38%] shrink-0 overflow-y-auto border-b border-phantix-700/40">
@@ -511,8 +530,14 @@ function SessionControls({ session, running }: { session: AgiSession; running: b
 // ── Engagement create modal ───────────────────────────────────────────────────
 function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string }[]; onCreated: (e: AgiEngagement) => void }) {
   const { toast } = useStore();
-  const [form, setForm] = useState({ organization_id: orgs[0]?.id ?? 0, name: "", description: "", allowlist: "", forbidden: "dos\nransomware\ndata_exfil_bulk", roe: "", max_minutes: 120, environment: "staging" as "staging" | "production", production_ack: false });
+  const [form, setForm] = useState({ organization_id: orgs[0]?.id ?? 0, name: "", description: "", allowlist: "", forbidden: "dos\nransomware\ndata_exfil_bulk", roe: "", max_minutes: 120, environment: "staging" as "staging" | "production", production_ack: false, mobile_apk_asset_id: 0 });
   const [creating, setCreating] = useState(false);
+  const [apks, setApks] = useState<{ id: number; name: string; value: string }[]>([]);
+
+  useEffect(() => {
+    if (!form.organization_id) { setApks([]); return; }
+    void loadAgiApkAssets(form.organization_id, form.environment).then(setApks);
+  }, [form.organization_id, form.environment]);
 
   const create = async () => {
     const targets = form.allowlist.split(/[\n,]+/).map((s) => repairTarget(s.trim())).filter(Boolean);
@@ -537,6 +562,7 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
           max_session_minutes: Number(form.max_minutes) || 120,
           target_environment: form.environment,
           production_ack: form.environment === "production" ? form.production_ack : false,
+          mobile_apk_asset_id: form.mobile_apk_asset_id || undefined,
         },
         config: DEFAULT_ENG_CONFIG,
       });
@@ -546,6 +572,8 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
       const { message, code } = agiErrorDetail(e);
       if (code === "scope_empty") toast("error", "Scope required", "Add at least one target to the allowlist.");
       else if (code === "production_ack_required") toast("error", "Production requires acknowledgement", "Confirm you are authorized to test production targets.");
+      else if (code === "apk_selection_required") toast("error", "APK required for mobile", "Pick a staging/production APK only if this is a mobile pentest.");
+      else if (code === "apk_environment_mismatch") toast("error", "APK environment mismatch", "Choose an APK tagged for the selected environment.");
       else toast("error", "Create failed", message);
     } finally { setCreating(false); }
   };
@@ -572,6 +600,13 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
               <span className="capitalize">{env}</span>
             </label>
           ))}
+        </div>
+        <div className="mt-2">
+          <label className="mb-1 block text-[11px] font-semibold text-slate-400">Mobile APK (optional — only for mobile pentests)</label>
+          <select value={form.mobile_apk_asset_id} onChange={(e) => setForm({ ...form, mobile_apk_asset_id: Number(e.target.value) })} className={field}>
+            <option value={0}>None — web / network only</option>
+            {apks.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.value})</option>)}
+          </select>
         </div>
         {form.environment === "production" && (
           <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-lg border border-severity-medium/40 bg-severity-medium/10 px-3 py-2.5 text-[11px] text-slate-300">
@@ -674,6 +709,7 @@ function EngagementConfigEditor({
         ...existing,
         tools: tools.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean),
         skills: { auto_select: autoSelect, auto_select_limit: limit },
+        auto_mint_skills: existing.auto_mint_skills !== false,
         prompts: (existing.prompts && typeof existing.prompts === "object") ? existing.prompts : {},
       };
       const eng = await patchAgiEngagement(engagement.id, { config });
@@ -737,6 +773,9 @@ export default function AgiAdmin() {
   const [startCreds, setStartCreds] = useState({ login_url: "", username: "", password: "" });
   const [credsOpen, setCredsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [engineOps, setEngineOps] = useState(0);
+  const [engineTop, setEngineTop] = useState<AgiEngineCapability[]>([]);
+  const [skillFilter, setSkillFilter] = useState<"all" | "candidate" | "active">("all");
 
   const loadStatus = useCallback(async () => {
     setStatusLoading(true);
@@ -748,6 +787,27 @@ export default function AgiAdmin() {
   }, []);
 
   useEffect(() => { void loadStatus(); }, [loadStatus]);
+
+  useEffect(() => {
+    void Promise.all([loadAgiEngineCatalog(), loadAgiEngineLearning()]).then(([ops, learning]) => {
+      setEngineOps(ops.length);
+      setEngineTop([...learning.platform].sort((a, b) => b.score - a.score).slice(0, 5));
+    });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const live = await loadActiveAgiSession();
+      if (cancelled || !live) return;
+      setActiveSession(live);
+      setTab("sessions");
+      const engs = await loadAgiEngagements();
+      const match = engs.find((e) => e.id === live.engagement_id);
+      if (match) setSelectedEng(match);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const engagements = useResource<AgiEngagement[]>(
     async () => loadAgiEngagements(),
@@ -783,6 +843,7 @@ export default function AgiAdmin() {
           username: startCreds.username,
           password: startCreds.password,
         } : undefined,
+        confirm_environment: "staging",
       });
       setActiveSession(s);
       setInstruction("");
@@ -790,7 +851,14 @@ export default function AgiAdmin() {
       setCredsOpen(false);
       toast("success", "Session started", `Session #${s.id} — streaming live from the engagement container.`);
       setResolved(await resolvedAgiSkills(eng.id));
-    } catch (e) { toast("error", "Start failed", agiErrorDetail(e).message); }
+    } catch (e) {
+      const { code, message } = agiErrorDetail(e);
+      if (code === "apk_selection_required") toast("error", "Mobile APK required", "Backend classified this as a mobile pentest. Uncheck include org assets, or pick a staging APK on the engagement.");
+      else if (code === "forbidden_host_info") toast("error", "Policy blocked", "Host/server information is not available to AGI.");
+      else if (code === "forbidden_cross_org") toast("error", "Policy blocked", "Other organizations cannot be accessed.");
+      else if (code === "forbidden_direct_db") toast("error", "Policy blocked", "Direct database access is not allowed.");
+      else toast("error", "Start failed", message);
+    }
     finally { setStarting(false); }
   };
 
@@ -838,6 +906,7 @@ export default function AgiAdmin() {
               { id: "engagements", label: "Engagements", count: engagements.data.length },
               { id: "sessions", label: "Session", count: activeSession ? 1 : 0 },
               { id: "approvals", label: "Tool Queue", count: toolInstalls.data.length },
+              { id: "engines", label: "Engines" },
               { id: "skills", label: "Skills", count: skills.data.length },
               { id: "policies", label: "Agreement" },
               { id: "findings", label: "Findings", count: activeSession ? 1 : 0 },
@@ -860,6 +929,13 @@ export default function AgiAdmin() {
                     <StatCard label="Model" value={status.deepseek_only ? "DeepSeek only" : "Provider mesh"} icon={<Brain size={18} />} />
                     <StatCard label="Sandbox image" value={status.default_image.split(":")[0]} icon={<Boxes size={18} />} />
                   </div>
+                  <EngineSnapshotCards
+                    catalogCount={engineOps}
+                    top={engineTop}
+                    pendingTools={toolInstalls.data.length}
+                    onOpenQueue={() => setTab("approvals")}
+                    onOpenEngines={() => setTab("engines")}
+                  />
                   <Card>
                     <CardHeader title="Runner" subtitle={status.runner_url} action={<StatusBadge status={status.runner_reachable ? "ready" : "failed"} />} />
                     <p className="text-sm text-slate-300">{status.runner_detail || "No detail from runner."}</p>
@@ -904,9 +980,8 @@ export default function AgiAdmin() {
             </div>
           )}
 
-          {tab === "sessions" && (
+          {tab === "sessions" && !activeSession && (
             <div className="space-y-4">
-              {/* Engagement selector + instruction */}
               <Card>
                 <CardHeader title="Start a session" subtitle="An explicit instruction is required — the agent only starts after you tell it what to do." />
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -970,10 +1045,13 @@ export default function AgiAdmin() {
                 )}
               </Card>
 
-              {/* Active session terminal */}
-              {activeSession ? <SessionTerminal session={activeSession} engagement={selectedForSession} /> : (
-                <EmptyState icon={<Terminal size={24} />} title="No active session" body="Select an engagement, enter an instruction, and press Start. Read-only steps stream live; state-changing steps wait for your approval." />
-              )}
+              <EmptyState icon={<Terminal size={24} />} title="No active session" body="Select an engagement, enter an instruction, and press Start. The session keeps running if you leave this page — reopen Session to continue." />
+            </div>
+          )}
+
+          {activeSession && (
+            <div className={cx(tab === "sessions" ? "block" : "hidden")}>
+              <SessionTerminal session={activeSession} engagement={selectedForSession} onStopped={() => setActiveSession(null)} />
             </div>
           )}
 
@@ -992,9 +1070,12 @@ export default function AgiAdmin() {
                       <span className="font-mono text-sm font-semibold text-white">{req.tool_name}</span>
                       <StatusBadge status={req.status} />
                       <span className="chip text-[10px] text-slate-500">org #{req.organization_id}</span>
+                      <span className="chip font-mono text-[10px] text-gold-300">{req.engine_id ?? "scanner_engine"}</span>
+                      {(req.skill_id_minted || req.skill_id) && <span className="chip font-mono text-[10px] text-slate-400">{req.skill_id_minted || req.skill_id}</span>}
                     </div>
                     <p className="mt-1.5 text-xs text-slate-400">{req.rationale}</p>
                     {req.install_command && <p className="mt-1.5 rounded-lg bg-phantix-950/70 px-2.5 py-1.5 font-mono text-[11px] text-slate-300">{req.install_command}</p>}
+                    <p className="mt-1.5 text-[10px] text-slate-600">Session approve ≠ server provision. Confirm only after the package is in phantix-agi-sandbox.</p>
                     <div className="mt-3 flex items-center gap-2">
                       <button onClick={() => void decideInstall(req, true)} className="btn-primary !px-3 !py-1.5 !text-[11px]"><CheckCircle2 size={12} className="mr-1 inline" /> Provision server-wide</button>
                       <button onClick={() => void decideInstall(req, false)} className="btn-ghost !px-3 !py-1.5 !text-[11px] text-severity-critical hover:text-severity-critical"><XCircle size={12} className="mr-1 inline" /> Reject</button>
@@ -1005,15 +1086,22 @@ export default function AgiAdmin() {
             </div>
           )}
 
+          {tab === "engines" && <EngineLearningPanel />}
+
           {tab === "skills" && (
             <div className="space-y-2.5">
-              <div className="flex justify-end">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex gap-1">
+                  {(["all", "candidate", "active"] as const).map((f) => (
+                    <button key={f} onClick={() => setSkillFilter(f)} className={cx("rounded-md px-2.5 py-1 text-[11px] capitalize", skillFilter === f ? "bg-phantix-800 text-gold-200" : "text-slate-500")}>{f}</button>
+                  ))}
+                </div>
                 <button onClick={() => { setEditingSkill(null); setSkillOpen(true); }} className="btn-primary !px-3.5 !py-2 !text-xs"><Plus size={13} className="mr-1 inline" /> New skill</button>
               </div>
-              {skills.loading ? <TableSkeleton rows={3} /> : skills.data.length === 0 ? (
+              {skills.loading ? <TableSkeleton rows={3} /> : skills.data.filter((s) => skillFilter === "all" || s.status === skillFilter).length === 0 ? (
                 <EmptyState icon={<Brain size={24} />} title="No skills yet" body="Skills are versioned playbooks the agent learns from. Create your first one." action={<button onClick={() => { setEditingSkill(null); setSkillOpen(true); }} className="btn-primary !text-xs"><Plus size={12} className="mr-1 inline" /> New skill</button>} />
               ) : (
-                skills.data.map((s) => (
+                skills.data.filter((s) => skillFilter === "all" || s.status === skillFilter).map((s) => (
                   <div key={s.id} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-[13px] font-semibold text-white">{s.skill_id}</span>
