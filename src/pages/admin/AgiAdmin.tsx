@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   ShieldCheck, Activity, RefreshCw, Play, Square, Send, Plus, Loader2,
   Globe2, Crosshair, Boxes, FileText, Wrench, Users, Terminal, CheckCircle2, XCircle,
-  Brain, GitBranch, ShieldAlert, Eye, X, Clock, Pencil, SlidersHorizontal, BookOpen, Search,
+  Brain, GitBranch, ShieldAlert, Eye, X, Clock, Pencil, SlidersHorizontal, BookOpen, Search, ArrowLeft, Radar,
 } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatCard, StatusBadge, SeverityBadge, TableSkeleton, EmptyState, Tabs, Modal } from "@/components/ui";
 import MarkdownView from "@/components/MarkdownView";
@@ -308,7 +308,7 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
   };
 
   return (
-    <div className="flex h-[calc(100vh-220px)] min-h-[640px] flex-col overflow-hidden rounded-2xl border border-phantix-700/40">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex shrink-0 items-center gap-2 border-b border-phantix-700/40 bg-phantix-950/80 px-3 py-2">
         <button onClick={() => setShowControls((v) => !v)} className={cx("btn-ghost !px-2.5 !py-1.5 !text-[11px]", showControls && "text-gold-300")}><SlidersHorizontal size={12} className="mr-1 inline" /> Controls</button>
         <button onClick={() => void poll()} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><RefreshCw size={12} /> Refresh</button>
@@ -856,6 +856,7 @@ export default function AgiAdmin() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedEng, setSelectedEng] = useState<AgiEngagement | null>(null);
   const [activeSession, setActiveSession] = useState<AgiSession | null>(null);
+  const [sessionView, setSessionView] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [starting, setStarting] = useState(false);
   const [resolved, setResolved] = useState<AgiSkill[]>([]);
@@ -900,7 +901,7 @@ export default function AgiAdmin() {
       const live = await loadActiveAgiSession();
       if (cancelled || !live) return;
       setActiveSession(live);
-      setTab("sessions");
+      setSessionView(true);
       const engs = await loadAgiEngagements();
       const match = engs.find((e) => e.id === live.engagement_id);
       if (match) setSelectedEng(match);
@@ -978,6 +979,7 @@ export default function AgiAdmin() {
         confirm_environment: "staging",
       });
       setActiveSession(s);
+      setSessionView(true);
       setInstruction("");
       setStartCreds({ login_url: "", username: "", password: "" });
       setCredsOpen(false);
@@ -1011,6 +1013,27 @@ export default function AgiAdmin() {
   };
 
   const selectedForSession = activeSession ? engagements.data.find((e) => e.id === activeSession.engagement_id) ?? null : selectedEng;
+
+  // Full-screen live session view — fills the content area with a top back nav.
+  if (sessionView && activeSession) {
+    return (
+      <div className="flex h-[calc(100vh-6.5rem)] min-h-[640px] flex-col overflow-hidden rounded-2xl border border-phantix-700/40 bg-phantix-950">
+        <div className="flex shrink-0 items-center gap-3 border-b border-phantix-700/40 bg-phantix-950/80 px-4 py-2.5">
+          <button onClick={() => setSessionView(false)} className="btn-ghost !px-3 !py-1.5 !text-xs"><ArrowLeft size={13} className="mr-1 inline" /> Back</button>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-gold-400 to-gold-600 text-phantix-950"><Radar size={15} /></span>
+          <div className="min-w-0">
+            <p className="truncate font-display text-sm font-semibold text-white">Autonomous Pentest Agent</p>
+            <p className="truncate text-[10px] text-slate-500">session #{activeSession.id} · engagement #{activeSession.engagement_id}{activeSession.container_id ? ` · ${activeSession.container_id}` : ""}</p>
+          </div>
+          <StatusBadge status={activeSession.status} />
+          <span className="ml-auto font-mono text-[10px] text-slate-500">{selectedForSession?.name ?? ""}</span>
+        </div>
+        <div className="min-h-0 flex-1">
+          <SessionTerminal session={activeSession} engagement={selectedForSession} onStopped={() => { setActiveSession(null); setSessionView(false); }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -1182,10 +1205,11 @@ export default function AgiAdmin() {
             </div>
           )}
 
-          {activeSession && (
-            <div className={cx(tab === "sessions" ? "block" : "hidden")}>
-              <SessionTerminal session={activeSession} engagement={selectedForSession} onStopped={() => setActiveSession(null)} />
-            </div>
+          {tab === "sessions" && activeSession && !sessionView && (
+            <Card>
+              <CardHeader title="Session running" subtitle={`Session #${activeSession.id} is live on engagement #${activeSession.engagement_id}.`} action={<StatusBadge status={activeSession.status} />} />
+              <button onClick={() => setSessionView(true)} className="btn-primary !px-4 !py-2 !text-xs"><Radar size={13} className="mr-1 inline" /> Open session view</button>
+            </Card>
           )}
 
           {tab === "approvals" && (

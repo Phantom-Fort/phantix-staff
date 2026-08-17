@@ -18,6 +18,7 @@ import type {
   AgiEngineCapability,
   AgiSessionJob,
   AgiApkAsset,
+  AgiJobObjective,
   AgiSkillPlan,
   AgiSkillPlanItem,
   AgiToolToProvision,
@@ -626,7 +627,45 @@ export async function loadAgiSessionJob(sessionId: number): Promise<AgiSessionJo
       ],
     };
   }
-  try { return await api.get<AgiSessionJob>(`/admin/agi/sessions/${sessionId}/job`); } catch { return null; }
+  try {
+    const raw = await api.get<any>(`/admin/agi/sessions/${sessionId}/job`);
+    return normalizeSessionJob(raw);
+  } catch { return null; }
+}
+
+function normalizeSessionJob(raw: any): AgiSessionJob | null {
+  if (!raw) return null;
+  // Backend GET /sessions/{id}/job returns:
+  //   { ok, session_id, job_status, view: { job_status, items[], phases[], … },
+  //     objectives: { items[], phases[] }, progress: {…} }
+  // The FE checklist lives in view.items (objectives is a dict, not an array).
+  const view = (raw.view && typeof raw.view === "object" ? raw.view : raw) ?? {};
+  const items = Array.isArray(view.items) ? view.items : [];
+  const objectives: AgiJobObjective[] = items.map((it: any) => {
+    const cov = it?.coverage && typeof it.coverage === "object" ? it.coverage : {};
+    const status = String(it?.status ?? "pending");
+    return {
+      id: String(it?.id ?? ""),
+      title: String(it?.description ?? it?.title ?? it?.id ?? "objective"),
+      status: (status === "satisfied" ? "done" : status === "waived" ? "waived" : status === "blocked" ? "blocked" : status === "active" ? "active" : "pending") as AgiJobObjective["status"],
+      kind: String(it?.type ?? ""),
+      covered: cov.covered != null ? Number(cov.covered) : undefined,
+      total: cov.total != null ? Number(cov.total) : undefined,
+      detail: String(it?.waive_reason ?? it?.note ?? ""),
+      required: it?.required != null ? Boolean(it.required) : undefined,
+    };
+  });
+  return {
+    job_status: String(view.job_status ?? raw.job_status ?? "unknown"),
+    active_phase: view.active_phase != null ? String(view.active_phase) : undefined,
+    unlocked_phases: Array.isArray(view.unlocked_phases) ? view.unlocked_phases.map(String) : undefined,
+    completed_phases: Array.isArray(view.completed_phases) ? view.completed_phases.map(String) : undefined,
+    tools_run: view.tools_run != null ? Number(view.tools_run) : undefined,
+    findings_count: view.findings_count != null ? Number(view.findings_count) : undefined,
+    pending_approvals: view.pending_approvals != null ? Number(view.pending_approvals) : undefined,
+    open_info_requests: view.open_info_requests != null ? Number(view.open_info_requests) : undefined,
+    objectives,
+  };
 }
 
 export async function loadAgiSessionSkillPlan(sessionId: number): Promise<{ skill_plan: AgiSkillPlan | null; tools_to_provision: AgiToolToProvision[]; selected_skills: AgiSelectedSkillChip[] }> {

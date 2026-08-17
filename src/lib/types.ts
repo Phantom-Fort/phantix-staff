@@ -615,6 +615,7 @@ export interface AgiJobObjective {
   covered?: number;
   total?: number;
   detail?: string;
+  required?: boolean;
 }
 
 export interface AgiSessionJob {
