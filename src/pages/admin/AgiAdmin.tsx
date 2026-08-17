@@ -12,8 +12,10 @@ import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
 import { api, DEMO_MODE } from "@/lib/api";
 import { cx, formatDateTime } from "@/lib/utils";
+import AgiConsole from "@/components/AgiConsole";
+import { useChatSend } from "@/lib/useChatSend";
 import {
-  loadAgiStatus, loadAgiEngagements, createAgiEngagement, startAgiSession, stopAgiSession,
+  loadAgiStatus, loadAgiEngagements, createAgiEngagement, patchAgiEngagement, startAgiSession, stopAgiSession,
   agiChat, loadAgiTranscript, loadAgiPendingActions, decideAgiAction,
   loadAgiToolInstalls, decideAgiToolInstall, loadAgiGrants, setAgiGrant,
   loadAgiPolicies, loadAgiActivePolicy, publishAgiPolicy,
@@ -29,7 +31,7 @@ import type {
 // rules of engagement, and instructions are never cramped into a fixed box.
 function AutoGrow(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { minRows?: number }) {
   const ref = useRef<HTMLTextAreaElement>(null);
-  const { minRows = 3, className, value, ...rest } = props;
+  const { minRows = 3, className, value, style, ...rest } = props;
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -37,7 +39,64 @@ function AutoGrow(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { m
     const min = (minRows ?? 3) * 20 + 16;
     el.style.height = `${Math.max(min, el.scrollHeight)}px`;
   }, [value, minRows]);
-  return <textarea ref={ref} value={value} className={className} style={{ resize: "vertical", overflow: "hidden" }} {...rest} />;
+  return <textarea ref={ref} {...rest} value={value} className={className} style={{ resize: "vertical", overflow: "hidden", ...style }} />;
+}
+
+const DEFAULT_ENG_CONFIG: Record<string, unknown> = {
+  prompts: {},
+  tools: ["httpx", "nmap_safe", "nuclei_safe"],
+  skills: { auto_select: true, auto_select_limit: 6 },
+};
+
+function repairTarget(raw: string): string {
+  return raw
+    .replace(/^(https?:)\s*\/+(?!\/)/i, "$1//")
+    .replace(/^(https?:)\/(?!\/)/i, "$1//");
+}
+
+function AllowlistEditor({
+  value,
+  onChange,
+  fieldClass,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  fieldClass: string;
+}) {
+  const lines = value.length === 0 ? [""] : value.split("\n");
+  const setLine = (i: number, next: string) => {
+    const copy = [...lines];
+    copy[i] = repairTarget(next);
+    onChange(copy.join("\n"));
+  };
+  return (
+    <div className="space-y-1.5">
+      {lines.map((line, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <input
+            type="text"
+            inputMode="url"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            value={line}
+            onChange={(e) => setLine(i, e.target.value)}
+            placeholder={i === 0 ? "https://app.example.com" : "https://…"}
+            className={cx(fieldClass, "font-mono text-[11px]")}
+          />
+          {lines.length > 1 && (
+            <button type="button" onClick={() => onChange(lines.filter((_, idx) => idx !== i).join("\n"))} className="rounded-lg p-2 text-slate-500 hover:bg-phantix-800/70 hover:text-slate-200" aria-label="Remove target">
+              <X size={13} />
+            </button>
+          )}
+        </div>
+      ))}
+      <button type="button" onClick={() => onChange([...lines, ""].join("\n"))} className="btn-ghost !px-2 !py-1 !text-[11px]">
+        <Plus size={12} className="mr-1 inline" /> Add target
+      </button>
+    </div>
+  );
 }
 
 // ── Terminal line renderer ────────────────────────────────────────────────────
@@ -64,21 +123,22 @@ function TxLine({ t, last }: { t: AgiTranscriptChunk; last: boolean }) {
 }
 
 // ── Session terminal (live stream + transcript poll + chat + approvals) ───────
-function SessionTerminal({ session }: { session: AgiSession }) {
+function SessionTerminal({ session, engagement }: { session: AgiSession; engagement: AgiEngagement | null }) {
   const { toast } = useStore();
   const [transcript, setTranscript] = useState<AgiTranscriptChunk[]>([]);
   const afterSeqRef = useRef(0);
   const [actions, setActions] = useState<AgiAction[]>([]);
   const [input, setInput] = useState("");
   const [running, setRunning] = useState(session.status === "running" || session.status === "provisioning");
+  const [paused, setPaused] = useState(false);
   const [stopping, setStopping] = useState(false);
-  const [sending, setSending] = useState(false);
   const [deciding, setDeciding] = useState<number | null>(null);
-  const [liveLine, setLiveLine] = useState<string>("");
+  const [thinking, setThinking] = useState(false);
+  const [connError, setConnError] = useState<string | null>(null);
+  const [overrideDrafts, setOverrideDrafts] = useState<Record<number, string>>({});
   const [showControls, setShowControls] = useState(false);
-  const [view, setView] = useState<"chat" | "terminal">("chat");
-  const endRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const chatSend = useChatSend();
 
   const poll = useCallback(async (initialSeq = 0) => {
     try {
@@ -86,50 +146,57 @@ function SessionTerminal({ session }: { session: AgiSession }) {
       if (chunks.length) {
         setTranscript((prev) => [...prev, ...chunks]);
         afterSeqRef.current = Math.max(afterSeqRef.current, ...chunks.map((c) => c.seq));
+        setThinking(false);
       }
       if (initialSeq === 0 && chunks.length) afterSeqRef.current = Math.max(afterSeqRef.current, ...chunks.map((c) => c.seq));
     } catch { /* transient */ }
   }, [session.id]);
 
-  // Transcript poll fallback + pending approvals while running
   useEffect(() => {
-    if (!running) return;
+    if (!running || paused) return;
     void poll(0);
-    const t = setInterval(() => void poll(), 2500);
+    const t = setInterval(() => void poll(), DEMO_MODE ? 350 : 2500);
     const a = setInterval(async () => {
       try { setActions(await loadAgiPendingActions(session.id)); } catch { /* transient */ }
     }, 3500);
     return () => { clearInterval(t); clearInterval(a); };
-  }, [running, session.id, poll]);
+  }, [running, paused, session.id, poll]);
 
   // SSE live stream (staff) — appends raw terminal frames
   useEffect(() => {
     if (!running || DEMO_MODE) return;
     const controller = new AbortController();
     abortRef.current = controller;
-    void streamAgiSession(session.id, (event, data) => {
-      if (event === "token") setLiveLine((prev) => prev + data);
-      else if (event === "assistant_done") { if (liveLine) setLiveLine(""); }
+    void streamAgiSession(session.id, (event) => {
+      if (event === "token") setThinking(true);
+      else if (event === "assistant_done") { setThinking(false); void poll(0); }
       else if (event === "action_pending") { void poll(0); }
-      else if (event === "ping") { /* keep-alive */ }
       else if (event === "teardown") setRunning(false);
     }, controller.signal).catch(() => { /* SSE fallback: transcript poll continues */ });
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, session.id]);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [transcript, liveLine, actions]);
-
-  const send = async () => {
-    const msg = input.trim();
-    if (!msg || !running) return;
-    setInput("");
+  const dispatchChat = async (msg: string) => {
+    if (!running || paused) return;
+    setConnError(null);
     setTranscript((prev) => [...prev, { seq: -1, role: "operator", content: msg, meta: null, created_at: new Date().toISOString() }]);
-    setSending(true);
+    setThinking(true);
     try {
       await agiChat(session.id, msg);
-    } catch (e) { toast("error", "Chat failed", agiErrorDetail(e).message); }
-    finally { setSending(false); }
+    } catch (e) {
+      setConnError(agiErrorDetail(e).message);
+      toast("error", "Chat failed", agiErrorDetail(e).message);
+    } finally {
+      setThinking(false);
+    }
+  };
+
+  const send = () => {
+    const msg = input.trim();
+    if (!msg || !running || paused) return;
+    setInput("");
+    chatSend.requestSend(msg, dispatchChat);
   };
 
   const stop = async () => {
@@ -137,165 +204,65 @@ function SessionTerminal({ session }: { session: AgiSession }) {
     try {
       const s = await stopAgiSession(session.id);
       setRunning(false);
-      setLiveLine("");
+      setThinking(false);
       toast("success", "Session stopped", s.status === "stopped" ? "Container destroyed" : s.status);
     } catch (e) { toast("error", "Stop failed", agiErrorDetail(e).message); }
     finally { setStopping(false); }
   };
 
-  const decide = async (action: AgiAction, approve: boolean) => {
+  const decide = async (action: AgiAction, approve: boolean, overrideCmd?: string) => {
     setDeciding(action.id);
     try {
-      await decideAgiAction(action.id, approve, approve ? "Within ROE" : "", true);
+      const notes = !approve ? "" : overrideCmd && overrideCmd !== action.proposed_command ? `Override: ${overrideCmd}` : "Within ROE";
+      await decideAgiAction(action.id, approve, notes, true);
       setActions((prev) => prev.filter((x) => x.id !== action.id));
+      setOverrideDrafts((prev) => {
+        const next = { ...prev };
+        delete next[action.id];
+        return next;
+      });
       toast("success", approve ? "Action approved" : "Action rejected");
     } catch (e) { toast("error", "Decision failed", agiErrorDetail(e).message); }
     finally { setDeciding(null); }
   };
 
   return (
-    <div className="flex h-[68vh] flex-col overflow-hidden rounded-2xl border border-phantix-700/40">
-      {/* Chat header */}
-      <div className="flex items-center gap-2.5 border-b border-phantix-700/40 bg-phantix-950/80 px-4 py-3">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 text-phantix-950"><Brain size={17} /></span>
-        <div className="min-w-0">
-          <p className="font-display text-sm font-semibold text-white">Autonomous Pentest Agent</p>
-          <p className="text-[10px] text-slate-500">session #{session.id} · engagement #{session.engagement_id}{session.container_id ? ` · ${session.container_id}` : ""}</p>
-        </div>
-        <StatusBadge status={running ? "running" : session.status} />
-        <div className="ml-auto flex items-center gap-1.5">
-          <div className="flex items-center rounded-lg border border-phantix-700/40 bg-phantix-950/50 p-0.5">
-            <button onClick={() => setView("chat")} className={cx("rounded-md px-2.5 py-1 text-[11px] font-medium", view === "chat" ? "bg-gold-400/15 text-gold-300" : "text-slate-500 hover:text-slate-300")}>Chat</button>
-            <button onClick={() => setView("terminal")} className={cx("rounded-md px-2.5 py-1 text-[11px] font-medium", view === "terminal" ? "bg-gold-400/15 text-gold-300" : "text-slate-500 hover:text-slate-300")}>Terminal</button>
-          </div>
-          <button onClick={() => setShowControls((v) => !v)} className={cx("btn-ghost !px-2.5 !py-1.5 !text-[11px]", showControls && "text-gold-300")}><SlidersHorizontal size={12} className="mr-1 inline" /> Controls</button>
-          <button onClick={() => void poll()} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><RefreshCw size={12} /> Refresh</button>
-          <button onClick={() => void stop()} disabled={stopping} className="btn-secondary !px-3 !py-1.5 !text-[11px]"><Square size={12} className="mr-1 inline" /> {stopping ? "Stopping..." : "Stop"}</button>
-        </div>
+    <div className="flex h-[calc(100vh-220px)] min-h-[640px] flex-col overflow-hidden rounded-2xl border border-phantix-700/40">
+      <div className="flex shrink-0 items-center gap-2 border-b border-phantix-700/40 bg-phantix-950/80 px-3 py-2">
+        <button onClick={() => setShowControls((v) => !v)} className={cx("btn-ghost !px-2.5 !py-1.5 !text-[11px]", showControls && "text-gold-300")}><SlidersHorizontal size={12} className="mr-1 inline" /> Controls</button>
+        <button onClick={() => void poll()} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><RefreshCw size={12} /> Refresh</button>
+        <span className="ml-auto font-mono text-[10px] text-slate-500">engagement #{session.engagement_id}{session.container_id ? ` · ${session.container_id}` : ""}</span>
       </div>
 
-      {/* Chat transcript — bubbles like the main app */}
-      {view === "chat" ? (
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-phantix-950/40 p-4">
-        {transcript.length === 0 && !liveLine && (
-          <p className="py-8 text-center text-[11px] text-slate-600">Connecting to the agent…</p>
-        )}
-        {transcript.map((t, i) => {
-          const isOperator = t.role === "operator";
-          const isTool = t.role === "tool";
-          const isSystem = t.role === "system";
-          if (isOperator) {
-            return (
-              <div key={i} className="flex justify-end">
-                <div className="max-w-[82%] rounded-2xl rounded-br-sm border border-gold-400/25 bg-gold-400/15 px-3.5 py-2 text-[13px] leading-6 text-gold-100">
-                  {t.content}
-                </div>
-              </div>
-            );
-          }
-          if (isSystem) {
-            return (
-              <div key={i} className="flex justify-center">
-                <span className="max-w-[90%] rounded-full bg-phantix-800/50 px-3 py-1 text-center font-mono text-[10px] leading-4 text-slate-500">{t.content}</span>
-              </div>
-            );
-          }
-          if (isTool) {
-            return (
-              <div key={i} className="flex justify-start">
-                <div className="max-w-[82%] rounded-2xl border border-phantix-700/40 bg-phantix-950/70 px-3.5 py-2">
-                  <span className="flex items-center gap-1.5 font-mono text-[10px] text-gold-400">
-                    <Terminal size={11} /> {String((t.meta as any)?.tool ?? "tool")}
-                  </span>
-                  <p className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-slate-300">{t.content}</p>
-                </div>
-              </div>
-            );
-          }
-          // assistant
-          return (
-            <div key={i} className="flex justify-start">
-              <div className="max-w-[85%] rounded-2xl rounded-tl-sm border border-phantix-700/40 bg-phantix-800/60 px-3.5 py-2.5 text-[13px] leading-6 text-slate-200">
-                <MarkdownView source={t.content} />
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Live streaming bubble — typing + thinking state */}
-        {running && (
-          <div className="flex justify-start">
-            <div className="max-w-[85%] min-w-[220px] rounded-2xl rounded-tl-sm border border-phantix-700/40 bg-phantix-800/60 px-3.5 py-2.5 text-[13px] leading-6 text-slate-200">
-              {liveLine ? (
-                <>
-                  <p className="whitespace-pre-wrap">{liveLine}<span className="ml-0.5 inline-block h-3.5 w-[7px] animate-pulse rounded-sm bg-gold-400/70 align-middle" /></p>
-                  <p className="mt-1 flex items-center gap-1.5 text-[10px] text-gold-300"><Loader2 size={11} className="animate-spin" /> agent is responding…</p>
-                </>
-              ) : (
-                <p className="flex items-center gap-2 text-[11px] text-slate-400">
-                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold-400" /> agent is thinking…</span>
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-        <div ref={endRef} />
-      </div>
-      ) : (
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 font-mono">
-        {transcript.length === 0 && <p className="py-8 text-center text-[11px] text-slate-600">Connecting to engagement container…</p>}
-        {transcript.map((t, i) => <TxLine key={i} t={t} last={i === transcript.length - 1 && running} />)}
-        {liveLine && running && (
-          <div className="border border-phantix-700/40 bg-phantix-950/70 px-3 py-2 font-mono text-[11px] text-slate-300">
-            {liveLine}<span className="ml-0.5 inline-block h-3 w-[6px] animate-pulse rounded-sm bg-gold-400/70 align-middle" />
-          </div>
-        )}
-        <div ref={endRef} />
-      </div>
-      )}
-
-      {/* Pending approvals */}
-      {actions.length > 0 && (
-        <div className="max-h-[32%] space-y-2 overflow-y-auto border-t border-phantix-700/40 bg-phantix-950/70 p-3">
-          <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-severity-medium"><ShieldCheck size={11} /> Awaiting approval ({actions.length})</p>
-          {actions.map((a) => (
-            <div key={a.id} className="rounded-xl border border-severity-medium/30 bg-severity-medium/5 p-3">
-              <div className="flex items-start gap-2">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-severity-medium/15 text-severity-medium"><ShieldCheck size={13} /></span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-amber-200">{a.action_type === "tool_install" ? "Tool install (container only)" : "State-changing step"}</p>
-                  <p className="mt-1 rounded-lg bg-phantix-950/70 px-2.5 py-1.5 font-mono text-[11px] text-slate-200">{a.proposed_command}</p>
-                  {a.rationale && <p className="mt-1.5 text-[11px] text-slate-400">{a.rationale}</p>}
-                  <div className="mt-2 flex items-center gap-2">
-                    <button onClick={() => void decide(a, true)} disabled={deciding === a.id} className="btn-primary !px-2.5 !py-1.5 !text-[11px]"><CheckCircle2 size={12} className="mr-1 inline" /> Approve</button>
-                    <button onClick={() => void decide(a, false)} disabled={deciding === a.id} className="btn-ghost !px-2.5 !py-1.5 !text-[11px] text-severity-critical hover:text-severity-critical"><XCircle size={12} className="mr-1 inline" /> Reject</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+      {showControls && (
+        <div className="max-h-[38%] shrink-0 overflow-y-auto border-b border-phantix-700/40">
+          <SessionControls session={session} running={running} />
         </div>
       )}
 
-      {/* Session controls (preflight / auth / otp / shell) */}
-      {showControls && <SessionControls session={session} running={running} />}
-
-      {/* Composer */}
-      <div className="border-t border-phantix-700/40 bg-phantix-950/60 p-3">
-        <div className="flex items-center gap-2 rounded-xl border border-phantix-700/50 bg-phantix-950/70 px-3 py-2 focus-within:border-gold-400/40">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) void send(); }}
-            placeholder={running ? "Further operator instruction…" : "Session stopped"}
-            disabled={!running}
-            className="flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500 disabled:opacity-50"
-          />
-          <button onClick={() => void send()} disabled={!running || !input.trim() || sending} className="btn-primary !px-3 !py-1.5 !text-xs">
-            {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-          </button>
-        </div>
-        <p className="mt-2 flex items-center gap-1.5 text-[10px] text-slate-600"><ShieldCheck size={10} /> Read-only steps stream live · state-changing steps wait for your approval · container destroyed on stop</p>
+      <div className="min-h-0 flex-1">
+        <AgiConsole
+          running={running}
+          paused={paused}
+          onTogglePause={() => setPaused((v) => !v)}
+          stopping={stopping}
+          onStop={() => void stop()}
+          session={session}
+          engagement={engagement}
+          transcript={transcript}
+          actions={actions}
+          actionBusy={deciding}
+          onDecide={(a, ok, cmd) => void decide(a, ok, cmd)}
+          thinking={thinking}
+          connError={connError}
+          instruction={input}
+          onInstruction={setInput}
+          onSend={send}
+          sendHint={chatSend.hint}
+          policyBanner={null}
+          overrideDrafts={overrideDrafts}
+          onOverrideDraft={(id, cmd) => setOverrideDrafts((prev) => ({ ...prev, [id]: cmd }))}
+        />
       </div>
     </div>
   );
@@ -548,7 +515,7 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
   const [creating, setCreating] = useState(false);
 
   const create = async () => {
-    const targets = form.allowlist.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+    const targets = form.allowlist.split(/[\n,]+/).map((s) => repairTarget(s.trim())).filter(Boolean);
     if (!form.name.trim() || targets.length === 0 || !form.organization_id) {
       toast("error", "Organization, name and at least one target are required");
       return;
@@ -571,6 +538,7 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
           target_environment: form.environment,
           production_ack: form.environment === "production" ? form.production_ack : false,
         },
+        config: DEFAULT_ENG_CONFIG,
       });
       toast("success", "Engagement created", eng.name);
       onCreated(eng);
@@ -614,7 +582,7 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
       </div>
       <div>
         <label className="mb-1 block text-[11px] font-semibold text-slate-400">Target allowlist (immutable after create)</label>
-        <AutoGrow value={form.allowlist} onChange={(e) => setForm({ ...form, allowlist: e.target.value })} minRows={4} placeholder={"203.0.113.10\napp.acme-lab.example\nhttps://app.acme-lab.example"} className={cx(field, "font-mono text-[11px]")} />
+        <AllowlistEditor value={form.allowlist} onChange={(allowlist) => setForm({ ...form, allowlist })} fieldClass={field} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -682,7 +650,73 @@ function FindingsPanel({ sessionId }: { sessionId: number }) {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+function EngagementConfigEditor({
+  engagement,
+  onSaved,
+}: {
+  engagement: AgiEngagement;
+  onSaved: (e: AgiEngagement) => void;
+}) {
+  const { toast } = useStore();
+  const existing = (engagement.config && Object.keys(engagement.config).length > 0)
+    ? engagement.config
+    : DEFAULT_ENG_CONFIG;
+  const [tools, setTools] = useState(() => (Array.isArray(existing.tools) ? (existing.tools as string[]).join(", ") : "httpx, nmap_safe, nuclei_safe"));
+  const skills = (existing.skills && typeof existing.skills === "object") ? existing.skills as Record<string, unknown> : {};
+  const [autoSelect, setAutoSelect] = useState(skills.auto_select !== false);
+  const [limit, setLimit] = useState(Number(skills.auto_select_limit ?? 6));
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const config = {
+        ...existing,
+        tools: tools.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean),
+        skills: { auto_select: autoSelect, auto_select_limit: limit },
+        prompts: (existing.prompts && typeof existing.prompts === "object") ? existing.prompts : {},
+      };
+      const eng = await patchAgiEngagement(engagement.id, { config });
+      toast("success", "Config saved", `${(config.tools as string[]).length} tools`);
+      onSaved({ ...engagement, ...eng, config });
+    } catch (e) {
+      toast("error", "Config save failed", agiErrorDetail(e).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Config</p>
+      <div className="mt-1.5 space-y-2 rounded-lg border border-phantix-700/40 bg-phantix-950/60 p-3">
+        <div>
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Tools</label>
+          <input
+            value={tools}
+            onChange={(e) => setTools(e.target.value)}
+            placeholder="httpx, nmap_safe, nuclei_safe"
+            className="w-full rounded-lg border border-phantix-700/50 bg-phantix-900/60 px-3 py-2 font-mono text-[11px] text-slate-200 outline-none focus:border-gold-400/40"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
+            <input type="checkbox" checked={autoSelect} onChange={(e) => setAutoSelect(e.target.checked)} className="accent-[rgb(var(--gold-400))]" />
+            Auto-select skills
+          </label>
+          <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
+            Limit
+            <input type="number" min={1} max={20} value={limit} onChange={(e) => setLimit(Number(e.target.value) || 6)} className="w-16 rounded-lg border border-phantix-700/50 bg-phantix-900/60 px-2 py-1 font-mono text-[11px] text-slate-200 outline-none" />
+          </label>
+          <button type="button" onClick={() => void save()} disabled={saving} className="ml-auto btn-secondary !px-2.5 !py-1 !text-[11px]">
+            {saving ? <Loader2 size={11} className="mr-1 inline animate-spin" /> : <SlidersHorizontal size={11} className="mr-1 inline" />} Save config
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AgiAdmin() {
   const { toast, isSuperadmin, isAgiAdmin } = useStore();
   const [tab, setTab] = useState("status");
@@ -690,6 +724,7 @@ export default function AgiAdmin() {
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [selectedEng, setSelectedEng] = useState<AgiEngagement | null>(null);
   const [activeSession, setActiveSession] = useState<AgiSession | null>(null);
   const [instruction, setInstruction] = useState("");
@@ -853,13 +888,13 @@ export default function AgiAdmin() {
                       </div>
                       {e.description && <p className="mt-1 text-xs text-slate-400">{e.description}</p>}
                       <div className="mt-2 flex flex-wrap gap-1.5">
-                        {e.scope_definition.target_allowlist.map((t) => (
-                          <span key={t} className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[10px] text-slate-400">{t}</span>
+                        {(e.scope_definition?.target_allowlist ?? []).map((t) => (
+                          <span key={t} className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[10px] text-slate-400">{repairTarget(t)}</span>
                         ))}
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <button onClick={() => setSelectedEng(e)} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><Eye size={12} className="mr-1 inline" /> Detail</button>
-                        <button onClick={() => setTab("sessions")} className="btn-secondary !px-2.5 !py-1.5 !text-[11px]"><Play size={12} className="mr-1 inline" /> Run session</button>
+                        <button onClick={() => { setSelectedEng(e); setDetailOpen(true); }} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><Eye size={12} className="mr-1 inline" /> Detail</button>
+                        <button onClick={() => { setSelectedEng(e); setDetailOpen(false); setTab("sessions"); }} className="btn-secondary !px-2.5 !py-1.5 !text-[11px]"><Play size={12} className="mr-1 inline" /> Run session</button>
                         {e.scope_definition.max_session_minutes && <span className="ml-auto flex items-center gap-1 text-[10px] text-slate-500"><Clock size={10} /> {e.scope_definition.max_session_minutes} min max</span>}
                       </div>
                     </motion.div>
@@ -936,7 +971,7 @@ export default function AgiAdmin() {
               </Card>
 
               {/* Active session terminal */}
-              {activeSession ? <SessionTerminal session={activeSession} /> : (
+              {activeSession ? <SessionTerminal session={activeSession} engagement={selectedForSession} /> : (
                 <EmptyState icon={<Terminal size={24} />} title="No active session" body="Select an engagement, enter an instruction, and press Start. Read-only steps stream live; state-changing steps wait for your approval." />
               )}
             </div>
@@ -1065,7 +1100,7 @@ export default function AgiAdmin() {
       </Modal>
 
       {/* Engagement detail modal */}
-      <Modal open={Boolean(selectedEng && !activeSession)} onClose={() => setSelectedEng(null)} title="Engagement detail" wide>
+      <Modal open={Boolean(detailOpen && selectedEng && !activeSession)} onClose={() => setDetailOpen(false)} title="Engagement detail" wide>
         {selectedEng && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -1077,30 +1112,28 @@ export default function AgiAdmin() {
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Target allowlist</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {selectedEng.scope_definition.target_allowlist.map((t) => <span key={t} className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[11px] text-slate-300">{t}</span>)}
+                {(selectedEng.scope_definition?.target_allowlist ?? []).map((t) => <span key={t} className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[11px] text-slate-300">{repairTarget(t)}</span>)}
               </div>
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Forbidden actions</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {selectedEng.scope_definition.forbidden_actions.map((t) => <span key={t} className="chip border-severity-critical/30 bg-severity-critical/10 font-mono text-[11px] text-severity-critical">{t}</span>)}
+                {(selectedEng.scope_definition?.forbidden_actions ?? []).map((t) => <span key={t} className="chip border-severity-critical/30 bg-severity-critical/10 font-mono text-[11px] text-severity-critical">{t}</span>)}
               </div>
             </div>
-            {selectedEng.scope_definition.rules_of_engagement && (
+            {selectedEng.scope_definition?.rules_of_engagement && (
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Rules of engagement</p>
                 <p className="mt-1.5 rounded-lg bg-phantix-950/60 p-3 text-xs leading-5 text-slate-300">{selectedEng.scope_definition.rules_of_engagement}</p>
               </div>
             )}
-            {selectedEng.config && Object.keys(selectedEng.config).length > 0 && (
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Config</p>
-                <pre className="mt-1.5 overflow-x-auto rounded-lg bg-phantix-950/60 p-3 text-[11px] text-slate-400">{JSON.stringify(selectedEng.config, null, 2)}</pre>
-              </div>
-            )}
+            <EngagementConfigEditor
+              engagement={selectedEng}
+              onSaved={(eng) => { setSelectedEng(eng); engagements.refresh(); }}
+            />
             <div className="flex items-center justify-between border-t border-phantix-700/40 pt-3">
               <p className="text-[11px] text-slate-500">Created {formatDateTime(selectedEng.created_at)}</p>
-              <button onClick={() => { setTab("sessions"); }} className="btn-primary !px-3 !py-1.5 !text-[11px]"><Play size={12} className="mr-1 inline" /> Run session</button>
+              <button onClick={() => { setDetailOpen(false); setTab("sessions"); }} className="btn-primary !px-3 !py-1.5 !text-[11px]"><Play size={12} className="mr-1 inline" /> Run session</button>
             </div>
           </div>
         )}

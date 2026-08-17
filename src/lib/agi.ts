@@ -196,10 +196,34 @@ export async function setAgiGrant(staffId: number, agiAdmin: boolean): Promise<a
 }
 
 // ── Engagements ───────────────────────────────────────────────────────────────
+function repairStoredTarget(raw: string): string {
+  return String(raw)
+    .replace(/^(https?:)\s*\/+(?!\/)/i, "$1//")
+    .replace(/^(https?:)\/(?!\/)/i, "$1//");
+}
+
+function normalizeEngagement(raw: AgiEngagement): AgiEngagement {
+  const scope = raw.scope_definition ?? (raw as unknown as { scope?: AgiEngagement["scope_definition"] }).scope ?? {
+    target_allowlist: [],
+    forbidden_actions: [],
+  };
+  return {
+    ...raw,
+    scope_definition: {
+      ...scope,
+      target_allowlist: (scope.target_allowlist ?? []).map(repairStoredTarget),
+      forbidden_actions: scope.forbidden_actions ?? [],
+    },
+    config: raw.config && Object.keys(raw.config).length > 0
+      ? raw.config
+      : { prompts: {}, tools: ["httpx", "nmap_safe", "nuclei_safe"], skills: { auto_select: true, auto_select_limit: 6 } },
+  };
+}
+
 export async function loadAgiEngagements(): Promise<AgiEngagement[]> {
-  if (DEMO_MODE) { await delay(250); return demoEngagements; }
+  if (DEMO_MODE) { await delay(250); return demoEngagements.map(normalizeEngagement); }
   const res = await api.get<AgiEngagement[]>("/admin/agi/engagements?limit=100");
-  return Array.isArray(res) ? res : [];
+  return (Array.isArray(res) ? res : []).map(normalizeEngagement);
 }
 
 export async function createAgiEngagement(payload: {
@@ -222,12 +246,12 @@ export async function createAgiEngagement(payload: {
       id: Date.now(), organization_id: payload.organization_id, created_by_staff_id: 1,
       name: payload.name, description: payload.description ?? "",
       scope_definition: { target_allowlist: payload.scope.target_allowlist, forbidden_actions: payload.scope.forbidden_actions, rules_of_engagement: payload.scope.rules_of_engagement ?? "", max_session_minutes: payload.scope.max_session_minutes ?? 120 },
-      status: "draft", config: payload.config ?? null,
+      status: "draft", config: payload.config ?? { prompts: {}, tools: ["httpx", "nmap_safe", "nuclei_safe"], skills: { auto_select: true, auto_select_limit: 6 } },
       created_at: new Date().toISOString(), updated_at: new Date().toISOString(), torn_down_at: null,
     };
-    return eng;
+    return normalizeEngagement(eng);
   }
-  return api.post<AgiEngagement>("/admin/agi/engagements", {
+  const created = await api.post<AgiEngagement>("/admin/agi/engagements", {
     ...payload,
     scope: {
       target_allowlist: payload.scope.target_allowlist,
@@ -238,11 +262,13 @@ export async function createAgiEngagement(payload: {
       production_ack: payload.scope.target_environment === "production" ? (payload.scope.production_ack ?? false) : false,
     },
   });
+  return normalizeEngagement(created);
 }
 
 export async function patchAgiEngagement(id: number, payload: { name?: string; description?: string; config?: Record<string, unknown>; status?: string }): Promise<AgiEngagement> {
-  if (DEMO_MODE) { await delay(250); return { ...demoEngagements[0], id, ...payload } as unknown as AgiEngagement; }
-  return api.patch<AgiEngagement>(`/admin/agi/engagements/${id}`, payload);
+  if (DEMO_MODE) { await delay(250); return normalizeEngagement({ ...demoEngagements[0], id, ...payload } as AgiEngagement); }
+  const updated = await api.patch<AgiEngagement>(`/admin/agi/engagements/${id}`, payload);
+  return normalizeEngagement(updated);
 }
 
 // ── Sessions ──────────────────────────────────────────────────────────────────
@@ -349,11 +375,17 @@ export async function loadAgiTranscript(sessionId: number, afterSeq: number): Pr
   if (DEMO_MODE) {
     await delay(400);
     const lines = [
-      { role: "system", content: "[engine] Engagement container provisioned · scope guard loaded" },
-      { role: "assistant", content: "Plan: read-only recon of allowlisted hosts, then propose active verification steps for your approval." },
+      { role: "system", content: "[engine] Engagement container provisioned\n[engine] Scope guard loaded\n[engine] allowlist = app.acme-lab.example" },
+      { role: "assistant", content: "Acknowledged. I will stay **read-only** until you approve anything that changes state.\n\n**Attack plan**\n1. Recon\n2. Endpoint discovery\n3. Vuln identification\n4. Gated exploit chain" },
+      { role: "tool", content: "nmap -sV -T3 --top-ports 100 app.acme-lab.example", meta: { tool: "nmap", action_class: "read" } },
+      { role: "tool", content: "80/tcp open http nginx 1.24.0\n443/tcp open ssl/http nginx 1.24.0", meta: { tool: "nmap", action_class: "read" } },
       { role: "tool", content: "httpx -silent -status-code -title https://app.acme-lab.example", meta: { tool: "httpx", action_class: "read" } },
-      { role: "tool", content: "HTTP 200 · title \"Acme Lab Portal\" · server nginx", meta: { tool: "httpx", action_class: "read" } },
-      { role: "assistant", content: "Recon complete. Proposing a state-changing verification step for your approval." },
+      { role: "tool", content: "HTTP 200 · title \"Acme Lab Portal\" · server nginx/1.24.0", meta: { tool: "httpx", action_class: "read" } },
+      { role: "tool", content: "ffuf -u https://app.acme-lab.example/FUZZ -w common.txt -mc 200,302 -t 20", meta: { tool: "ffuf", action_class: "read" } },
+      { role: "tool", content: "/login 200\n/api/v1 200\n/admin 302 → /login", meta: { tool: "ffuf", action_class: "read" } },
+      { role: "tool", content: "nuclei -u https://app.acme-lab.example -severity info,low,medium,high", meta: { tool: "nuclei", action_class: "read" } },
+      { role: "tool", content: "[info] outdated-jquery  CVE-2020-11022\n[low] nginx-version-disclose\n[medium] missing-security-headers", meta: { tool: "nuclei", action_class: "read" } },
+      { role: "assistant", content: "Surface mapped. Queuing a single in-scope login probe for your approval." },
     ];
     const idx = demoSeq;
     if (idx < lines.length) {

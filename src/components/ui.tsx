@@ -28,9 +28,9 @@ export function StatusBadge({ status }: { status: string | null | undefined }) {
   );
 }
 
-export function SeverityBadge({ severity }: { severity: string }) {
+export function SeverityBadge({ severity, className }: { severity: string; className?: string }) {
   return (
-    <span className={cx("chip capitalize", severityColor[severity] ?? "text-slate-400 bg-slate-400/10 border-slate-500/30")}>
+    <span className={cx("chip capitalize", severityColor[severity] ?? "text-slate-400 bg-slate-400/10 border-slate-500/30", className)}>
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {titleCase(severity)}
     </span>
