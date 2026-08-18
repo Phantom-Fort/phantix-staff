@@ -25,6 +25,7 @@ import SuperLogs from "@/pages/admin/SuperLogs";
 import EngineJobs from "@/pages/admin/EngineJobs";
 import SuperadminTerminal from "@/pages/admin/Terminal";
 import AgiAdmin from "@/pages/admin/AgiAdmin";
+import SandboxAdmin from "@/pages/admin/Sandbox";
 import { AGI_ENABLED } from "@/lib/api";
 
 function RequireStaff({ children }: { children: React.ReactNode }) {
@@ -73,6 +74,7 @@ export default function App() {
             {/* Admin (monitor + catalogs + advanced) */}
             <Route path="/clients" element={<RequireAdmin><Clients /></RequireAdmin>} />
             <Route path="/clients/:id" element={<RequireAdmin><Clients /></RequireAdmin>} />
+            <Route path="/sandbox" element={<RequireAdmin><SandboxAdmin /></RequireAdmin>} />
             <Route path="/logs" element={<RequireAdmin><DevLogs /></RequireAdmin>} />
             <Route path="/logs/issues/:issueId" element={<RequireAdmin><DevLogs /></RequireAdmin>} />
             <Route path="/server" element={<RequireAdmin><ServerOps /></RequireAdmin>} />

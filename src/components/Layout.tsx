@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Shield, Building2, MessageSquare, Server, Brain,
   Users, FileCheck, Wrench, Search, Activity, LogOut, Menu, X,
   Zap, Globe, AlertTriangle, ScanLine, BarChart3, RefreshCw,
-  Crosshair, Radio, FileText, TerminalSquare, Radar, BookOpen,
+  Crosshair, Radio, FileText, TerminalSquare, Radar, BookOpen, FlaskConical,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { APP_URL } from "@/lib/links";
@@ -31,6 +31,7 @@ const navSections: {
     items: [
       { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
       { to: "/clients", label: "Clients", icon: <Building2 size={18} />, adminOnly: true },
+      { to: "/sandbox", label: "Sandbox", icon: <FlaskConical size={18} />, adminOnly: true },
       { to: "/support", label: "Support", icon: <MessageSquare size={18} /> },
     ],
   },
