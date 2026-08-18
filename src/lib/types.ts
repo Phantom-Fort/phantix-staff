@@ -505,6 +505,93 @@ export interface AgiEngagement {
   torn_down_at: string | null;
 }
 
+/** Loop brief (phantix.agi.loop_brief.v1) — always coerce arrays/strings. */
+export interface AgiLoopItem {
+  title: string;
+  detail: string;
+  severity: string;
+  target: string;
+  tool: string;
+  reason: string;
+  action: string;
+}
+
+export interface AgiLoopBrief {
+  schema?: string;
+  event?: string;
+  session_id?: number;
+  turn?: number;
+  turn_index?: number;
+  max_turns?: number;
+  phase?: string;
+  loop_status?: string;
+  job_status?: string;
+  active_phase?: string;
+  working_on?: string;
+  summary?: string;
+  found?: AgiLoopItem[];
+  next?: AgiLoopItem[];
+  blockers?: AgiLoopItem[];
+  tools_this_turn?: string[];
+  tools_run_total?: number;
+  findings_count?: number;
+  open_objectives?: string[];
+  pending_approvals?: number;
+  open_info_requests?: number;
+  reason?: string;
+  content?: string;
+}
+
+export interface AgiCredentialAccountView {
+  label?: string;
+  app?: string;
+  login_url?: string;
+  username?: string;
+  password_set?: boolean;
+  login_style?: string;
+  source?: string;
+  otp_mode?: string;
+}
+
+export interface AgiSessionMetaCredentials {
+  configured?: boolean;
+  login_url?: string;
+  username?: string;
+  password_set?: boolean;
+  otp_mode?: string;
+  label?: string;
+  login_style?: string;
+  account_count?: number;
+  accounts?: AgiCredentialAccountView[];
+}
+
+export interface AgiSessionMetaLabExploit {
+  enabled?: boolean;
+  reason?: string;
+  account_labels?: string[];
+  preapproved_tools?: string[];
+}
+
+export interface AgiChatResponse {
+  schema_version?: string;
+  ok?: boolean;
+  session_id?: number;
+  accepted?: boolean;
+  queued?: boolean;
+  blocked?: boolean;
+  mock?: boolean;
+  code?: string;
+  reply?: string;
+  reply_kind?: string;
+  findings_count?: number;
+  job?: Record<string, unknown>;
+  loop?: AgiLoopBrief;
+  found?: AgiLoopItem[];
+  next?: AgiLoopItem[];
+  blockers?: AgiLoopItem[];
+  transcript_seq?: number | null;
+}
+
 export interface AgiSession {
   id: number;
   engagement_id: number;
@@ -516,6 +603,9 @@ export interface AgiSession {
   ended_at: string | null;
   teardown_reason: string | null;
   meta: Record<string, unknown> | null;
+  /** Present on GET/POST session; always coerce with normalizeAgiSession. */
+  job?: AgiSessionJob | Record<string, unknown> | null;
+  loop?: AgiLoopBrief | null;
 }
 
 export interface AgiTranscriptChunk {
@@ -704,17 +794,35 @@ export interface AgiSelectedSkillChip {
 }
 
 export interface AgiFinding {
-  id: number;
-  session_id: number;
-  finding_id: string;
+  id: number | string;
+  session_id?: number;
+  finding_id?: string;
   title: string;
   severity: string;
-  evidence: string;
-  source: string;
-  tool: string | null;
-  target: string | null;
-  status: string;
-  notes: string | null;
-  created_at: string;
-  risk_id: number | null;
+  evidence?: string | { request?: string; response?: string; hash?: string; notes?: string } | null;
+  source?: string;
+  tool?: string | null;
+  target?: string | null;
+  status?: string;
+  notes?: string | null;
+  created_at?: string;
+  risk_id?: number | null;
+  cve?: string | null;
+  category?: string | null;
+  tags?: string[];
+  highlight?: boolean;
+  report_highlight?: boolean;
+  business_impact?: string | null;
+  impact_level?: string | null;
+  impact_analysis?: {
+    business_impact?: string;
+    technical_impact?: string;
+    impact_level?: string;
+    impact_score?: number;
+    categories?: string[];
+    blast_radius?: string;
+  } | null;
+  authenticated?: boolean;
+  rule_id?: string | null;
+  node_id?: string | null;
 }

@@ -95,10 +95,18 @@ export class ApiError extends Error {
   }
 }
 
+type RequestOpts = {
+  body?: unknown;
+  params?: Record<string, string | number | boolean>;
+  form?: Record<string, string>;
+  /** Per-request timeout in ms (e.g. 180_000 for AGI session start). */
+  timeoutMs?: number;
+};
+
 async function request<T>(
   method: string,
   path: string,
-  opts: { body?: unknown; params?: Record<string, string | number | boolean>; form?: Record<string, string> } = {},
+  opts: RequestOpts = {},
 ): Promise<T> {
   const headers: Record<string, string> = {};
 
@@ -127,7 +135,21 @@ async function request<T>(
     body = JSON.stringify(opts.body);
   }
 
-  const res = await fetch(url, { method, headers, body });
+  const controller = opts.timeoutMs != null ? new AbortController() : null;
+  const timer = controller && opts.timeoutMs != null
+    ? window.setTimeout(() => controller.abort(), opts.timeoutMs)
+    : null;
+  let res: Response;
+  try {
+    res = await fetch(url, { method, headers, body, signal: controller?.signal });
+  } catch (err) {
+    if (timer != null) window.clearTimeout(timer);
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new ApiError(408, "Request timed out");
+    }
+    throw err;
+  }
+  if (timer != null) window.clearTimeout(timer);
   if (!res.ok) {
     let detail: unknown = res.statusText;
     try {
@@ -144,12 +166,12 @@ async function request<T>(
 }
 
 export const api = {
-  get: <T>(path: string, opts?: Parameters<typeof request>[2]) =>
+  get: <T>(path: string, opts?: RequestOpts) =>
     dedupedRequest("GET", path, opts?.body, () => request<T>("GET", path, opts)),
-  post: <T>(path: string, body?: unknown, opts?: Parameters<typeof request>[2]) => request<T>("POST", path, { ...opts, body }),
-  put: <T>(path: string, body?: unknown, opts?: Parameters<typeof request>[2]) => request<T>("PUT", path, { ...opts, body }),
-  patch: <T>(path: string, body?: unknown, opts?: Parameters<typeof request>[2]) => request<T>("PATCH", path, { ...opts, body }),
-  delete: <T>(path: string, opts?: Parameters<typeof request>[2]) => request<T>("DELETE", path, opts),
+  post: <T>(path: string, body?: unknown, opts?: RequestOpts) => request<T>("POST", path, { ...opts, body }),
+  put: <T>(path: string, body?: unknown, opts?: RequestOpts) => request<T>("PUT", path, { ...opts, body }),
+  patch: <T>(path: string, body?: unknown, opts?: RequestOpts) => request<T>("PATCH", path, { ...opts, body }),
+  delete: <T>(path: string, opts?: RequestOpts) => request<T>("DELETE", path, opts),
   postForm: <T>(path: string, form: Record<string, string>) =>
     request<T>("POST", path, { form }),
 

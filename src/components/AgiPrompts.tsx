@@ -147,40 +147,8 @@ export default function AgiPrompts() {
           )}
         </div>
 
-        {/* ── Right: prompt library + reference ───────────────────────────── */}
+        {/* ── Right: reference (stacked dropdowns at top) ───────────────────────────── */}
         <div className="space-y-3">
-          <Card>
-            <CardHeader title="Prompt library" subtitle="Prompts a user's objective can resolve to." action={<button onClick={() => { setDraft({ key: "", label: "", system_prompt: "", user_template: "", intents: [], skill_ids: [], is_active: true }); setEditing({ key: "", label: "", system_prompt: "", user_template: "", intents: [], skill_ids: [], is_active: true }); }} className="btn-primary !px-2.5 !py-1 !text-[11px]"><Plus size={12} className="mr-1 inline" /> Add</button>} />
-            {editing && (
-              <div className="mb-3 space-y-2 rounded-lg border border-phantix-700/40 bg-phantix-950/50 p-3">
-                <input value={draft?.label ?? ""} onChange={(e) => setDraft({ ...draft!, label: e.target.value })} placeholder="Label (e.g. VAPT — web application)" className="w-full rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 text-xs text-slate-200 outline-none" />
-                <input value={draft?.key ?? ""} onChange={(e) => setDraft({ ...draft!, key: e.target.value })} placeholder="key (e.g. vapt_web)" className="w-full rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 font-mono text-xs text-slate-200 outline-none" />
-                <textarea value={draft?.system_prompt ?? ""} onChange={(e) => setDraft({ ...draft!, system_prompt: e.target.value })} rows={3} placeholder="System prompt — guides execution" className="w-full rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 font-mono text-[11px] text-slate-200 outline-none" />
-                <input value={draft?.intents.join(", ") ?? ""} onChange={(e) => setDraft({ ...draft!, intents: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} placeholder="Intents (comma) e.g. vapt, web" className="w-full rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 text-xs text-slate-200 outline-none" />
-                <input value={draft?.skill_ids.join(", ") ?? ""} onChange={(e) => setDraft({ ...draft!, skill_ids: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} placeholder="Skill ids (comma) e.g. agi.web.idor-check" className="w-full rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 font-mono text-xs text-slate-200 outline-none" />
-                <div className="flex gap-2">
-                  <button onClick={saveDef} className="btn-primary flex-1 !px-2 !py-1 !text-[11px]"><Check size={11} className="mr-1 inline" /> Save</button>
-                  <button onClick={() => { setEditing(null); setDraft(null); }} className="btn-ghost flex-1 !px-2 !py-1 !text-[11px]"><X size={11} className="mr-1 inline" /> Cancel</button>
-                </div>
-              </div>
-            )}
-            <div className="space-y-1.5">
-              {defs.map((d) => (
-                <div key={d.key} className={cx("rounded-lg border px-3 py-2", d.is_active ? "border-phantix-700/40 bg-phantix-900/40" : "border-phantix-700/30 bg-phantix-950/40 opacity-60")}>
-                  <div className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1 truncate font-mono text-[11px] font-semibold text-slate-200">{d.label}</span>
-                    <span className="chip !text-[9px]">{d.is_active ? "active" : "off"}</span>
-                    <button onClick={() => { setEditing(d); setDraft({ ...d }); }} className="text-slate-500 hover:text-slate-200" title="Edit"><Pencil size={11} /></button>
-                    <button onClick={() => toggleDef(d.key)} className="text-slate-500 hover:text-gold-300" title="Toggle">{d.is_active ? <X size={11} /> : <Check size={11} />}</button>
-                    <button onClick={() => removeDef(d.key)} className="text-slate-500 hover:text-severity-critical" title="Delete"><Trash2 size={11} /></button>
-                  </div>
-                  <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-500">{d.system_prompt}</p>
-                  <p className="mt-1 font-mono text-[9px] text-slate-600">{d.intents.join(", ")} → {d.skill_ids.join(", ")}</p>
-                </div>
-              ))}
-            </div>
-          </Card>
-
           <Accordion id="signals" title="Intent signals" defaultOpen={false}>
             <div className="space-y-1.5">
               {INTENT_SIGNALS.map((s) => (
@@ -207,6 +175,52 @@ export default function AgiPrompts() {
           </p>
         </div>
       </div>
+
+      {/* Prompt library — below resolve objective (full width) */}
+      <Card>
+        <CardHeader title="Prompt library" subtitle="Prompts a user's objective can resolve to." action={<button onClick={() => { setDraft({ key: "", label: "", system_prompt: "", user_template: "", intents: [], skill_ids: [], is_active: true }); setEditing({ key: "", label: "", system_prompt: "", user_template: "", intents: [], skill_ids: [], is_active: true }); }} className="btn-primary !px-2.5 !py-1 !text-[11px]"><Plus size={12} className="mr-1 inline" /> Add</button>} />
+        {editing && (
+          <div className="mb-3 space-y-2 rounded-lg border border-phantix-700/40 bg-phantix-950/50 p-3">
+            <input value={draft?.label ?? ""} onChange={(e) => setDraft({ ...draft!, label: e.target.value })} placeholder="Label (e.g. VAPT — web application)" className="w-full rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 text-xs text-slate-200 outline-none" />
+            <input value={draft?.key ?? ""} onChange={(e) => setDraft({ ...draft!, key: e.target.value })} placeholder="key (e.g. vapt_web)" className="w-full rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 font-mono text-xs text-slate-200 outline-none" />
+            <textarea
+              value={draft?.system_prompt ?? ""}
+              onChange={(e) => {
+                setDraft({ ...draft!, system_prompt: e.target.value });
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                const newH = Math.min(el.scrollHeight, 120);
+                el.style.height = `${newH}px`;
+              }}
+              rows={3}
+              placeholder="System prompt — guides execution"
+              className="w-full resize-none rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 font-mono text-[11px] text-slate-200 outline-none overflow-hidden"
+              style={{ minHeight: "60px", maxHeight: "120px" }}
+            />
+            <input value={draft?.intents.join(", ") ?? ""} onChange={(e) => setDraft({ ...draft!, intents: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} placeholder="Intents (comma) e.g. vapt, web" className="w-full rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 text-xs text-slate-200 outline-none" />
+            <input value={draft?.skill_ids.join(", ") ?? ""} onChange={(e) => setDraft({ ...draft!, skill_ids: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} placeholder="Skill ids (comma) e.g. agi.web.idor-check" className="w-full rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 font-mono text-xs text-slate-200 outline-none" />
+            <div className="flex gap-2">
+              <button onClick={saveDef} className="btn-primary flex-1 !px-2 !py-1 !text-[11px]"><Check size={11} className="mr-1 inline" /> Save</button>
+              <button onClick={() => { setEditing(null); setDraft(null); }} className="btn-ghost flex-1 !px-2 !py-1 !text-[11px]"><X size={11} className="mr-1 inline" /> Cancel</button>
+            </div>
+          </div>
+        )}
+        <div className="space-y-1.5">
+          {defs.map((d) => (
+            <div key={d.key} className={cx("rounded-lg border px-3 py-2", d.is_active ? "border-phantix-700/40 bg-phantix-900/40" : "border-phantix-700/30 bg-phantix-950/40 opacity-60")}>
+              <div className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate font-mono text-[11px] font-semibold text-slate-200">{d.label}</span>
+                <span className="chip !text-[9px]">{d.is_active ? "active" : "off"}</span>
+                <button onClick={() => { setEditing(d); setDraft({ ...d }); }} className="text-slate-500 hover:text-slate-200" title="Edit"><Pencil size={11} /></button>
+                <button onClick={() => toggleDef(d.key)} className="text-slate-500 hover:text-gold-300" title="Toggle">{d.is_active ? <X size={11} /> : <Check size={11} />}</button>
+                <button onClick={() => removeDef(d.key)} className="text-slate-500 hover:text-severity-critical" title="Delete"><Trash2 size={11} /></button>
+              </div>
+              <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-500">{d.system_prompt}</p>
+              <p className="mt-1 font-mono text-[9px] text-slate-600">{d.intents.join(", ")} → {d.skill_ids.join(", ")}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

@@ -5,7 +5,6 @@ import {
   Globe2, Loader2, Lock, Pause, Play, Radar, Send, ShieldAlert, ShieldCheck, Square,
   Terminal, XCircle,
 } from "lucide-react";
-import MarkdownView from "@/components/MarkdownView";
 import { SeverityBadge } from "@/components/ui";
 import {
   deriveAttackGraph,
@@ -66,7 +65,7 @@ function TxLine({ t }: { t: AgiTranscriptChunk }) {
           </span>
         )}
         {isSystem && <span className="mr-1 text-[10px] text-slate-600">engine</span>}
-        {!isTool && !isSystem && !isOperator ? <MarkdownView source={t.content} /> : <span className="whitespace-pre-wrap break-words">{t.content}</span>}
+        <span className="whitespace-pre-wrap break-words">{t.content}</span>
       </div>
     </div>
   );
@@ -192,6 +191,10 @@ export type AgiConsoleProps = {
   actionBusy: number | null;
   onDecide: (action: AgiAction, approve: boolean, overrideCmd?: string) => void;
   thinking: boolean;
+  /** Prefer loop.working_on over a generic "thinking" spinner label. */
+  workingOn?: string | null;
+  /** Live findings from GET .../findings (preferred over transcript-derived). */
+  liveFindings?: AgiFinding[];
   connError: string | null;
   instruction: string;
   onInstruction: (v: string) => void;
@@ -217,6 +220,8 @@ export default function AgiConsole({
   actionBusy,
   onDecide,
   thinking,
+  workingOn = null,
+  liveFindings,
   connError,
   instruction,
   onInstruction,
@@ -241,7 +246,11 @@ export default function AgiConsole({
   const toolsStick = useStickToBottom([transcript, running]);
 
   const nodes = useMemo(() => deriveAttackGraph(transcript, actions, running && !paused), [transcript, actions, running, paused]);
-  const findings = useMemo(() => deriveFindings(transcript, actions, engagement), [transcript, actions, engagement]);
+  const derivedFindings = useMemo(() => deriveFindings(transcript, actions, engagement), [transcript, actions, engagement]);
+  const findings = useMemo(() => {
+    if (liveFindings && liveFindings.length > 0) return liveFindings;
+    return derivedFindings;
+  }, [liveFindings, derivedFindings]);
   const counts = useMemo(() => severityCounts(findings), [findings]);
   const selected = nodes.find((n) => n.id === selectedId) ?? nodes.find((n) => n.status === "active" || n.status === "blocked") ?? nodes[0];
   const activeNode = useMemo(
@@ -250,15 +259,17 @@ export default function AgiConsole({
   );
   const runningStatus = useMemo(() => {
     if (!running || paused) return null;
+    const work = (workingOn || "").trim();
+    if (work) return { label: work, tool: undefined };
     if (activeNode) {
       return {
         label: activeNode.status === "blocked" ? `awaiting approval — ${activeNode.label}` : activeNode.label,
         tool: activeNode.tool,
       };
     }
-    if (thinking) return { label: "reasoning over the attack tree", tool: undefined };
+    if (thinking) return { label: "Working on the scoped assessment.", tool: undefined };
     return { label: "planning the next step", tool: undefined };
-  }, [running, paused, activeNode, thinking]);
+  }, [running, paused, activeNode, thinking, workingOn]);
   const openFinding = findings.find((f) => f.id === findingId) ?? null;
   const allowlist = engagement?.scope_definition.target_allowlist ?? [];
   const forbidden = engagement?.scope_definition.forbidden_actions ?? [];
@@ -556,9 +567,14 @@ export default function AgiConsole({
           <div className="min-h-0 flex-1 overflow-y-auto">
             {findings.length === 0 && <p className="px-2 py-4 text-center text-[10px] text-slate-600">No findings yet.</p>}
             {findings.map((f) => (
-              <button key={f.id} onClick={() => setFindingId(f.id)} className={cx("flex w-full items-start gap-1.5 border-b border-phantix-700/20 px-2 py-1.5 text-left hover:bg-phantix-800/40", findingId === f.id && "bg-phantix-800/50")}>
-                <SeverityBadge severity={f.severity} className="mt-0.5 !px-1 !py-0 !text-[8px]" />
-                <span className="min-w-0 truncate text-[10px] text-slate-200">{f.title}</span>
+              <button key={f.id} onClick={() => setFindingId(f.id)} className={cx("flex w-full flex-col items-start gap-0.5 border-b border-phantix-700/20 px-2 py-1.5 text-left hover:bg-phantix-800/40", findingId === f.id && "bg-phantix-800/50")}>
+                <div className="flex w-full min-w-0 items-start gap-1.5">
+                  <SeverityBadge severity={f.severity} className="mt-0.5 !px-1 !py-0 !text-[8px]" />
+                  {f.impact_level && <span className="mt-0.5 shrink-0 rounded border border-gold-400/30 bg-gold-400/10 px-1 text-[8px] text-gold-300">{f.impact_level}</span>}
+                  {(f.highlight || f.report_highlight) && <span className="mt-0.5 shrink-0 rounded border border-severity-critical/30 bg-severity-critical/10 px-1 text-[8px] text-severity-critical">pin</span>}
+                  <span className="min-w-0 flex-1 truncate text-[10px] text-slate-200">{f.title}</span>
+                </div>
+                {f.business_impact && <p className="line-clamp-2 w-full pl-0 text-[9px] leading-3.5 text-slate-500">{f.business_impact}</p>}
               </button>
             ))}
           </div>
@@ -568,11 +584,18 @@ export default function AgiConsole({
         </aside>
       </div>
 
-      <div className="w-full shrink-0 border-t border-phantix-700/40 p-3">
-        <div className="flex items-center gap-2 rounded-xl border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 focus-within:border-gold-400/40">
-          <input
+        <div className="w-full shrink-0 border-t border-phantix-700/40 p-3">
+        <div className="mx-auto flex max-w-3xl items-start gap-2 rounded-xl border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 focus-within:border-gold-400/40">
+          <textarea
             value={instruction}
-            onChange={(e) => onInstruction(e.target.value)}
+            onChange={(e) => {
+              onInstruction(e.target.value);
+              // auto-grow up to ~6 lines
+              const el = e.currentTarget;
+              el.style.height = "auto";
+              const newH = Math.min(el.scrollHeight, 120);
+              el.style.height = `${newH}px`;
+            }}
             onKeyDown={(e) => {
               if (e.key !== "Enter" || e.shiftKey || e.repeat) return;
               e.preventDefault();
@@ -580,9 +603,11 @@ export default function AgiConsole({
             }}
             placeholder={paused ? "Paused — resume to send" : running ? "Further instructions or override the next step…" : "Session stopped"}
             disabled={!running || paused}
-            className="flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500 disabled:opacity-50"
+            rows={1}
+            className="flex-1 resize-none bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500 disabled:opacity-50 overflow-hidden"
+            style={{ minHeight: "24px", maxHeight: "120px" }}
           />
-          <button onClick={onSend} disabled={!running || paused || !instruction.trim()} className="btn-primary !px-3 !py-1.5 !text-xs" aria-label="Send"><Send size={13} /></button>
+          <button onClick={onSend} disabled={!running || paused || !instruction.trim()} className="btn-primary !px-3 !py-1.5 !text-xs mt-0.5" aria-label="Send"><Send size={13} /></button>
         </div>
         <p className="mt-1.5 flex items-center gap-1.5 text-[10px] text-slate-600">
           <ShieldCheck size={10} />

@@ -6,8 +6,11 @@ import { api, ApiError, API_BASE, DEMO_MODE, delay } from "./api";
 import type {
   AgiAction,
   AgiActivePolicy,
+  AgiChatResponse,
   AgiEngagement,
   AgiFinding,
+  AgiLoopBrief,
+  AgiLoopItem,
   AgiPolicy,
   AgiSession,
   AgiSkill,
@@ -24,6 +27,173 @@ import type {
   AgiToolToProvision,
   AgiSelectedSkillChip,
 } from "./types";
+
+/** Session start may wait on Docker provision (~120s). Do not use the default short fetch. */
+export const AGI_SESSION_START_TIMEOUT_MS = 180_000;
+
+function asObj(v: unknown): Record<string, unknown> {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+}
+
+function asStr(v: unknown, fallback = ""): string {
+  if (v == null) return fallback;
+  return String(v);
+}
+
+function asLoopItem(raw: unknown): AgiLoopItem {
+  const o = asObj(raw);
+  return {
+    title: asStr(o.title),
+    detail: asStr(o.detail),
+    severity: asStr(o.severity),
+    target: asStr(o.target),
+    tool: asStr(o.tool),
+    reason: asStr(o.reason),
+    action: asStr(o.action),
+  };
+}
+
+/** Always-safe loop brief — never throws on missing/extra keys. */
+export function normalizeAgiLoop(raw: unknown): AgiLoopBrief {
+  const o = asObj(raw);
+  return {
+    schema: asStr(o.schema, "phantix.agi.loop_brief.v1"),
+    event: asStr(o.event),
+    session_id: o.session_id != null ? Number(o.session_id) : undefined,
+    turn: o.turn != null ? Number(o.turn) : undefined,
+    turn_index: o.turn_index != null ? Number(o.turn_index) : undefined,
+    max_turns: o.max_turns != null ? Number(o.max_turns) : undefined,
+    phase: asStr(o.phase),
+    loop_status: asStr(o.loop_status),
+    job_status: asStr(o.job_status),
+    active_phase: asStr(o.active_phase),
+    working_on: asStr(o.working_on),
+    summary: asStr(o.summary),
+    found: Array.isArray(o.found) ? o.found.map(asLoopItem) : [],
+    next: Array.isArray(o.next) ? o.next.map(asLoopItem) : [],
+    blockers: Array.isArray(o.blockers) ? o.blockers.map(asLoopItem) : [],
+    tools_this_turn: Array.isArray(o.tools_this_turn) ? o.tools_this_turn.map(String) : [],
+    tools_run_total: o.tools_run_total != null ? Number(o.tools_run_total) : 0,
+    findings_count: o.findings_count != null ? Number(o.findings_count) : 0,
+    open_objectives: Array.isArray(o.open_objectives) ? o.open_objectives.map(String) : [],
+    pending_approvals: o.pending_approvals != null ? Number(o.pending_approvals) : 0,
+    open_info_requests: o.open_info_requests != null ? Number(o.open_info_requests) : 0,
+    reason: asStr(o.reason),
+    content: asStr(o.content),
+  };
+}
+
+/** Session read — always has job + loop objects after normalize. */
+export function normalizeAgiSession(raw: unknown): AgiSession {
+  const o = asObj(raw);
+  const meta = asObj(o.meta);
+  const jobRaw = o.job != null ? o.job : {};
+  const job = typeof jobRaw === "object" && jobRaw !== null ? (jobRaw as AgiSessionJob) : ({ job_status: "" } as AgiSessionJob);
+  return {
+    id: Number(o.id ?? 0),
+    engagement_id: Number(o.engagement_id ?? 0),
+    started_by_staff_id: o.started_by_staff_id == null ? null : Number(o.started_by_staff_id),
+    container_id: o.container_id == null ? null : String(o.container_id),
+    runner_session_id: o.runner_session_id == null ? null : String(o.runner_session_id),
+    status: asStr(o.status, "unknown"),
+    started_at: asStr(o.started_at, new Date().toISOString()),
+    ended_at: o.ended_at == null ? null : String(o.ended_at),
+    teardown_reason: o.teardown_reason == null ? null : String(o.teardown_reason),
+    meta: Object.keys(meta).length ? meta : {},
+    job,
+    loop: normalizeAgiLoop(o.loop),
+  };
+}
+
+/** Chat envelope — never a bare string. */
+export function normalizeAgiChat(raw: unknown): AgiChatResponse {
+  if (typeof raw === "string") {
+    return { ok: true, accepted: true, queued: false, blocked: false, reply: raw, reply_kind: "assistant", job: {}, loop: normalizeAgiLoop({}), found: [], next: [], blockers: [] };
+  }
+  const o = asObj(raw);
+  const reply = typeof o.reply === "string" ? o.reply : typeof o.message === "string" ? o.message : typeof o.content === "string" ? o.content : "";
+  return {
+    schema_version: asStr(o.schema_version, "phantix.agi.chat.v1"),
+    ok: o.ok !== false,
+    session_id: o.session_id != null ? Number(o.session_id) : undefined,
+    accepted: o.accepted !== false,
+    queued: Boolean(o.queued),
+    blocked: Boolean(o.blocked),
+    mock: Boolean(o.mock),
+    code: asStr(o.code),
+    reply,
+    reply_kind: asStr(o.reply_kind, "assistant"),
+    findings_count: o.findings_count != null ? Number(o.findings_count) : 0,
+    job: asObj(o.job),
+    loop: normalizeAgiLoop(o.loop),
+    found: Array.isArray(o.found) ? o.found.map(asLoopItem) : [],
+    next: Array.isArray(o.next) ? o.next.map(asLoopItem) : [],
+    blockers: Array.isArray(o.blockers) ? o.blockers.map(asLoopItem) : [],
+    transcript_seq: o.transcript_seq == null ? null : Number(o.transcript_seq),
+  };
+}
+
+/** Findings list — bare array or { findings: [] }. */
+export function normalizeAgiFindings(raw: unknown): AgiFinding[] {
+  const list = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === "object" && Array.isArray((raw as { findings?: unknown }).findings)
+      ? (raw as { findings: unknown[] }).findings
+      : [];
+  return list.map((item, i) => {
+    const o = asObj(item);
+    const id = o.id ?? o.finding_id ?? `f-${i}`;
+    const ev = o.evidence;
+    let evidence: AgiFinding["evidence"] = null;
+    if (typeof ev === "string") evidence = ev;
+    else if (ev && typeof ev === "object") {
+      const e = asObj(ev);
+      evidence = {
+        request: asStr(e.request),
+        response: asStr(e.response),
+        hash: asStr(e.hash),
+        notes: asStr(e.notes),
+      };
+    }
+    return {
+      id: typeof id === "number" || typeof id === "string" ? id : String(id),
+      session_id: o.session_id != null ? Number(o.session_id) : undefined,
+      finding_id: o.finding_id != null ? String(o.finding_id) : undefined,
+      title: asStr(o.title, "Finding"),
+      severity: asStr(o.severity, "info").toLowerCase(),
+      evidence,
+      source: o.source != null ? String(o.source) : undefined,
+      tool: o.tool == null ? null : String(o.tool),
+      target: o.target == null ? null : String(o.target),
+      status: o.status != null ? String(o.status) : undefined,
+      notes: o.notes == null ? null : String(o.notes),
+      created_at: o.created_at != null ? String(o.created_at) : undefined,
+      risk_id: o.risk_id == null ? null : Number(o.risk_id),
+      cve: o.cve == null ? null : String(o.cve),
+      category: o.category == null ? null : String(o.category),
+      tags: Array.isArray(o.tags) ? o.tags.map(String) : [],
+      highlight: Boolean(o.highlight),
+      report_highlight: Boolean(o.report_highlight),
+      business_impact: o.business_impact == null ? null : String(o.business_impact),
+      impact_level: o.impact_level == null ? null : String(o.impact_level),
+      impact_analysis: o.impact_analysis && typeof o.impact_analysis === "object" ? (o.impact_analysis as AgiFinding["impact_analysis"]) : null,
+      authenticated: o.authenticated != null ? Boolean(o.authenticated) : undefined,
+      rule_id: o.rule_id == null ? null : String(o.rule_id),
+      node_id: o.node_id == null ? null : String(o.node_id),
+    };
+  });
+}
+
+/** Prefer highlight / report_highlight first, then severity rank. */
+export function sortAgiFindings(findings: AgiFinding[]): AgiFinding[] {
+  const sevRank: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+  return [...findings].sort((a, b) => {
+    const ha = a.highlight || a.report_highlight ? 0 : 1;
+    const hb = b.highlight || b.report_highlight ? 0 : 1;
+    if (ha !== hb) return ha - hb;
+    return (sevRank[String(a.severity).toLowerCase()] ?? 5) - (sevRank[String(b.severity).toLowerCase()] ?? 5);
+  });
+}
 
 const ACTIVE_SESSION_KEY = "phantix_staff_agi_active_session";
 
@@ -335,39 +505,80 @@ export async function patchAgiEngagement(id: number, payload: { name?: string; d
 }
 
 // ── Sessions ──────────────────────────────────────────────────────────────────
+export type AgiSessionStartOpts = {
+  autonomy?: "low" | "medium" | "high";
+  include_org_assets?: boolean;
+  credentials?: { login_url: string; username: string; password: string; label?: string; otp_mode?: string; login_style?: string };
+  credential_accounts?: Array<{ login_url: string; username: string; password: string; label?: string; otp_mode?: string; login_style?: string }>;
+  preapprove_lab_auth?: boolean;
+  confirm_environment?: string;
+  mobile_apk_asset_id?: number;
+  objectives?: Record<string, unknown>;
+  context_pack?: string;
+};
+
 export async function startAgiSession(
   engagementId: number,
   instruction: string,
-  opts: { autonomy?: "low" | "medium" | "high"; include_org_assets?: boolean; credentials?: { login_url: string; username: string; password: string; label?: string; otp_mode?: string }; confirm_environment?: string; mobile_apk_asset_id?: number } = {},
+  opts: AgiSessionStartOpts = {},
 ): Promise<AgiSession> {
   if (DEMO_MODE) {
     await delay(600);
-    const s: AgiSession = { id: 200, engagement_id: engagementId, started_by_staff_id: 1, container_id: "agi-ctr-200", runner_session_id: "rs-200", status: "running", started_at: new Date().toISOString(), ended_at: null, teardown_reason: null, meta: {} };
+    const s = normalizeAgiSession({
+      id: 200,
+      engagement_id: engagementId,
+      started_by_staff_id: 1,
+      container_id: "agi-ctr-200",
+      runner_session_id: "rs-200",
+      status: "running",
+      started_at: new Date().toISOString(),
+      ended_at: null,
+      teardown_reason: null,
+      meta: {},
+      job: { job_status: "running" },
+      loop: { working_on: "Provisioning the isolated workspace.", content: "" },
+    });
     demoSeq = 0;
     demoTx.length = 0;
     liveDemoSession = s;
     persistAgiSession(s);
     return s;
   }
-  const started = await api.post<AgiSession>(`/admin/agi/engagements/${engagementId}/sessions`, {
+  const body: Record<string, unknown> = {
     instruction,
     autonomy: opts.autonomy ?? "medium",
     include_org_assets: opts.include_org_assets ?? true,
-    credentials: opts.credentials ?? undefined,
-    confirm_environment: opts.confirm_environment,
-    mobile_apk_asset_id: opts.mobile_apk_asset_id,
-  });
-  persistAgiSession(started);
-  return started;
+  };
+  if (opts.credentials) body.credentials = opts.credentials;
+  if (opts.credential_accounts?.length) body.credential_accounts = opts.credential_accounts;
+  if (opts.preapprove_lab_auth != null) body.preapprove_lab_auth = opts.preapprove_lab_auth;
+  if (opts.confirm_environment) body.confirm_environment = opts.confirm_environment;
+  if (opts.mobile_apk_asset_id != null) body.mobile_apk_asset_id = opts.mobile_apk_asset_id;
+  if (opts.objectives) body.objectives = opts.objectives;
+  if (opts.context_pack) body.context_pack = opts.context_pack;
+  const started = await api.post<AgiSession>(
+    `/admin/agi/engagements/${engagementId}/sessions`,
+    body,
+    { timeoutMs: AGI_SESSION_START_TIMEOUT_MS },
+  );
+  const normalized = normalizeAgiSession(started);
+  persistAgiSession(normalized);
+  return normalized;
 }
 
 export async function getAgiSession(sessionId: number): Promise<AgiSession | null> {
   if (DEMO_MODE) {
     if (liveDemoSession && liveDemoSession.id === sessionId) return liveDemoSession;
     await delay(150);
-    return demoSessions.find((s) => s.id === sessionId) ?? demoSessions[0] ?? null;
+    const s = demoSessions.find((s) => s.id === sessionId) ?? demoSessions[0] ?? null;
+    return s ? normalizeAgiSession(s) : null;
   }
-  try { return await api.get<AgiSession>(`/admin/agi/sessions/${sessionId}`); } catch { return null; }
+  try {
+    const raw = await api.get<AgiSession>(`/admin/agi/sessions/${sessionId}`);
+    return normalizeAgiSession(raw);
+  } catch {
+    return null;
+  }
 }
 
 export async function loadActiveAgiSession(): Promise<AgiSession | null> {
@@ -466,12 +677,18 @@ export async function listAgiJobs(sessionId: number): Promise<any[]> {
   return [];
 }
 
-export async function agiChat(sessionId: number, message: string): Promise<Record<string, unknown>> {
+export async function agiChat(sessionId: number, message: string): Promise<AgiChatResponse> {
   if (DEMO_MODE) {
     await delay(400);
-    return { reply: "Understood — continuing within the approved scope.", message: "Understood" };
+    return normalizeAgiChat({
+      reply: "Understood — continuing within the approved scope.",
+      queued: false,
+      reply_kind: "assistant",
+      loop: { working_on: "Continuing within the approved scope.", content: "Understood — continuing within the approved scope." },
+    });
   }
-  return api.post<Record<string, unknown>>(`/admin/agi/sessions/${sessionId}/chat`, { message });
+  const raw = await api.post<unknown>(`/admin/agi/sessions/${sessionId}/chat`, { message });
+  return normalizeAgiChat(raw);
 }
 
 export async function loadAgiTranscript(sessionId: number, afterSeq: number): Promise<AgiTranscriptChunk[]> {
@@ -546,10 +763,10 @@ export async function resolvedAgiSkills(engagementId: number): Promise<AgiSkill[
 
 // ── Findings ──────────────────────────────────────────────────────────────────
 export async function loadAgiFindings(sessionId: number): Promise<AgiFinding[]> {
-  if (DEMO_MODE) { await delay(250); return demoFindings; }
+  if (DEMO_MODE) { await delay(250); return sortAgiFindings(normalizeAgiFindings(demoFindings)); }
   try {
-    const res = await api.get<{ findings: AgiFinding[] }>(`/admin/agi/sessions/${sessionId}/findings`);
-    return res?.findings ?? [];
+    const res = await api.get<unknown>(`/admin/agi/sessions/${sessionId}/findings`);
+    return sortAgiFindings(normalizeAgiFindings(res));
   } catch { return []; }
 }
 

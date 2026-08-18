@@ -6,8 +6,8 @@ import {
   Brain, GitBranch, ShieldAlert, Eye, X, Clock, Pencil, SlidersHorizontal, BookOpen, Search, ArrowLeft, Radar,
 } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatCard, StatusBadge, SeverityBadge, TableSkeleton, EmptyState, Tabs, Modal } from "@/components/ui";
-import MarkdownView from "@/components/MarkdownView";
 import { AGI_CONTRIBUTOR_GUIDE_MD } from "@/lib/agiContributorGuide";
+import { ContributorGuideView } from "@/components/ContributorGuideView";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
 import { api, DEMO_MODE } from "@/lib/api";
@@ -16,13 +16,13 @@ import AgiConsole from "@/components/AgiConsole";
 import { useChatSend } from "@/lib/useChatSend";
 import {
   loadAgiStatus, loadAgiEngagements, createAgiEngagement, patchAgiEngagement, startAgiSession, stopAgiSession, loadActiveAgiSession,
-  agiChat, loadAgiTranscript, loadAgiPendingActions, decideAgiAction,
+  getAgiSession, agiChat, loadAgiTranscript, loadAgiPendingActions, decideAgiAction,
   loadAgiToolInstalls, decideAgiToolInstall, loadAgiGrants, setAgiGrant,
   loadAgiPolicies, loadAgiActivePolicy, publishAgiPolicy,
   loadAgiSkills, upsertAgiSkill, resolvedAgiSkills, loadAgiFindings, promoteAgiFinding, setAgiFindingStatus,
   setAgiCredentials, setAgiRegistration, getAgiPreflight, provideAgiInfo, provideAgiOtp, runAgiShell, listAgiJobs,
   agiErrorDetail, streamAgiSession, loadAgiEngineCatalog, loadAgiEngineLearning, loadAgiSessionJob, loadAgiApkAssets, trainAgiSession,
-  loadAgiSessionSkillPlan,
+  loadAgiSessionSkillPlan, normalizeAgiLoop,
 } from "@/lib/agi";
 import { EngineLearningPanel, EngineSnapshotCards, JobCoveragePanel, EngineCallList, AgiSkillPlanBanner, AgiToolsToProvisionStrip, CollapseCard } from "@/components/AgiCoevolution";
 import AgiPrompts from "@/components/AgiPrompts";
@@ -131,6 +131,7 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
   const { toast } = useStore();
   const [transcript, setTranscript] = useState<AgiTranscriptChunk[]>([]);
   const afterSeqRef = useRef(0);
+  const pendingOpsRef = useRef<string[]>([]);
   const [actions, setActions] = useState<AgiAction[]>([]);
   const [input, setInput] = useState("");
   const [running, setRunning] = useState(session.status === "running" || session.status === "provisioning");
@@ -138,6 +139,8 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
   const [stopping, setStopping] = useState(false);
   const [deciding, setDeciding] = useState<number | null>(null);
   const [thinking, setThinking] = useState(false);
+  const [workingOn, setWorkingOn] = useState<string | null>(null);
+  const [liveFindings, setLiveFindings] = useState<import("@/lib/agiGraph").AgiFinding[]>([]);
   const [connError, setConnError] = useState<string | null>(null);
   const [overrideDrafts, setOverrideDrafts] = useState<Record<number, string>>({});
   const [showControls, setShowControls] = useState(false);
@@ -165,7 +168,21 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
     try {
       const chunks = await loadAgiTranscript(session.id, afterSeqRef.current);
       if (chunks.length) {
-        setTranscript((prev) => [...prev, ...chunks]);
+        setTranscript((prev) => {
+          const pend = pendingOpsRef.current;
+          let taken = 0;
+          const out: AgiTranscriptChunk[] = [];
+          for (const c of chunks) {
+            if (c.role === "operator" && taken < pend.length && pend[taken] === c.content) {
+              taken += 1;
+              continue;
+            }
+            out.push(c);
+          }
+          if (taken > 0) pendingOpsRef.current = pend.slice(taken);
+          if (out.length === 0) return prev;
+          return [...prev, ...out];
+        });
         afterSeqRef.current = Math.max(afterSeqRef.current, ...chunks.map((c) => c.seq));
         setThinking(false);
         for (const c of chunks) {
@@ -207,11 +224,58 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
     const j = setInterval(async () => {
       try { setJob(await loadAgiSessionJob(session.id)); } catch { /* transient */ }
     }, 4000);
+    const sPoll = setInterval(async () => {
+      try {
+        const s = await getAgiSession(session.id);
+        if (!s) return;
+        const loop = s.loop ? normalizeAgiLoop(s.loop) : null;
+        if (loop?.working_on) setWorkingOn(loop.working_on);
+        if (loop?.content && loop.event === "loop_progress") {
+          setTranscript((prev) => {
+            const last = prev[prev.length - 1];
+            if (last?.role === "assistant" && last.content === loop.content) return prev;
+            return [...prev, { seq: afterSeqRef.current + 1, role: "assistant", content: loop.content || "", meta: { kind: "turn_brief", event: "loop_progress" }, created_at: new Date().toISOString() }];
+          });
+        }
+        if (s.status === "stopped" || s.status === "torn_down" || s.status === "failed") setRunning(false);
+      } catch { /* transient */ }
+    }, 4000);
+    const fPoll = setInterval(async () => {
+      try {
+        const rows = await loadAgiFindings(session.id);
+        setLiveFindings(rows.map((r) => ({
+          id: String(r.id ?? r.finding_id ?? Math.random()),
+          title: r.title,
+          severity: (String(r.severity || "info").toLowerCase() as import("@/lib/types").Severity),
+          target: r.target || "",
+          status: (r.status as "candidate" | "validated" | "rejected") || "candidate",
+          evidence: typeof r.evidence === "object" && r.evidence ? r.evidence : { notes: typeof r.evidence === "string" ? r.evidence : r.notes || "" },
+          highlight: r.highlight,
+          report_highlight: r.report_highlight,
+          business_impact: r.business_impact || r.impact_analysis?.business_impact || undefined,
+          impact_level: r.impact_level || r.impact_analysis?.impact_level || undefined,
+        })));
+      } catch { /* transient */ }
+    }, 8000);
     void loadAgiSessionJob(session.id).then(setJob);
-    return () => { clearInterval(t); clearInterval(a); clearInterval(j); };
+    void loadAgiFindings(session.id).then((rows) => {
+      setLiveFindings(rows.map((r) => ({
+        id: String(r.id ?? r.finding_id ?? Math.random()),
+        title: r.title,
+        severity: (String(r.severity || "info").toLowerCase() as import("@/lib/types").Severity),
+        target: r.target || "",
+        status: (r.status as "candidate" | "validated" | "rejected") || "candidate",
+        evidence: typeof r.evidence === "object" && r.evidence ? r.evidence : { notes: typeof r.evidence === "string" ? r.evidence : r.notes || "" },
+        highlight: r.highlight,
+        report_highlight: r.report_highlight,
+        business_impact: r.business_impact || r.impact_analysis?.business_impact || undefined,
+        impact_level: r.impact_level || r.impact_analysis?.impact_level || undefined,
+      })));
+    }).catch(() => {});
+    return () => { clearInterval(t); clearInterval(a); clearInterval(j); clearInterval(sPoll); clearInterval(fPoll); };
   }, [running, paused, session.id, poll]);
 
-  // SSE live stream (staff) — appends raw terminal frames
+  // SSE live stream (staff) — loop_status / loop_progress are primary progress UI
   useEffect(() => {
     if (!running || DEMO_MODE) return;
     const controller = new AbortController();
@@ -220,6 +284,30 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
       if (event === "token") setThinking(true);
       else if (event === "assistant_done") { setThinking(false); void poll(0); }
       else if (event === "action_pending") { void poll(0); }
+      else if (event === "loop_status" || event === "loop_progress") {
+        try {
+          const loop = normalizeAgiLoop(JSON.parse(String(data)));
+          if (loop.working_on) setWorkingOn(loop.working_on);
+          if (event === "loop_status") setThinking(true);
+          if (event === "loop_progress") {
+            setThinking(false);
+            if (loop.content) {
+              setTranscript((prev) => {
+                const last = prev[prev.length - 1];
+                if (last?.role === "assistant" && last.content === loop.content) return prev;
+                return [...prev, { seq: afterSeqRef.current + 1, role: "assistant", content: loop.content || "", meta: { kind: "turn_brief", event: "loop_progress" }, created_at: new Date().toISOString() }];
+              });
+            }
+            void poll(0);
+          }
+        } catch { /* ignore bad frames */ }
+      }
+      else if (event === "skill_handoff") {
+        try {
+          const p = JSON.parse(String(data)) as { title?: string; reason?: string; skill_id?: string };
+          setWorkingOn(`Skill ${p.title || p.skill_id || "playbook"} handed to OpenCode — ${p.reason || "contractor"}`);
+        } catch { /* ignore */ }
+      }
       else if (event === "engine_call") {
         try {
           const parsed = JSON.parse(String(data)) as EngineCallEvent;
@@ -227,6 +315,20 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
         } catch { /* ignore */ }
       }
       else if (event === "job_progress") { void loadAgiSessionJob(session.id).then(setJob); }
+      else if (event === "finding") { void loadAgiFindings(session.id).then((rows) => {
+        setLiveFindings(rows.map((r) => ({
+          id: String(r.id ?? r.finding_id ?? Math.random()),
+          title: r.title,
+          severity: (String(r.severity || "info").toLowerCase() as import("@/lib/types").Severity),
+          target: r.target || "",
+          status: (r.status as "candidate" | "validated" | "rejected") || "candidate",
+          evidence: typeof r.evidence === "object" && r.evidence ? r.evidence : { notes: typeof r.evidence === "string" ? r.evidence : r.notes || "" },
+          highlight: r.highlight,
+          report_highlight: r.report_highlight,
+          business_impact: r.business_impact || r.impact_analysis?.business_impact || undefined,
+          impact_level: r.impact_level || r.impact_analysis?.impact_level || undefined,
+        })));
+      }).catch(() => {}); }
       else if (event === "skills_selected" || event === "session_start") {
         try {
           const parsed = JSON.parse(String(data)) as Partial<AgiSkillPlan> & { skills?: AgiSkillPlan["skills"] };
@@ -255,7 +357,7 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
           });
         } catch { /* ignore */ }
       }
-      else if (event === "teardown") setRunning(false);
+      else if (event === "teardown" || event === "loop_stop") setRunning(false);
     }, controller.signal).catch(() => { /* SSE fallback: transcript poll continues */ });
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -264,10 +366,29 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
   const dispatchChat = async (msg: string) => {
     if (!running || paused) return;
     setConnError(null);
+    pendingOpsRef.current.push(msg);
     setTranscript((prev) => [...prev, { seq: -1, role: "operator", content: msg, meta: null, created_at: new Date().toISOString() }]);
     setThinking(true);
     try {
-      await agiChat(session.id, msg);
+      const res = await agiChat(session.id, msg);
+      if (res.loop?.working_on) setWorkingOn(res.loop.working_on);
+      if (res.queued) {
+        // Loop already in flight — show reply, do not open a second thinking state
+        setThinking(false);
+      }
+      if (res.reply && !res.queued) {
+        setTranscript((prev) => {
+          const last = prev[prev.length - 1];
+          if (last?.role === "assistant" && last.content === res.reply) return prev;
+          return [...prev, { seq: afterSeqRef.current + 1, role: "assistant", content: res.reply || "", meta: { kind: res.reply_kind || "assistant" }, created_at: new Date().toISOString() }];
+        });
+      } else if (res.reply && res.queued) {
+        setTranscript((prev) => [...prev, { seq: afterSeqRef.current + 1, role: "system", content: res.reply || "Queued for the next turn.", meta: { kind: "queued" }, created_at: new Date().toISOString() }]);
+      }
+      if (typeof res.transcript_seq === "number" && res.transcript_seq > afterSeqRef.current) {
+        afterSeqRef.current = res.transcript_seq;
+      }
+      void poll(0);
     } catch (e) {
       setConnError(agiErrorDetail(e).message);
       toast("error", "Chat failed", agiErrorDetail(e).message);
@@ -333,6 +454,8 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
           actionBusy={deciding}
           onDecide={(a, ok, cmd) => void decide(a, ok, cmd)}
           thinking={thinking}
+          workingOn={workingOn}
+          liveFindings={liveFindings}
           connError={connError}
           instruction={input}
           onInstruction={setInput}
@@ -733,12 +856,23 @@ function FindingsPanel({ sessionId }: { sessionId: number }) {
   );
 
   const act = async (f: AgiFinding, kind: "promote" | "verified" | "dismissed") => {
+    const fid = String(f.finding_id ?? f.id ?? "");
+    if (!fid) return;
     try {
-      if (kind === "promote") await promoteAgiFinding(sessionId, f.finding_id);
-      else await setAgiFindingStatus(sessionId, f.finding_id, kind, kind === "verified" ? "Verified by operator" : "");
+      if (kind === "promote") await promoteAgiFinding(sessionId, fid);
+      else await setAgiFindingStatus(sessionId, fid, kind, kind === "verified" ? "Verified by operator" : "");
       toast("success", kind === "promote" ? "Finding promoted" : kind === "verified" ? "Finding verified" : "Finding dismissed");
       findings.refresh();
     } catch (e) { toast("error", "Action failed", agiErrorDetail(e).message); }
+  };
+
+  const evidenceText = (f: AgiFinding): string => {
+    if (typeof f.evidence === "string") return f.evidence;
+    if (f.evidence && typeof f.evidence === "object") {
+      const n = f.evidence.notes || f.evidence.response || f.evidence.request || "";
+      if (n) return n;
+    }
+    return f.notes || f.business_impact || "";
   };
 
   const list = findings.data ?? [];
@@ -747,15 +881,24 @@ function FindingsPanel({ sessionId }: { sessionId: number }) {
       {findings.loading && <TableSkeleton rows={2} />}
       {!findings.loading && list.length === 0 && <EmptyState icon={<ShieldAlert size={22} />} title="No findings yet" body="Evidence-backed findings from this session will appear here." />}
       {list.map((f) => (
-        <div key={f.id} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
+        <div key={String(f.id)} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
           <div className="flex flex-wrap items-center gap-2">
             <SeverityBadge severity={f.severity} />
-            <span className="text-sm font-semibold text-slate-100">{f.title}</span>
+            {(f.impact_level || f.impact_analysis?.impact_level) && (
+              <span className="chip border-gold-400/30 bg-gold-400/10 text-[10px] text-gold-300">{f.impact_level || f.impact_analysis?.impact_level}</span>
+            )}
+            {(f.highlight || f.report_highlight) && (
+              <span className="chip border-severity-critical/30 bg-severity-critical/10 text-[10px] text-severity-critical">highlight</span>
+            )}
+            <span className="min-w-0 flex-1 break-words text-sm font-semibold text-slate-100">{f.title}</span>
             <span className="chip text-[10px] text-slate-500">{f.tool ?? f.source}</span>
             {f.risk_id && <span className="chip border-emerald-400/30 bg-emerald-400/10 text-[10px] text-emerald-300">risk #{f.risk_id}</span>}
           </div>
-          {f.target && <p className="mt-1 font-mono text-[11px] text-slate-500">{f.target}</p>}
-          <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-400">{f.evidence}</p>
+          {(f.business_impact || f.impact_analysis?.business_impact) && (
+            <p className="mt-1.5 break-words text-xs leading-5 text-slate-300">{f.business_impact || f.impact_analysis?.business_impact}</p>
+          )}
+          {f.target && <p className="mt-1 break-all font-mono text-[11px] text-slate-500">{f.target}</p>}
+          <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-slate-400">{evidenceText(f)}</p>
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             {!f.risk_id && (
               <button onClick={() => void act(f, "promote")} className="btn-secondary !px-2.5 !py-1.5 !text-[11px]"><GitBranch size={12} className="mr-1 inline" /> Promote to risk</button>
@@ -879,7 +1022,8 @@ export default function AgiAdmin() {
   const [skillOpen, setSkillOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<AgiSkill | null>(null);
   const [autonomy, setAutonomy] = useState<"low" | "medium" | "high">("medium");
-  const [includeOrgAssets, setIncludeOrgAssets] = useState(true);
+  const [includeOrgAssets, setIncludeOrgAssets] = useState(false);
+  const [preapproveLabAuth, setPreapproveLabAuth] = useState(false);
   const [startCreds, setStartCreds] = useState({ login_url: "", username: "", password: "" });
   const [credsOpen, setCredsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -984,9 +1128,11 @@ export default function AgiAdmin() {
     if (!instructionText) { toast("warning", "Instruction required", "An explicit operator instruction is required to start a session."); return; }
     setStarting(true);
     try {
+      toast("info", "Provisioning container…", "Docker workspace can take up to ~2 minutes.");
       const s = await startAgiSession(eng.id, instructionText, {
         autonomy,
         include_org_assets: includeOrgAssets,
+        preapprove_lab_auth: preapproveLabAuth,
         credentials: credsOpen && startCreds.login_url && startCreds.username && startCreds.password ? {
           login_url: startCreds.login_url,
           username: startCreds.username,
@@ -999,7 +1145,11 @@ export default function AgiAdmin() {
       setInstruction("");
       setStartCreds({ login_url: "", username: "", password: "" });
       setCredsOpen(false);
-      toast("success", "Session started", `Session #${s.id} — streaming live from the engagement container.`);
+      const meta = (s.meta && typeof s.meta === "object" ? s.meta : {}) as Record<string, unknown>;
+      const lab = meta.lab_exploit && typeof meta.lab_exploit === "object" ? meta.lab_exploit as { enabled?: boolean; account_labels?: string[] } : null;
+      toast("success", "Session started", lab?.enabled
+        ? `Session #${s.id} — lab logins provisioned (${lab.account_labels?.length ?? 0} accounts).`
+        : `Session #${s.id} — streaming live from the engagement container.`);
       setResolved(await resolvedAgiSkills(eng.id));
     } catch (e) {
       const { code, message } = agiErrorDetail(e);
@@ -1194,14 +1344,19 @@ export default function AgiAdmin() {
                       <option value="high">high — reserved</option>
                     </select>
                   </div>
-                  <label className="flex items-center gap-1.5 pt-4 text-[11px] text-slate-400">
+                  <label className="flex items-center gap-1.5 pt-4 text-[11px] text-slate-400" title="Turns off lab auto-login if any non-lab host is in scope">
                     <input type="checkbox" checked={includeOrgAssets} onChange={(e) => setIncludeOrgAssets(e.target.checked)} className="accent-[rgb(var(--gold-400))]" />
-                    Include org assets (Asset Engine) in plan
+                    Include all organization assets
+                  </label>
+                  <label className="flex items-center gap-1.5 pt-4 text-[11px] text-slate-400" title="Only honored when every allowlisted host is *.phantixvulnserver.online">
+                    <input type="checkbox" checked={preapproveLabAuth} onChange={(e) => setPreapproveLabAuth(e.target.checked)} className="accent-[rgb(var(--gold-400))]" />
+                    Pre-approve lab auth
                   </label>
                   <button onClick={() => setCredsOpen((v) => !v)} className={cx("pt-4 btn-ghost !px-2.5 !py-1.5 !text-[11px]", credsOpen && "text-gold-300")}>
                     <ShieldCheck size={12} className="mr-1 inline" /> Login credentials
                   </button>
                 </div>
+                <p className="mt-1.5 text-[10px] leading-4 text-slate-600">Lab-only engagements: leave org assets off so the lab account pack can auto-provision. Mixed allowlists keep auth gated.</p>
                 {credsOpen && (
                   <div className="mt-2 grid gap-2 sm:grid-cols-3">
                     <input value={startCreds.login_url} onChange={(e) => setStartCreds({ ...startCreds, login_url: e.target.value })} placeholder="Login URL" className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
@@ -1393,7 +1548,7 @@ export default function AgiAdmin() {
                 <span className="chip border-gold-400/30 bg-gold-400/10 text-[10px] text-gold-300">agent admin gated</span>
               </div>
               <div className="max-h-[70vh] overflow-y-auto p-5">
-                <MarkdownView source={AGI_CONTRIBUTOR_GUIDE_MD} />
+                <ContributorGuideView source={AGI_CONTRIBUTOR_GUIDE_MD} />
               </div>
             </Card>
           )}
