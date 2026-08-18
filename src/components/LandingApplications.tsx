@@ -78,9 +78,10 @@ export default function LandingApplications() {
       <Card className="mb-5">
         <CardHeader title="Landing applications" subtitle="From phantix.site apply form" />
         <p className="text-xs leading-5 text-slate-500">
-          Configure <span className="font-mono text-slate-300">VITE_SANDBOX_APPLY_API</span> and{" "}
-          <span className="font-mono text-slate-300">VITE_SANDBOX_STAFF_KEY</span> to manage landing
-          applications here. API: <span className="font-mono">{SANDBOX_APPLY_API || "(unset)"}</span>
+          Set <span className="font-mono text-slate-300">SANDBOX_APPLY_API</span> and{" "}
+          <span className="font-mono text-slate-300">SANDBOX_STAFF_KEY</span> in{" "}
+          <span className="font-mono text-slate-300">src/lib/config.ts</span>. API:{" "}
+          <span className="font-mono">{SANDBOX_APPLY_API || "(unset)"}</span>
         </p>
       </Card>
     );

@@ -317,7 +317,7 @@ export default function SandboxAdmin() {
         <EmptyState
           icon={<FlaskConical size={28} />}
           title="Live API required"
-          body="Set VITE_API_BASE and sign in with a staff JWT. Sandbox management does not run without the backend."
+          body="Sign in with a staff JWT against the live API. Sandbox management does not run offline."
         />
       </div>
     );

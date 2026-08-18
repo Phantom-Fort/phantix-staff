@@ -24,13 +24,11 @@ interface TerminalCapability {
   staff?: { id: number; email: string; role: string };
 }
 
-/** Convert API_BASE (https://host/api/v1) to a wss://host WS base. */
+/** Same-origin WebSocket — never points at upstream host (proxy cloaks backend). */
 function wsBase(): string | null {
-  if (!API_BASE) return null;
-  const url = new URL(API_BASE);
-  const protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  // API_BASE already includes /api/v1; the terminal path is relative to host.
-  return `${protocol}//${url.host}/api/v1/admin/super/terminal/ws`;
+  if (typeof window === "undefined") return null;
+  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${proto}//${window.location.host}/api/v1/admin/super/terminal/ws`;
 }
 
 const demoCapability: TerminalCapability = {
@@ -97,7 +95,7 @@ export default function SuperadminTerminal() {
     if (DEMO_MODE) {
       if (!containerRef.current) return;
       initTerm();
-      toast("info", "Demo terminal", "Connect a live API (VITE_API_BASE) for a real superadmin PTY session.");
+      toast("info", "Demo terminal", "Connect a live API for a real superadmin PTY session.");
       return;
     }
     const base = wsBase();

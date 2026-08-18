@@ -1,6 +1,8 @@
 {
   "rewrites": [
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    { "source": "/api/:path*", "destination": "https://staging.phantix.site/api/:path*" },
+    { "source": "/sandbox-apply/:path*", "destination": "https://staging.phantix.site/sandbox-apply/:path*" },
+    { "source": "/((?!api/|sandbox-apply/|assets/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
@@ -10,14 +12,6 @@
         { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
-      ]
-    },
-    {
-      "source": "/",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" }
       ]
     },
     {

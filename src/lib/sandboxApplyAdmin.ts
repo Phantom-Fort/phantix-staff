@@ -1,6 +1,5 @@
 /** Landing sandbox-apply Node API (not Phantix main backend). */
-const RAW = (import.meta.env.VITE_SANDBOX_APPLY_API as string | undefined)?.replace(/\/+$/, "") ?? "";
-const KEY = (import.meta.env.VITE_SANDBOX_STAFF_KEY as string | undefined) ?? "";
+import { SANDBOX_APPLY_API as RAW, SANDBOX_STAFF_KEY as KEY } from "./config";
 
 export const SANDBOX_APPLY_API = RAW;
 export const SANDBOX_STAFF_KEY_CONFIGURED = !!KEY && !!RAW;
@@ -36,7 +35,7 @@ export type ApplyStats = {
 };
 
 async function staffFetch(path: string, init?: RequestInit) {
-  if (!RAW || !KEY) throw new Error("Set VITE_SANDBOX_APPLY_API and VITE_SANDBOX_STAFF_KEY");
+  if (!RAW || !KEY) throw new Error("Set SANDBOX_APPLY_API and SANDBOX_STAFF_KEY in src/lib/config.ts");
   const res = await fetch(`${RAW}${path}`, {
     ...init,
     headers: {
