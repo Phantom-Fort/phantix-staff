@@ -12,6 +12,7 @@ import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
 import { api, DEMO_MODE } from "@/lib/api";
 import { cx, formatDateTime } from "@/lib/utils";
+import { marked } from "marked";
 import AgiConsole from "@/components/AgiConsole";
 import { useChatSend } from "@/lib/useChatSend";
 import {
@@ -1785,7 +1786,10 @@ function PolicyPanel({ toast, policies }: { toast: (k: "success" | "error" | "in
       {active && (
         <Card>
           <CardHeader title={active.title} subtitle={`Version ${active.version} · published ${active.published_at ? formatDateTime(active.published_at) : "—"}`} action={<StatusBadge status="active" />} />
-          <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-xl bg-phantix-950/60 p-4 text-xs leading-6 text-slate-300">{active.body_md}</div>
+          <div
+            className="prose-doc max-w-none max-h-72 overflow-y-auto rounded-xl bg-phantix-950/60 p-4"
+            dangerouslySetInnerHTML={{ __html: marked.parse(active.body_md) as string }}
+          />
         </Card>
       )}
       <div className="flex justify-end">
