@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { FlaskConical, Plus, Megaphone, RefreshCw, ExternalLink } from "lucide-react";
 import { PageHeader, Card, CardHeader, Modal, StatusBadge, EmptyState, Spinner } from "@/components/ui";
-import LandingApplications from "@/components/LandingApplications";
 import { api, DEMO_MODE } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { timeAgo, cx } from "@/lib/utils";
@@ -339,7 +338,7 @@ export default function SandboxAdmin() {
     <div>
       <PageHeader
         title="Sandbox management"
-        description="Landing applications · cohort board · deploy notes · ratings (≤20 orgs)"
+        description="Cohort board · deploy notes · ratings (≤20 orgs)"
         actions={
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn-ghost !text-xs" onClick={() => void refresh(programId)}>
@@ -357,8 +356,6 @@ export default function SandboxAdmin() {
           </div>
         }
       />
-
-      <LandingApplications />
 
       {programs.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
