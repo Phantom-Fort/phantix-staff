@@ -24,9 +24,21 @@ interface TerminalCapability {
   staff?: { id: number; email: string; role: string };
 }
 
-/** Same-origin WebSocket — never points at upstream host (proxy cloaks backend). */
+/**
+ * WebSocket base for the superadmin terminal.
+ *
+ * Vercel rewrites are HTTP-only and CANNOT tunnel WebSocket upgrades, so in
+ * production we must connect directly to the WS-capable backend origin
+ * (VITE_TERMINAL_WS_ORIGIN, e.g. "wss://staging.phantix.site"). In local dev the
+ * Vite proxy forwards /api with ws:true, so same-origin works there.
+ */
 function wsBase(): string | null {
   if (typeof window === "undefined") return null;
+  const configured = (import.meta.env.VITE_TERMINAL_WS_ORIGIN as string | undefined)?.trim();
+  if (configured) {
+    const origin = configured.startsWith("http") ? configured.replace(/^http/, "ws") : configured;
+    return `${origin.replace(/\/+$/, "")}/api/v1/admin/super/terminal/ws`;
+  }
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${proto}//${window.location.host}/api/v1/admin/super/terminal/ws`;
 }
