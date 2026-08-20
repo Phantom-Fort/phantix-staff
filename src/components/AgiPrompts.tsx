@@ -78,9 +78,9 @@ export default function AgiPrompts() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
         {/* ── Left: resolver ─────────────────────────────────────────────── */}
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <Card>
             <CardHeader title="Resolve an objective" subtitle="Type what a user would ask — see the intent detected, the skill it resolves to, and the prompt that drives execution." />
             <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ export default function AgiPrompts() {
                   {result.matchedDef && <span className="chip border-emerald-400/30 bg-emerald-400/10 text-[10px] text-emerald-300">prompt: {result.matchedDef.key}</span>}
                 </div>
                 {result.matchedDef && (
-                  <p className="mt-2 text-[11px] leading-4 text-slate-500">Matches prompt <span className="font-mono text-slate-300">{result.matchedDef.label}</span> → intents {result.matchedDef.intents.join(", ")} → skills {result.matchedDef.skill_ids.join(", ")}</p>
+                  <p className="mt-2 break-words text-[11px] leading-4 text-slate-500">Matches prompt <span className="font-mono text-slate-300">{result.matchedDef.label}</span> → intents {result.matchedDef.intents.join(", ")} → skills {result.matchedDef.skill_ids.join(", ")}</p>
                 )}
               </Card>
 
@@ -121,13 +121,13 @@ export default function AgiPrompts() {
                 <div className="space-y-1.5">
                   {result.plan.skills.map((s) => (
                     <div key={s.skill_id} className="flex flex-wrap items-center gap-2 rounded-lg border border-phantix-700/30 px-3 py-2">
-                      <span className="w-5 text-right font-mono text-[11px] text-slate-600">{s.rank}</span>
-                      <span className={cx("min-w-0 flex-1 truncate font-mono text-[11px]", s.role === "primary" ? "text-gold-200" : "text-slate-200")}>{s.skill_id}</span>
-                      <span className="text-[10px] text-slate-500">{s.kind}</span>
-                      {s.efficiency != null && <span className="font-mono text-[10px] text-emerald-400">eff {(s.efficiency * 100).toFixed(0)}%</span>}
-                      {s.objective_score != null && <span className="font-mono text-[10px] text-slate-500">obj {(s.objective_score * 100).toFixed(0)}%</span>}
-                      <span className={cx("chip !text-[9px]", s.body_loaded ? "text-emerald-300" : "text-slate-500")}>{s.body_loaded ? "Full" : "Card"}</span>
-                      <span className="text-[9px] text-slate-600">{s.match_reason}</span>
+                      <span className="w-5 shrink-0 text-right font-mono text-[11px] text-slate-600">{s.rank}</span>
+                      <span className={cx("min-w-0 flex-1 truncate font-mono text-[11px]", s.role === "primary" ? "text-gold-200" : "text-slate-200")} title={s.skill_id}>{s.skill_id}</span>
+                      <span className="shrink-0 text-[10px] text-slate-500">{s.kind}</span>
+                      {s.efficiency != null && <span className="shrink-0 font-mono text-[10px] text-emerald-400">eff {(s.efficiency * 100).toFixed(0)}%</span>}
+                      {s.objective_score != null && <span className="shrink-0 font-mono text-[10px] text-slate-500">obj {(s.objective_score * 100).toFixed(0)}%</span>}
+                      <span className={cx("chip shrink-0 !text-[9px]", s.body_loaded ? "text-emerald-300" : "text-slate-500")}>{s.body_loaded ? "Full" : "Card"}</span>
+                      <span className="min-w-0 break-words text-[9px] text-slate-600">{s.match_reason}</span>
                     </div>
                   ))}
                 </div>
@@ -140,15 +140,17 @@ export default function AgiPrompts() {
               </Card>
 
               <Card className="!p-0 overflow-hidden">
-                <CardHeader title="System prompt preview" subtitle="What the runner receives — staff only. Users never see this." />
-                <pre className="max-h-[360px] overflow-auto bg-phantix-950/70 p-4 font-mono text-[11px] leading-5 text-slate-300">{result.prompt}</pre>
+                <div className="px-5 pt-5">
+                  <CardHeader title="System prompt preview" subtitle="What the runner receives — staff only. Users never see this." />
+                </div>
+                <pre className="max-h-[360px] overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words bg-phantix-950/70 p-4 font-mono text-[11px] leading-5 text-slate-300">{result.prompt}</pre>
               </Card>
             </>
           )}
         </div>
 
         {/* ── Right: reference (stacked dropdowns at top) ───────────────────────────── */}
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <Accordion id="signals" title="Intent signals" defaultOpen={false}>
             <div className="space-y-1.5">
               {INTENT_SIGNALS.map((s) => (
@@ -162,11 +164,11 @@ export default function AgiPrompts() {
           </Accordion>
 
           <Accordion id="appendix" title="Forbidden appendix" defaultOpen={false}>
-            <pre className="whitespace-pre-wrap font-mono text-[10px] leading-4 text-slate-400">{FORBIDDEN_APPENDIX}</pre>
+            <pre className="whitespace-pre-wrap break-words font-mono text-[10px] leading-4 text-slate-400">{FORBIDDEN_APPENDIX}</pre>
           </Accordion>
 
           <Accordion id="tools" title="Tool instructions" defaultOpen={false}>
-            <pre className="whitespace-pre-wrap font-mono text-[10px] leading-4 text-slate-400">{TOOL_INSTRUCTIONS}</pre>
+            <pre className="whitespace-pre-wrap break-words font-mono text-[10px] leading-4 text-slate-400">{TOOL_INSTRUCTIONS}</pre>
           </Accordion>
 
           <p className="flex items-start gap-1.5 text-[10px] leading-4 text-slate-600">
@@ -215,8 +217,8 @@ export default function AgiPrompts() {
                 <button onClick={() => toggleDef(d.key)} className="text-slate-500 hover:text-gold-300" title="Toggle">{d.is_active ? <X size={11} /> : <Check size={11} />}</button>
                 <button onClick={() => removeDef(d.key)} className="text-slate-500 hover:text-severity-critical" title="Delete"><Trash2 size={11} /></button>
               </div>
-              <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-500">{d.system_prompt}</p>
-              <p className="mt-1 font-mono text-[9px] text-slate-600">{d.intents.join(", ")} → {d.skill_ids.join(", ")}</p>
+              <p className="mt-1 line-clamp-2 break-words text-[10px] leading-4 text-slate-500">{d.system_prompt}</p>
+              <p className="mt-1 break-words font-mono text-[9px] text-slate-600">{d.intents.join(", ")} → {d.skill_ids.join(", ")}</p>
             </div>
           ))}
         </div>

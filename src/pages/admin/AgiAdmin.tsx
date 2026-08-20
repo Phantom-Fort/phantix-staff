@@ -439,7 +439,7 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
         <button onClick={() => setShowControls((v) => !v)} className={cx("btn-ghost !px-2.5 !py-1.5 !text-[11px]", showControls && "text-gold-300")}><SlidersHorizontal size={12} className="mr-1 inline" /> Controls</button>
         <button onClick={() => void poll()} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><RefreshCw size={12} /> Refresh</button>
         <button onClick={() => void trainAgiSession(session.id).then(() => toast("success", "Train queued"))} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]">Train now</button>
-        <span className="ml-auto font-mono text-[10px] text-slate-500">engagement #{session.engagement_id}{session.container_id ? ` · ${session.container_id}` : ""}</span>
+        <span className="ml-auto min-w-0 truncate font-mono text-[10px] text-slate-500" title={`engagement #${session.engagement_id}${session.container_id ? ` · ${session.container_id}` : ""}`}>engagement #{session.engagement_id}{session.container_id ? ` · ${session.container_id}` : ""}</span>
       </div>
       <div className="min-h-0 flex-1">
         <AgiConsole
@@ -711,7 +711,7 @@ function SessionControls({ session, running }: { session: AgiSession; running: b
             <label className="flex items-center gap-1.5 text-[11px] text-slate-400"><input type="checkbox" checked={shellWaitOtp} onChange={(e) => setShellWaitOtp(e.target.checked)} className="accent-[rgb(var(--gold-400))]" /> Wait for OTP</label>
             <button onClick={() => void runShell()} disabled={shellSaving || !running} className="btn-primary !px-4 !py-2 !text-[11px]">{shellSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Terminal size={12} className="mr-1 inline" />} Run</button>
           </div>
-          {shellOut && <pre className="max-h-40 overflow-auto rounded-lg bg-phantix-950/80 border border-phantix-700/40 p-2.5 font-mono text-[11px] text-slate-300">{shellOut}</pre>}
+          {shellOut && <pre className="max-h-40 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all rounded-lg bg-phantix-950/80 border border-phantix-700/40 p-2.5 font-mono text-[11px] text-slate-300">{shellOut}</pre>}
           <div>
             <div className="mb-1.5 flex items-center justify-between">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Background jobs</p>
@@ -721,7 +721,7 @@ function SessionControls({ session, running }: { session: AgiSession; running: b
               <div className="space-y-1.5">
                 {jobs.map((j, i) => (
                   <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg bg-phantix-950/60 px-2.5 py-2 text-[11px]">
-                    <span className="font-mono text-slate-300">{String(j.command ?? j.job_id ?? "job")}</span>
+                    <span className="min-w-0 break-all font-mono text-slate-300">{String(j.command ?? j.job_id ?? "job")}</span>
                     {j.waiting_otp && <span className="chip !text-[9px] border-severity-medium/30 bg-severity-medium/10 text-severity-medium">waiting OTP</span>}
                     <span className="ml-auto text-[10px] capitalize text-slate-500">{String(j.status ?? "running")}</span>
                   </div>
@@ -1193,7 +1193,7 @@ export default function AgiAdmin() {
             <p className="truncate text-[10px] text-slate-500">session #{activeSession.id} · engagement #{activeSession.engagement_id}{activeSession.container_id ? ` · ${activeSession.container_id}` : ""}</p>
           </div>
           <StatusBadge status={activeSession.status} />
-          <span className="ml-auto font-mono text-[10px] text-slate-500">{selectedForSession?.name ?? ""}</span>
+          <span className="ml-auto min-w-0 max-w-[220px] truncate font-mono text-[10px] text-slate-500" title={selectedForSession?.name ?? ""}>{selectedForSession?.name ?? ""}</span>
         </div>
         <div className="min-h-0 flex-1">
           <SessionTerminal session={activeSession} engagement={selectedForSession} onStopped={() => { setActiveSession(null); setSessionView(false); }} />
@@ -1203,7 +1203,7 @@ export default function AgiAdmin() {
   }
 
   return (
-    <div>
+    <div className="overflow-x-hidden">
       <PageHeader
         title="Phantix Autonomous Agent Management"
         description="Scope engagements, run sessions, approve state-changing steps, provision tools and manage skills for the autonomous agent."
@@ -1261,7 +1261,7 @@ export default function AgiAdmin() {
                   />
                   <Card>
                     <CardHeader title="Runner" subtitle={status.runner_url} action={<StatusBadge status={status.runner_reachable ? "ready" : "failed"} />} />
-                    <p className="text-sm text-slate-300">{status.runner_detail || "No detail from runner."}</p>
+                    <p className="break-all rounded-lg bg-phantix-950/60 p-2.5 font-mono text-[11px] leading-5 text-slate-400">{status.runner_detail || "No detail from runner."}</p>
                   </Card>
                 </>
               ) : null}
@@ -1288,7 +1288,7 @@ export default function AgiAdmin() {
                       {e.description && <p className="mt-1 text-xs text-slate-400">{e.description}</p>}
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {(e.scope_definition?.target_allowlist ?? []).map((t) => (
-                          <span key={t} className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[10px] text-slate-400">{repairTarget(t)}</span>
+                          <span key={t} className="chip max-w-full break-all border-phantix-600/40 bg-phantix-800/50 font-mono text-[10px] text-slate-400">{repairTarget(t)}</span>
                         ))}
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -1368,7 +1368,7 @@ export default function AgiAdmin() {
                 {resolved.length > 0 && (
                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
                     <span className="text-[10px] text-slate-500">Ranked skills:</span>
-                    {resolved.slice(0, 6).map((s) => <span key={s.skill_id} className="chip border-gold-400/20 bg-gold-400/5 font-mono text-[10px] text-gold-300">{s.skill_id}</span>)}
+                    {resolved.slice(0, 6).map((s) => <span key={s.skill_id} className="chip max-w-full break-all border-gold-400/20 bg-gold-400/5 font-mono text-[10px] text-gold-300">{s.skill_id}</span>)}
                   </div>
                 )}
               </Card>
@@ -1396,14 +1396,14 @@ export default function AgiAdmin() {
                   <div key={req.id} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <Wrench size={14} className="text-gold-400" />
-                      <span className="font-mono text-sm font-semibold text-white">{req.tool_name}</span>
+                      <span className="break-all font-mono text-sm font-semibold text-white">{req.tool_name}</span>
                       <StatusBadge status={req.status} />
                       <span className="chip text-[10px] text-slate-500">org #{req.organization_id}</span>
-                      <span className="chip font-mono text-[10px] text-gold-300">{req.engine_id ?? "scanner_engine"}</span>
-                      {(req.skill_id_minted || req.skill_id) && <span className="chip font-mono text-[10px] text-slate-400">{req.skill_id_minted || req.skill_id}</span>}
+                      <span className="chip max-w-full break-all font-mono text-[10px] text-gold-300">{req.engine_id ?? "scanner_engine"}</span>
+                      {(req.skill_id_minted || req.skill_id) && <span className="chip max-w-full break-all font-mono text-[10px] text-slate-400">{req.skill_id_minted || req.skill_id}</span>}
                     </div>
                     <p className="mt-1.5 text-xs text-slate-400">{req.rationale}</p>
-                    {req.install_command && <p className="mt-1.5 rounded-lg bg-phantix-950/70 px-2.5 py-1.5 font-mono text-[11px] text-slate-300">{req.install_command}</p>}
+                    {req.install_command && <p className="mt-1.5 break-all rounded-lg bg-phantix-950/70 px-2.5 py-1.5 font-mono text-[11px] text-slate-300">{req.install_command}</p>}
                     <p className="mt-1.5 text-[10px] text-slate-600">Session approve ≠ server provision. Confirm only after the package is in phantix-agi-sandbox.</p>
                     <div className="mt-3 flex items-center gap-2">
                       <button onClick={() => void decideInstall(req, true)} className="btn-primary !px-3 !py-1.5 !text-[11px]"><CheckCircle2 size={12} className="mr-1 inline" /> Provision server-wide</button>
@@ -1574,7 +1574,7 @@ export default function AgiAdmin() {
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Target allowlist</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {(selectedEng.scope_definition?.target_allowlist ?? []).map((t) => <span key={t} className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[11px] text-slate-300">{repairTarget(t)}</span>)}
+                {(selectedEng.scope_definition?.target_allowlist ?? []).map((t) => <span key={t} className="chip max-w-full break-all border-phantix-600/40 bg-phantix-800/50 font-mono text-[11px] text-slate-300">{repairTarget(t)}</span>)}
               </div>
             </div>
             <div>
@@ -1787,7 +1787,7 @@ function PolicyPanel({ toast, policies }: { toast: (k: "success" | "error" | "in
         <Card>
           <CardHeader title={active.title} subtitle={`Version ${active.version} · published ${active.published_at ? formatDateTime(active.published_at) : "—"}`} action={<StatusBadge status="active" />} />
           <div
-            className="prose-doc max-w-none max-h-72 overflow-y-auto rounded-xl bg-phantix-950/60 p-4"
+            className="prose-doc max-w-none max-h-72 overflow-y-auto overflow-x-hidden break-words rounded-xl bg-phantix-950/60 p-4"
             dangerouslySetInnerHTML={{ __html: marked.parse(active.body_md) as string }}
           />
         </Card>

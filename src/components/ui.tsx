@@ -62,11 +62,11 @@ export function Card({ children, className, hover }: { children: React.ReactNode
 export function CardHeader({ title, subtitle, action }: { title: React.ReactNode; subtitle?: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="mb-4 flex items-start justify-between gap-4">
-      <div>
-        <h3 className="font-display text-[15px] font-semibold text-slate-100">{title}</h3>
-        {subtitle && <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>}
+      <div className="min-w-0 flex-1">
+        <h3 className="font-display text-[15px] font-semibold text-slate-100 break-words">{title}</h3>
+        {subtitle && <p className="mt-0.5 text-xs text-slate-400 break-words">{subtitle}</p>}
       </div>
-      {action}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }

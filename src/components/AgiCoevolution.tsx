@@ -209,11 +209,11 @@ export function EngineLearningPanel({ orgId }: { orgId?: number }) {
           <div className="space-y-2">
             {ranks.map((c) => (
               <div key={`${c.engine_id}.${c.op}`} className="rounded-lg border border-phantix-700/30 px-3 py-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-[11px] text-slate-200">{c.engine_id}.{c.op}</span>
-                  <span className={cx("text-[11px] font-semibold tabular-nums", scoreCls(c.score))}>{(c.score * 100).toFixed(0)}%</span>
-                  <span className="text-[10px] text-slate-500">{c.calls} calls</span>
-                </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="break-all font-mono text-[11px] text-slate-200">{c.engine_id}.{c.op}</span>
+                    <span className={cx("text-[11px] font-semibold tabular-nums", scoreCls(c.score))}>{(c.score * 100).toFixed(0)}%</span>
+                    <span className="text-[10px] text-slate-500">{c.calls} calls</span>
+                  </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-phantix-800">
                   <div className={cx("h-full", c.score >= 0.7 ? "bg-emerald-400" : c.score >= 0.4 ? "bg-severity-medium" : "bg-severity-critical")} style={{ width: `${Math.min(100, c.score * 100)}%` }} />
                 </div>
@@ -261,9 +261,9 @@ export function EngineSnapshotCards({
         {top.length === 0 ? <p className="mt-2 text-[11px] text-slate-500">No scores yet</p> : (
           <div className="mt-2 space-y-1">
             {top.slice(0, 3).map((c) => (
-              <p key={`${c.engine_id}.${c.op}`} className="flex justify-between font-mono text-[10px] text-slate-300">
-                <span>{c.engine_id}</span>
-                <span className={scoreCls(c.score)}>{(c.score * 100).toFixed(0)}</span>
+              <p key={`${c.engine_id}.${c.op}`} className="flex justify-between gap-2 font-mono text-[10px] text-slate-300">
+                <span className="min-w-0 truncate" title={`${c.engine_id}.${c.op}`}>{c.engine_id}</span>
+                <span className={cx("shrink-0", scoreCls(c.score))}>{(c.score * 100).toFixed(0)}</span>
               </p>
             ))}
           </div>
