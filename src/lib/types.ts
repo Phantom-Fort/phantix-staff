@@ -825,4 +825,5 @@ export interface AgiFinding {
   authenticated?: boolean;
   rule_id?: string | null;
   node_id?: string | null;
+  verification?: { verdict?: string; reason?: string; evidence?: string } | null;
 }

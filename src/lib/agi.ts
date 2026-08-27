@@ -180,6 +180,14 @@ export function normalizeAgiFindings(raw: unknown): AgiFinding[] {
       authenticated: o.authenticated != null ? Boolean(o.authenticated) : undefined,
       rule_id: o.rule_id == null ? null : String(o.rule_id),
       node_id: o.node_id == null ? null : String(o.node_id),
+      verification:
+        o.verification && typeof o.verification === "object"
+          ? {
+              verdict: asStr((o.verification as Record<string, unknown>).verdict) || undefined,
+              reason: asStr((o.verification as Record<string, unknown>).reason) || undefined,
+              evidence: asStr((o.verification as Record<string, unknown>).evidence) || undefined,
+            }
+          : null,
     };
   });
 }

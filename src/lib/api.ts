@@ -79,11 +79,34 @@ function detailMessage(detail: unknown): string {
 export class ApiError extends Error {
   status: number;
   detail: unknown;
-  constructor(status: number, detail: unknown) {
+  /** Server correlation id (X-Correlation-ID) for support/triage. */
+  correlationId?: string;
+  constructor(status: number, detail: unknown, correlationId?: string) {
     super(detailMessage(detail));
     this.status = status;
     this.detail = detail;
+    this.correlationId = correlationId;
   }
+}
+
+// ── Correlation ID (00-shared-auth-and-client.md §6) ────────────────────────
+// Surface X-Correlation-ID on failures so support can trace a request.
+let lastCorrelationId: string | null = null;
+
+/** Capture X-Correlation-ID from any response (if present). */
+function trackCorrelationId(res: Response): void {
+  const id = res.headers.get("X-Correlation-ID");
+  if (id) lastCorrelationId = id;
+}
+
+/** Most recent correlation id seen on any response (or null). */
+export function getCorrelationId(): string | null {
+  return lastCorrelationId;
+}
+
+/** Reset tracking (e.g. on logout). */
+export function clearCorrelationId(): void {
+  lastCorrelationId = null;
 }
 
 type RequestOpts = {
@@ -141,7 +164,9 @@ async function request<T>(
     throw err;
   }
   if (timer != null) window.clearTimeout(timer);
+  trackCorrelationId(res);
   if (!res.ok) {
+    const correlationId = res.headers.get("X-Correlation-ID") || undefined;
     let detail: unknown = res.statusText;
     try {
       detail = (await res.json()).detail;
@@ -150,7 +175,7 @@ async function request<T>(
       tokens.staff = null;
       tokens.email = null;
     }
-    throw new ApiError(res.status, detail);
+    throw new ApiError(res.status, detail, correlationId);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
@@ -172,11 +197,12 @@ export const api = {
     if (tokens.staff) headers["Authorization"] = `Bearer ${tokens.staff}`;
     headers["X-Device-Id"] = deviceId();
     const res = await fetch(`${API_BASE}${path}`, { method: "POST", headers, body: formData });
+    trackCorrelationId(res);
     if (!res.ok) {
       let detail: unknown = res.statusText;
       try { detail = (await res.json()).detail; } catch { /* non-JSON */ }
       if (res.status === 401) { tokens.staff = null; tokens.email = null; }
-      throw new ApiError(res.status, detail);
+      throw new ApiError(res.status, detail, res.headers.get("X-Correlation-ID") || undefined);
     }
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
@@ -186,7 +212,8 @@ export const api = {
     const headers: Record<string, string> = {};
     if (tokens.staff) headers["Authorization"] = `Bearer ${tokens.staff}`;
     const res = await fetch(`${API_BASE}${path}`, { method: "GET", headers });
-    if (!res.ok) throw new ApiError(res.status, res.statusText);
+    trackCorrelationId(res);
+    if (!res.ok) throw new ApiError(res.status, res.statusText, res.headers.get("X-Correlation-ID") || undefined);
     return res.blob();
   },
 
@@ -194,7 +221,8 @@ export const api = {
     const headers: Record<string, string> = {};
     if (tokens.staff) headers["Authorization"] = `Bearer ${tokens.staff}`;
     const res = await fetch(`${API_BASE}${path}`, { method: "GET", headers });
-    if (!res.ok) throw new ApiError(res.status, res.statusText);
+    trackCorrelationId(res);
+    if (!res.ok) throw new ApiError(res.status, res.statusText, res.headers.get("X-Correlation-ID") || undefined);
     return res.text();
   },
 };

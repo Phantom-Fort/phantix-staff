@@ -8,6 +8,13 @@ import {
 } from "lucide-react";
 import { ApprovalNotice, CopyBtn, StreamEmpty, StreamMessage, TypingIndicator } from "@/components/AgiStream";
 import { Menu, MenuItem, SeverityBadge } from "@/components/ui";
+import { VerificationBadge, verificationBadge } from "@/components/VerificationBadge";
+import {
+  Steps,
+  StepsItem,
+  StepsTrigger,
+  StepsContent,
+} from "@/components/prompt-kit/steps";
 import { PaneHeader, ResizeHandle } from "@/components/workbench";
 import { useDragResize } from "@/lib/useDragResize";
 import {
@@ -18,6 +25,7 @@ import {
   PHASES,
   PERSONAS,
   severityCounts,
+  phasesFromSession,
   type AgentPersona,
   type AgiFinding,
   type AttackNode,
@@ -112,25 +120,32 @@ function NodeInspector({ node }: { node: AttackNode }) {
         </p>
       )}
 
-      {node.commands.length > 0 && (
-        <div>
-          <p className="wb-pane-title mb-1"><Terminal size={10} /> Commands</p>
-          <div className="space-y-1">
-            {node.commands.slice(-6).map((c, i) => (
-              <p key={i} className="wb-2xs break-all rounded-md bg-phantix-950/70 px-2 py-1.5 font-mono text-slate-300">{c}</p>
-            ))}
-          </div>
-        </div>
-      )}
-      {node.outputs.length > 0 && (
-        <div>
-          <p className="wb-pane-title mb-1">Tool output</p>
-          <div className="wb-scroll max-h-44 space-y-1 overflow-y-auto pr-1">
-            {node.outputs.slice(-8).map((c, i) => (
-              <p key={i} className="wb-2xs whitespace-pre-wrap break-words font-mono leading-relaxed text-slate-400">{c}</p>
-            ))}
-          </div>
-        </div>
+      {(node.commands.length > 0 || node.outputs.length > 0) && (
+        <Steps defaultOpen={false} className="pt-1">
+          <StepsItem>
+            <StepsTrigger leftIcon={<Terminal size={12} />}>
+              Activity
+              {node.commands.length > 0 && <span className="tabular-nums"> · {node.commands.length} cmd{node.commands.length !== 1 ? "s" : ""}</span>}
+              {node.outputs.length > 0 && <span className="tabular-nums"> · {node.outputs.length} output{node.outputs.length !== 1 ? "s" : ""}</span>}
+            </StepsTrigger>
+            <StepsContent bar={<span className="block h-full w-[2px] rounded bg-phantix-700/60" />}>
+              {node.commands.length > 0 && (
+                <div className="space-y-1">
+                  {node.commands.slice(-6).map((c, i) => (
+                    <p key={i} className="wb-2xs break-all rounded-md bg-phantix-950/70 px-2 py-1.5 font-mono text-slate-300">{c}</p>
+                  ))}
+                </div>
+              )}
+              {node.outputs.length > 0 && (
+                <div className="wb-scroll max-h-44 space-y-1 overflow-y-auto pr-1">
+                  {node.outputs.slice(-8).map((c, i) => (
+                    <p key={i} className="wb-2xs whitespace-pre-wrap break-words font-mono leading-relaxed text-slate-400">{c}</p>
+                  ))}
+                </div>
+              )}
+            </StepsContent>
+          </StepsItem>
+        </Steps>
       )}
     </div>
   );
@@ -139,11 +154,24 @@ function NodeInspector({ node }: { node: AttackNode }) {
 function EvidenceDrawer({
   finding,
   onClose,
+  onVerify,
 }: {
   finding: AgiFinding;
   onClose: () => void;
+  onVerify?: (verdict: "confirmed" | "rejected") => Promise<boolean>;
 }) {
   const [tab, setTab] = useState<"evidence" | "autofix">("evidence");
+  const [verifying, setVerifying] = useState<"confirmed" | "rejected" | null>(null);
+  const v = finding.verification;
+  const badge = verificationBadge(v);
+
+  const humanVerify = async (verdict: "confirmed" | "rejected") => {
+    if (!onVerify) return;
+    setVerifying(verdict);
+    await onVerify(verdict);
+    setVerifying(null);
+  };
+
   return (
     <motion.div
       initial={{ y: 16, opacity: 0 }}
@@ -164,6 +192,38 @@ function EvidenceDrawer({
       <div className="wb-scroll min-h-0 flex-1 overflow-y-auto wb-pad">
         {tab === "evidence" ? (
           <div className="space-y-2">
+            {/* Verification layer */}
+            <div className="rounded-lg border border-phantix-700/40 bg-phantix-900/40 p-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={cx("inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-medium", badge.cls)}>
+                  {badge.icon} {badge.label}
+                </span>
+                {v?.verifier && <span className="wb-2xs font-mono text-slate-500">{v.verifier}</span>}
+                {v?.by && <span className="wb-2xs text-slate-600">by {v.by}</span>}
+              </div>
+              {v?.reason && <p className="wb-2xs mt-1.5 leading-relaxed text-slate-400">{v.reason}</p>}
+              {v?.attempted_at && <p className="wb-2xs mt-1 text-slate-600">checked {new Date(v.attempted_at).toLocaleString()}</p>}
+              {onVerify && finding.status !== "validated" && finding.status !== "rejected" && (
+                <div className="mt-2 flex gap-1.5">
+                  <button
+                    onClick={() => void humanVerify("confirmed")}
+                    disabled={verifying !== null}
+                    className="btn-primary flex-1 !py-1 wb-2xs"
+                  >
+                    {verifying === "confirmed" ? <Loader2 size={11} className="mr-1 inline animate-spin" /> : <CheckCircle2 size={11} className="mr-1 inline" />}
+                    Verify
+                  </button>
+                  <button
+                    onClick={() => void humanVerify("rejected")}
+                    disabled={verifying !== null}
+                    className="btn-ghost flex-1 !py-1 wb-2xs text-severity-critical"
+                  >
+                    {verifying === "rejected" ? <Loader2 size={11} className="mr-1 inline animate-spin" /> : <XCircle size={11} className="mr-1 inline" />}
+                    Dismiss
+                  </button>
+                </div>
+              )}
+            </div>
             <p className="wb-2xs break-all font-mono text-slate-500">{finding.target}</p>
             {finding.evidence.request && (
               <div className="group relative">
@@ -201,6 +261,64 @@ function EvidenceDrawer({
   );
 }
 
+function ReasoningPanel({ text, open, onToggle }: { text: string; open: boolean; onToggle?: () => void }) {
+  return (
+    <div className="rounded-xl border border-phantix-600/40 bg-phantix-900/50">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-phantix-800/40"
+      >
+        <BrainCircuit size={13} className="shrink-0 text-phantix-300" />
+        <span className="wb-xs font-semibold uppercase tracking-wider text-slate-400">Reasoning</span>
+        <span className="chip !px-1.5 !py-0 wb-2xs font-mono text-phantix-300">live</span>
+        <ChevronDown size={13} className={cx("ml-auto shrink-0 text-slate-500 transition-transform", open ? "" : "-rotate-90")} />
+      </button>
+      {open && (
+        <pre className="wb-scroll wb-xs max-h-64 overflow-y-auto whitespace-pre-wrap break-words border-t border-phantix-700/30 px-3 py-2 font-mono leading-relaxed text-slate-500">
+          {text}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+function SessionSummary({
+  turnMetrics,
+  findingsCount,
+  phaseStats,
+}: {
+  turnMetrics: { turns: number; promptTokens: number; completionTokens: number; tools: number; wallSeconds: number };
+  findingsCount: number;
+  phaseStats: { id: string; total: number; done: number; live: boolean }[];
+}) {
+  const totalTokens = turnMetrics.promptTokens + turnMetrics.completionTokens;
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-phantix-700/40 bg-phantix-900/30 px-4 py-1.5">
+      <div className="flex items-center gap-1.5">
+        {phaseStats.map((p) => (
+          <span
+            key={p.id}
+            className={cx("flex items-center gap-1 wb-2xs capitalize", p.live ? "text-gold-300" : p.done > 0 ? "text-emerald-300" : "text-slate-500")}
+            title={`${p.done}/${p.total || 0} nodes`}
+          >
+            <span className={cx("h-1.5 w-1.5 rounded-full", p.live ? "animate-pulse bg-gold-400" : p.done > 0 ? "bg-emerald-400" : "bg-slate-600")} />
+            {p.id}
+          </span>
+        ))}
+      </div>
+      <div className="ml-auto flex items-center gap-2.5">
+        <span className="wb-2xs text-slate-500"><span className="font-semibold text-slate-300">{turnMetrics.turns}</span> turns</span>
+        <span className="wb-2xs text-slate-500"><span className="font-semibold text-slate-300">{turnMetrics.tools}</span> tools</span>
+        <span className="wb-2xs text-slate-500"><span className="font-semibold text-slate-300">{findingsCount}</span> findings</span>
+        <span className="wb-2xs text-slate-500" title={`${turnMetrics.promptTokens} prompt + ${turnMetrics.completionTokens} completion tokens`}>
+          <span className="font-semibold text-slate-300">{(totalTokens / 1000).toFixed(1)}k</span> tokens
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export type AgiConsoleProps = {
   running: boolean;
   paused: boolean;
@@ -214,10 +332,18 @@ export type AgiConsoleProps = {
   actionBusy: number | null;
   onDecide: (action: AgiAction, approve: boolean, overrideCmd?: string) => void;
   thinking: boolean;
+  /** Live model reasoning (DeepSeek reasoning_content) — ephemeral, SSE only. */
+  reasoning?: string;
+  reasoningOpen?: boolean;
+  onToggleReasoning?: () => void;
+  /** Live turn telemetry (tokens/tools/time) from the runner's turn_metrics SSE. */
+  turnMetrics?: { turns: number; promptTokens: number; completionTokens: number; tools: number; wallSeconds: number };
   /** Prefer loop.working_on over a generic "thinking" spinner label. */
   workingOn?: string | null;
   /** Live findings from GET .../findings (preferred over transcript-derived). */
   liveFindings?: AgiFinding[];
+  /** Human verification layer: confirm/dismiss a finding via the staff API. */
+  onFindingVerify?: (findingId: string, verified: boolean) => Promise<boolean>;
   connError: string | null;
   instruction: string;
   onInstruction: (v: string) => void;
@@ -243,8 +369,13 @@ export default function AgiConsole({
   actionBusy,
   onDecide,
   thinking,
+  reasoning = "",
+  reasoningOpen = false,
+  onToggleReasoning,
+  turnMetrics = { turns: 0, promptTokens: 0, completionTokens: 0, tools: 0, wallSeconds: 0 },
   workingOn = null,
   liveFindings,
+  onFindingVerify,
   connError,
   instruction,
   onInstruction,
@@ -272,7 +403,10 @@ export default function AgiConsole({
   const left = useDragResize({ initial: LEFT.initial, min: LEFT.min, max: LEFT.max, side: "start" });
   const right = useDragResize({ initial: RIGHT.initial, min: RIGHT.min, max: RIGHT.max, side: "end" });
 
-  const nodes = useMemo(() => deriveAttackGraph(transcript, actions, running && !paused), [transcript, actions, running, paused]);
+  const nodes = useMemo(
+    () => deriveAttackGraph(transcript, actions, running && !paused, phasesFromSession(session.job)),
+    [transcript, actions, running, paused, session.job],
+  );
   const maxSlots = useMemo(
     () => Math.max(1, ...PHASES.map((phase) => nodes.filter((n) => n.phase === phase.id).length)),
     [nodes],
@@ -378,8 +512,32 @@ export default function AgiConsole({
               {stopping ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Square size={12} className="mr-1 inline" />} {stopping ? "Stopping…" : "Stop"}
             </button>
           )}
+          <button
+            onClick={() => {
+              const payload = {
+                exported_at: new Date().toISOString(),
+                session: { id: session.id, engagement_id: session.engagement_id, status: session.status, started_at: session.started_at },
+                transcript,
+                findings,
+                actions,
+              };
+              const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `phantix-agi-session-${session.id}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="btn-secondary !px-2.5 !py-1 wb-xs"
+            title="Export session (transcript + findings + actions)"
+          >
+            <FileCode2 size={12} className="mr-1 inline" /> Export
+          </button>
         </div>
       </div>
+
+      <SessionSummary turnMetrics={turnMetrics} findingsCount={findings.length} phaseStats={phaseStats} />
 
       {policyBanner && (
         <div className="flex items-center gap-2 border-b border-severity-critical/30 bg-severity-critical/10 px-4 py-1.5">
@@ -395,66 +553,63 @@ export default function AgiConsole({
               <div className="wb-pad shrink-0 border-b border-phantix-700/30">
                 <PaneHeader
                   icon={<Crosshair size={12} />}
-                  title="Attack tree"
+                  title="Phases"
                   right={
-                    <>
-                      {selectedId && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedId(null)}
-                          className="wb-2xs flex items-center gap-1 rounded px-1.5 py-0.5 font-medium normal-case tracking-normal text-gold-300 transition-colors hover:bg-phantix-800"
-                          title="Follow the live node again"
-                        >
-                          <Radar size={10} /> Follow live
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setLeftOpen(false)}
-                        className="rounded p-1 text-slate-500 transition-colors hover:bg-phantix-800 hover:text-slate-200"
-                        title="Collapse attack tree"
-                        aria-label="Collapse attack tree"
-                      >
-                        <PanelLeftClose size={14} />
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => setLeftOpen(false)}
+                      className="rounded p-1 text-slate-500 transition-colors hover:bg-phantix-800 hover:text-slate-200"
+                      title="Collapse phases"
+                      aria-label="Collapse phases"
+                    >
+                      <PanelLeftClose size={14} />
+                    </button>
                   }
                 />
-                <div className="mt-2 grid grid-cols-5 gap-1">
+                <div className="mt-2 space-y-2">
                   {PHASES.map((phase) => {
                     const stat = phaseStats.find((p) => p.id === phase.id);
-                    const pct = stat && stat.total > 0 ? Math.round((stat.done / stat.total) * 100) : 0;
-                    return (
-                      <div key={phase.id} className="min-w-0">
-                        <p className={cx("wb-2xs truncate text-center font-semibold uppercase tracking-wider", stat?.live ? "text-gold-300" : "text-slate-500")} title={phase.label}>{phase.label}</p>
-                        <div className="mt-0.5 h-0.5 overflow-hidden rounded-full bg-phantix-700/40" title={`${stat?.done ?? 0}/${stat?.total ?? 0} nodes complete`}>
-                          <div
-                            className={cx("h-full rounded-full transition-all duration-500", stat?.live ? "bg-gold-400" : "bg-emerald-400/80")}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {PHASES.map((phase) => {
+                    const total = stat?.total ?? 0;
+                    const done = stat?.done ?? 0;
+                    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
                     const list = nodes.filter((n) => n.phase === phase.id);
-                    const slots = [...list, ...Array.from({ length: Math.max(0, maxSlots - list.length) }, () => null)];
+                    const live = list.some((n) => n.status === "active" || n.status === "blocked");
+                    const complete = total > 0 && done === total;
                     return (
-                      <div key={`${phase.id}-col`} className="flex flex-col gap-1">
-                        {slots.map((n, i) => n ? (
-                          <button
-                            key={n.id}
-                            onClick={() => setSelectedId(n.id)}
-                            title={n.tool ? `${n.label} · ${n.tool}` : n.label}
-                            className={cx("flex min-h-[46px] flex-1 flex-col items-center justify-center gap-0.5 rounded-md border px-1 py-1 text-center transition-all duration-200", NODE_RING[n.status], selected?.id === n.id && "ring-1 ring-gold-400/40")}
-                          >
-                            <span className={cx("h-1.5 w-1.5 rounded-full", NODE_DOT[n.status])} />
-                            <span className="wb-2xs line-clamp-2 leading-tight text-slate-200">{n.label}</span>
-                            {n.tool && <span className="wb-2xs max-w-full truncate font-mono text-slate-500">{n.tool}</span>}
-                          </button>
-                        ) : (
-                          <div key={`${phase.id}-empty-${i}`} className="min-h-[46px] flex-1 rounded-md border border-dashed border-phantix-700/30" />
-                        ))}
+                      <div key={phase.id}>
+                        <div
+                          className={cx("rounded-lg border px-2 py-1.5 transition-colors", live ? "border-gold-400/30 bg-gold-400/5" : complete ? "border-emerald-400/20 bg-emerald-400/5" : "border-phantix-700/40")}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={cx("wb-xs flex items-center gap-1.5 font-semibold uppercase tracking-wider", live ? "text-gold-300" : complete ? "text-emerald-300" : "text-slate-400")}>
+                              <span className={cx("h-1.5 w-1.5 rounded-full", live ? "animate-pulse bg-gold-400" : complete ? "bg-emerald-400" : "bg-slate-600")} />
+                              {phase.label}
+                            </span>
+                            <span className="wb-2xs font-mono text-slate-500">{done}/{total}</span>
+                          </div>
+                          <div className="mt-1 h-1 overflow-hidden rounded-full bg-phantix-700/40">
+                            <div className={cx("h-full rounded-full transition-all duration-500", live ? "bg-gold-400" : "bg-emerald-400/80")} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                        {/* Granular phases within this group */}
+                        <div className="mt-1 space-y-0.5 pl-1.5">
+                          {list.map((n) => (
+                            <button
+                              key={n.id}
+                              onClick={() => setSelectedId(n.id)}
+                              className={cx(
+                                "flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors",
+                                selected?.id === n.id ? "bg-phantix-800/70" : "hover:bg-phantix-800/40",
+                              )}
+                            >
+                              <span className={cx("h-1.5 w-1.5 shrink-0 rounded-full", NODE_DOT[n.status])} />
+                              <span className={cx("wb-2xs min-w-0 flex-1 truncate", n.status === "active" || n.status === "blocked" ? "text-gold-300" : n.status === "succeeded" ? "text-emerald-300/80" : "text-slate-400")}>
+                                {n.label}
+                              </span>
+                              {n.tool && <span className="wb-2xs shrink-0 font-mono text-slate-600">{n.tool}</span>}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     );
                   })}
@@ -562,6 +717,9 @@ export default function AgiConsole({
                     count={actions.length}
                     stateChanging={actions.some((a) => a.action_type === "state_changing")}
                   />
+                )}
+                {reasoning.trim() && (
+                  <ReasoningPanel text={reasoning} open={reasoningOpen} onToggle={onToggleReasoning} />
                 )}
                 {runningStatus && <TypingIndicator label={runningStatus.label} tool={runningStatus.tool} />}
                 {paused && <p className="wb-xs text-severity-medium">Loop paused — agent will not advance.</p>}
@@ -747,12 +905,28 @@ export default function AgiConsole({
                         <><Clock size={9} className="text-severity-medium" /> candidate</>
                       )}
                     </div>
+                    {f.verification && (
+                      <span className="w-full pl-0">
+                        <VerificationBadge verification={f.verification} className="!px-1 !py-0 !text-[8px]" />
+                      </span>
+                    )}
+                    {f.verification?.reason && (
+                      <p className="wb-2xs line-clamp-2 w-full pl-0 italic leading-relaxed text-slate-500" title={f.verification.reason}>
+                        verifier: {f.verification.reason}
+                      </p>
+                    )}
                     {f.business_impact && <p className="wb-2xs line-clamp-2 w-full pl-0 leading-relaxed text-slate-500">{f.business_impact}</p>}
                   </button>
                 ))}
               </div>
               <AnimatePresence>
-                {openFinding && <EvidenceDrawer finding={openFinding} onClose={() => setFindingId(null)} />}
+                {openFinding && (
+                  <EvidenceDrawer
+                    finding={openFinding}
+                    onClose={() => setFindingId(null)}
+                    onVerify={onFindingVerify ? (verdict) => onFindingVerify(openFinding.id, verdict === "confirmed") : undefined}
+                  />
+                )}
               </AnimatePresence>
             </aside>
           </>

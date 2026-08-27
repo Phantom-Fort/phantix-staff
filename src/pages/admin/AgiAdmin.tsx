@@ -127,6 +127,22 @@ function TxLine({ t, last }: { t: AgiTranscriptChunk; last: boolean }) {
   );
 }
 
+function mapAgiFinding(r: import("@/lib/types").AgiFinding): import("@/lib/agiGraph").AgiFinding {
+  return {
+    id: String(r.id ?? r.finding_id ?? Math.random()),
+    title: r.title,
+    severity: (String(r.severity || "info").toLowerCase() as import("@/lib/types").Severity),
+    target: r.target || "",
+    status: (r.status === "verified" || r.status === "promoted" ? "validated" : r.status === "dismissed" ? "rejected" : "candidate"),
+    evidence: typeof r.evidence === "object" && r.evidence ? r.evidence : { notes: typeof r.evidence === "string" ? r.evidence : r.notes || "" },
+    highlight: r.highlight,
+    report_highlight: r.report_highlight,
+    business_impact: r.business_impact || r.impact_analysis?.business_impact || undefined,
+    impact_level: r.impact_level || r.impact_analysis?.impact_level || undefined,
+    verification: r.verification ?? undefined,
+  };
+}
+
 // ── Session terminal (live stream + transcript poll + chat + approvals) ───────
 function SessionTerminal({ session, engagement, onStopped }: { session: AgiSession; engagement: AgiEngagement | null; onStopped?: () => void }) {
   const { toast } = useStore();
@@ -140,6 +156,9 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
   const [stopping, setStopping] = useState(false);
   const [deciding, setDeciding] = useState<number | null>(null);
   const [thinking, setThinking] = useState(false);
+  const [reasoning, setReasoning] = useState("");
+  const [reasoningOpen, setReasoningOpen] = useState(false);
+  const [turnMetrics, setTurnMetrics] = useState({ turns: 0, promptTokens: 0, completionTokens: 0, tools: 0, wallSeconds: 0 });
   const [workingOn, setWorkingOn] = useState<string | null>(null);
   const [liveFindings, setLiveFindings] = useState<import("@/lib/agiGraph").AgiFinding[]>([]);
   const [connError, setConnError] = useState<string | null>(null);
@@ -244,34 +263,12 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
     const fPoll = setInterval(async () => {
       try {
         const rows = await loadAgiFindings(session.id);
-        setLiveFindings(rows.map((r) => ({
-          id: String(r.id ?? r.finding_id ?? Math.random()),
-          title: r.title,
-          severity: (String(r.severity || "info").toLowerCase() as import("@/lib/types").Severity),
-          target: r.target || "",
-          status: (r.status as "candidate" | "validated" | "rejected") || "candidate",
-          evidence: typeof r.evidence === "object" && r.evidence ? r.evidence : { notes: typeof r.evidence === "string" ? r.evidence : r.notes || "" },
-          highlight: r.highlight,
-          report_highlight: r.report_highlight,
-          business_impact: r.business_impact || r.impact_analysis?.business_impact || undefined,
-          impact_level: r.impact_level || r.impact_analysis?.impact_level || undefined,
-        })));
+        setLiveFindings(rows.map(mapAgiFinding));
       } catch { /* transient */ }
     }, 8000);
     void loadAgiSessionJob(session.id).then(setJob);
     void loadAgiFindings(session.id).then((rows) => {
-      setLiveFindings(rows.map((r) => ({
-        id: String(r.id ?? r.finding_id ?? Math.random()),
-        title: r.title,
-        severity: (String(r.severity || "info").toLowerCase() as import("@/lib/types").Severity),
-        target: r.target || "",
-        status: (r.status as "candidate" | "validated" | "rejected") || "candidate",
-        evidence: typeof r.evidence === "object" && r.evidence ? r.evidence : { notes: typeof r.evidence === "string" ? r.evidence : r.notes || "" },
-        highlight: r.highlight,
-        report_highlight: r.report_highlight,
-        business_impact: r.business_impact || r.impact_analysis?.business_impact || undefined,
-        impact_level: r.impact_level || r.impact_analysis?.impact_level || undefined,
-      })));
+      setLiveFindings(rows.map(mapAgiFinding));
     }).catch(() => {});
     return () => { clearInterval(t); clearInterval(a); clearInterval(j); clearInterval(sPoll); clearInterval(fPoll); };
   }, [running, paused, session.id, poll]);
@@ -282,14 +279,33 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
     const controller = new AbortController();
     abortRef.current = controller;
     void streamAgiSession(session.id, (event, data) => {
-      if (event === "token") setThinking(true);
-      else if (event === "assistant_done") { setThinking(false); void poll(0); }
+      if (event === "reasoning") {
+        try {
+          const p = JSON.parse(String(data)) as { text?: string };
+          const text = typeof p?.text === "string" ? p.text : String(data);
+          if (text) { setReasoning((prev) => prev + text); setReasoningOpen(true); }
+        } catch { /* ignore */ }
+      }
+      else if (event === "turn_metrics") {
+        try {
+          const m = JSON.parse(String(data)) as { turn?: number; prompt_tokens?: number; completion_tokens?: number; tools_run?: number; wall_seconds?: number };
+          setTurnMetrics((prev) => ({
+            turns: Math.max(prev.turns, Number(m.turn ?? prev.turns)),
+            promptTokens: prev.promptTokens + Number(m.prompt_tokens ?? 0),
+            completionTokens: prev.completionTokens + Number(m.completion_tokens ?? 0),
+            tools: prev.tools + Number(m.tools_run ?? 0),
+            wallSeconds: prev.wallSeconds + Number(m.wall_seconds ?? 0),
+          }));
+        } catch { /* ignore */ }
+      }
+      else if (event === "token") setThinking(true);
+      else if (event === "assistant_done") { setThinking(false); setReasoning(""); void poll(0); }
       else if (event === "action_pending") { void poll(0); }
       else if (event === "loop_status" || event === "loop_progress") {
         try {
           const loop = normalizeAgiLoop(JSON.parse(String(data)));
           if (loop.working_on) setWorkingOn(loop.working_on);
-          if (event === "loop_status") setThinking(true);
+          if (event === "loop_status") { setThinking(true); setReasoning(""); }
           if (event === "loop_progress") {
             setThinking(false);
             if (loop.content) {
@@ -316,19 +332,8 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
         } catch { /* ignore */ }
       }
       else if (event === "job_progress") { void loadAgiSessionJob(session.id).then(setJob); }
-      else if (event === "finding") { void loadAgiFindings(session.id).then((rows) => {
-        setLiveFindings(rows.map((r) => ({
-          id: String(r.id ?? r.finding_id ?? Math.random()),
-          title: r.title,
-          severity: (String(r.severity || "info").toLowerCase() as import("@/lib/types").Severity),
-          target: r.target || "",
-          status: (r.status as "candidate" | "validated" | "rejected") || "candidate",
-          evidence: typeof r.evidence === "object" && r.evidence ? r.evidence : { notes: typeof r.evidence === "string" ? r.evidence : r.notes || "" },
-          highlight: r.highlight,
-          report_highlight: r.report_highlight,
-          business_impact: r.business_impact || r.impact_analysis?.business_impact || undefined,
-          impact_level: r.impact_level || r.impact_analysis?.impact_level || undefined,
-        })));
+      else if (event === "finding" || event === "finding_verified") { void loadAgiFindings(session.id).then((rows) => {
+        setLiveFindings(rows.map(mapAgiFinding));
       }).catch(() => {}); }
       else if (event === "skills_selected" || event === "session_start") {
         try {
@@ -455,8 +460,19 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
           actionBusy={deciding}
           onDecide={(a, ok, cmd) => void decide(a, ok, cmd)}
           thinking={thinking}
+          reasoning={reasoning}
+          reasoningOpen={reasoningOpen}
+          onToggleReasoning={() => setReasoningOpen((v) => !v)}
+          turnMetrics={turnMetrics}
           workingOn={workingOn}
           liveFindings={liveFindings}
+          onFindingVerify={(findingId, verified) => {
+            if (!session?.id) return Promise.resolve(false);
+            return setAgiFindingStatus(session.id, findingId, verified ? "verified" : "dismissed").then((r) => {
+              void loadAgiFindings(session.id).then((rows) => setLiveFindings(rows.map(mapAgiFinding)));
+              return !!r?.ok;
+            });
+          }}
           connError={connError}
           instruction={input}
           onInstruction={setInput}

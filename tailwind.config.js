@@ -47,9 +47,9 @@ export default {
         black: "rgb(var(--color-black) / <alpha-value>)",
       },
       fontFamily: {
-        display: ["'Space Grotesk'", "system-ui", "sans-serif"],
-        sans: ["Inter", "system-ui", "sans-serif"],
-        mono: ["'JetBrains Mono'", "ui-monospace", "monospace"],
+        display: ["'Space Grotesk'", "'Geist Variable'", "system-ui", "sans-serif"],
+        sans: ["'Geist Variable'", "Inter", "system-ui", "sans-serif"],
+        mono: ["'Geist Mono Variable'", "'JetBrains Mono'", "ui-monospace", "monospace"],
       },
       boxShadow: {
         glow: "0 0 40px -10px rgba(232, 181, 77, 0.35)",

@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useState, useRef, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, AlertTriangle, Info, XCircle, X } from "lucide-react";
-import { tokens, api, emailFromToken, roleFromToken, DEMO_MODE, delay } from "./api";
+import { tokens, api, emailFromToken, roleFromToken, DEMO_MODE, delay, clearCorrelationId } from "./api";
 import type { StaffUser, StaffRole } from "./types";
 
 type StaffSession = {
@@ -94,6 +94,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     tokens.staff = null;
     tokens.email = null;
+    clearCorrelationId();
     setSession(null);
   }, []);
 
