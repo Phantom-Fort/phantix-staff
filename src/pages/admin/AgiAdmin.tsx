@@ -237,40 +237,41 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
   useEffect(() => {
     if (!running || paused) return;
     void poll(0);
-    const t = setInterval(() => void poll(), DEMO_MODE ? 350 : 2500);
-    const a = setInterval(async () => {
-      try { setActions(await loadAgiPendingActions(session.id)); } catch { /* transient */ }
-    }, 3500);
-    const j = setInterval(async () => {
-      try { setJob(await loadAgiSessionJob(session.id)); } catch { /* transient */ }
-    }, 4000);
-    const sPoll = setInterval(async () => {
-      try {
-        const s = await getAgiSession(session.id);
-        if (!s) return;
-        const loop = s.loop ? normalizeAgiLoop(s.loop) : null;
-        if (loop?.working_on) setWorkingOn(loop.working_on);
-        if (loop?.content && loop.event === "loop_progress") {
-          setTranscript((prev) => {
-            const last = prev[prev.length - 1];
-            if (last?.role === "assistant" && last.content === loop.content) return prev;
-            return [...prev, { seq: afterSeqRef.current + 1, role: "assistant", content: loop.content || "", meta: { kind: "turn_brief", event: "loop_progress" }, created_at: new Date().toISOString() }];
-          });
-        }
-        if (s.status === "stopped" || s.status === "torn_down" || s.status === "failed") setRunning(false);
-      } catch { /* transient */ }
-    }, 4000);
-    const fPoll = setInterval(async () => {
-      try {
-        const rows = await loadAgiFindings(session.id);
+    // Consolidated polling — previously five independent intervals (2.5s /
+    // 3.5s / 4s / 4s / 8s ≈ 1.6 req/s while a session runs). Now two
+    // staggered loops: transcript + pending actions every 3s, job + session +
+    // findings every 6s (≈0.5 req/s) so the backend rate limiter isn't hit.
+    const fast = setInterval(() => {
+      void poll();
+      loadAgiPendingActions(session.id).then(setActions).catch(() => { /* transient */ });
+    }, DEMO_MODE ? 350 : 3000);
+    const slow = setInterval(() => {
+      loadAgiSessionJob(session.id).then(setJob).catch(() => { /* transient */ });
+      (async () => {
+        try {
+          const s = await getAgiSession(session.id);
+          if (!s) return;
+          const loop = s.loop ? normalizeAgiLoop(s.loop) : null;
+          if (loop?.working_on) setWorkingOn(loop.working_on);
+          if (loop?.content && loop.event === "loop_progress") {
+            setTranscript((prev) => {
+              const last = prev[prev.length - 1];
+              if (last?.role === "assistant" && last.content === loop.content) return prev;
+              return [...prev, { seq: afterSeqRef.current + 1, role: "assistant", content: loop.content || "", meta: { kind: "turn_brief", event: "loop_progress" }, created_at: new Date().toISOString() }];
+            });
+          }
+          if (s.status === "stopped" || s.status === "torn_down" || s.status === "failed") setRunning(false);
+        } catch { /* transient */ }
+      })();
+      loadAgiFindings(session.id).then((rows) => {
         setLiveFindings(rows.map(mapAgiFinding));
-      } catch { /* transient */ }
-    }, 8000);
+      }).catch(() => { /* transient */ });
+    }, DEMO_MODE ? 700 : 6000);
     void loadAgiSessionJob(session.id).then(setJob);
     void loadAgiFindings(session.id).then((rows) => {
       setLiveFindings(rows.map(mapAgiFinding));
     }).catch(() => {});
-    return () => { clearInterval(t); clearInterval(a); clearInterval(j); clearInterval(sPoll); clearInterval(fPoll); };
+    return () => { clearInterval(fast); clearInterval(slow); };
   }, [running, paused, session.id, poll]);
 
   // SSE live stream (staff) — loop_status / loop_progress are primary progress UI
