@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ArrowDown, Ban, BrainCircuit, CheckCircle2, ChevronDown, ChevronRight, Clock, Crosshair, FileCode2,
+  ArrowDown, Ban, BrainCircuit, CheckCircle2, ChevronDown, ChevronRight, Clock, CornerUpLeft, Crosshair, FileCode2,
   Globe2, Loader2, Lock, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
-  Pause, Play, Radar, Send, ShieldAlert, ShieldCheck, Sparkles, Square,
+  Pause, Play, Plus, Radar, Send, ShieldAlert, ShieldCheck, Sparkles, Square,
   Terminal, XCircle,
 } from "lucide-react";
-import { ApprovalNotice, CopyBtn, StreamEmpty, StreamMessage, TypingIndicator } from "@/components/AgiStream";
+import { ApprovalNotice, ClarificationAsk, CopyBtn, StreamEmpty, StreamMessage, ToolGroupCard, TypingIndicator } from "@/components/AgiStream";
+import { groupStreamRows } from "@/lib/agiStreamGroup";
+import type { AgiClarification } from "@/lib/agiStreamGroup";
 import { Menu, MenuItem, SeverityBadge } from "@/components/ui";
 import { VerificationBadge, verificationBadge } from "@/components/VerificationBadge";
 import {
@@ -325,6 +327,8 @@ export type AgiConsoleProps = {
   onTogglePause: () => void;
   stopping: boolean;
   onStop: () => void;
+  /** Leave the terminal back to the session/engagement selection. */
+  onExit?: () => void;
   session: AgiSession;
   engagement: AgiEngagement | null;
   transcript: AgiTranscriptChunk[];
@@ -349,6 +353,10 @@ export type AgiConsoleProps = {
   onInstruction: (v: string) => void;
   onSend: () => void;
   sendHint?: SendHint;
+  /** Open ASK_OPERATOR clarification awaiting an operator answer. */
+  clarification?: AgiClarification | null;
+  /** Sends { clarification_id, answer } to …/clarify. */
+  onAnswer?: (clarificationId: string, answer: string) => void;
   policyBanner: string | null;
   overrideDrafts: Record<number, string>;
   onOverrideDraft: (id: number, cmd: string) => void;
@@ -362,6 +370,7 @@ export default function AgiConsole({
   onTogglePause,
   stopping,
   onStop,
+  onExit,
   session,
   engagement,
   transcript,
@@ -381,6 +390,8 @@ export default function AgiConsole({
   onInstruction,
   onSend,
   sendHint = "idle",
+  clarification,
+  onAnswer,
   policyBanner,
   overrideDrafts,
   onOverrideDraft,
@@ -444,6 +455,17 @@ export default function AgiConsole({
     [transcript, persona],
   );
   const tools = filtered.filter((t) => t.role === "tool");
+  // Consecutive same-tool chunks collapse into a single "tool × N" card.
+  const groupedFiltered = useMemo(() => groupStreamRows(filtered), [filtered]);
+  const groupedTools = useMemo(() => groupStreamRows(tools), [tools]);
+  const laneRows = useMemo(
+    () => ({
+      orchestrator: groupStreamRows(transcript.filter((t) => personaForChunk(t) === "orchestrator")),
+      recon: groupStreamRows(transcript.filter((t) => personaForChunk(t) === "recon")),
+      exploit: groupStreamRows(transcript.filter((t) => personaForChunk(t) === "exploit")),
+    }),
+    [transcript],
+  );
 
   const personaCounts = useMemo(() => {
     const c: Record<AgentPersona | "all", number> = { all: transcript.length, orchestrator: 0, recon: 0, exploit: 0 };
@@ -510,6 +532,16 @@ export default function AgiConsole({
           {running && (
             <button onClick={onStop} disabled={stopping} className="btn-secondary !px-2.5 !py-1 wb-xs">
               {stopping ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Square size={12} className="mr-1 inline" />} {stopping ? "Stopping…" : "Stop"}
+            </button>
+          )}
+          {onExit && (
+            <button onClick={onExit} className="btn-ghost !px-2 !py-1 wb-xs" title="Back to session selection">
+              <CornerUpLeft size={12} className="mr-1 inline" /> Sessions
+            </button>
+          )}
+          {!running && onExit && (
+            <button onClick={onExit} className="btn-primary !px-2.5 !py-1 wb-xs" title="Start a new session">
+              <Plus size={12} className="mr-1 inline" /> New session
             </button>
           )}
           <button
@@ -689,9 +721,13 @@ export default function AgiConsole({
                       {PERSONAS.find((p) => p.id === lane)?.label}
                       <span className="wb-2xs ml-auto rounded-full bg-phantix-800/80 px-1 tabular-nums text-slate-400">{personaCounts[lane]}</span>
                     </p>
-                    {transcript.filter((t) => personaForChunk(t) === lane).map((t, i) => (
-                      <StreamMessage key={`${lane}-${i}`} t={t} dense />
-                    ))}
+                    {laneRows[lane].map((row, i) =>
+                      row.kind === "toolGroup" ? (
+                        <ToolGroupCard key={`${lane}-${i}`} tool={row.tool} runs={row.runs} dense />
+                      ) : (
+                        <StreamMessage key={`${lane}-${i}`} t={row.t} dense />
+                      ),
+                    )}
                   </div>
                 ))}
               </div>
@@ -709,9 +745,13 @@ export default function AgiConsole({
                     hint="Live turns, tool calls, and engine events stream here as the agent works through the scoped assessment."
                   />
                 )}
-                {filtered.map((t, i) => (
-                  <StreamMessage key={`st-${i}`} t={t} last={i === lastIdx && running && !paused && t.role !== "operator"} />
-                ))}
+                {groupedFiltered.map((row, i) =>
+                  row.kind === "toolGroup" ? (
+                    <ToolGroupCard key={`st-${i}`} tool={row.tool} runs={row.runs} />
+                  ) : (
+                    <StreamMessage key={`st-${i}`} t={row.t} last={i === lastIdx && running && !paused && row.t.role !== "operator"} />
+                  ),
+                )}
                 {!connError && actions.length > 0 && (
                   <ApprovalNotice
                     count={actions.length}
@@ -721,7 +761,7 @@ export default function AgiConsole({
                 {reasoning.trim() && (
                   <ReasoningPanel text={reasoning} open={reasoningOpen} onToggle={onToggleReasoning} />
                 )}
-                {runningStatus && <TypingIndicator label={runningStatus.label} tool={runningStatus.tool} />}
+                {runningStatus && !clarification && <TypingIndicator label={runningStatus.label} tool={runningStatus.tool} />}
                 {paused && <p className="wb-xs text-severity-medium">Loop paused — agent will not advance.</p>}
                 <div ref={thoughtsStick.endRef} />
               </div>
@@ -747,9 +787,13 @@ export default function AgiConsole({
                       No terminal output yet — the agent is executing via engines. Ask it to run commands in the container for raw output.
                     </p>
                   )}
-                  {tools.map((t, i) => (
-                    <StreamMessage key={`tl-${i}`} t={t} dense />
-                  ))}
+                  {groupedTools.map((row, i) =>
+                    row.kind === "toolGroup" ? (
+                      <ToolGroupCard key={`tl-${i}`} tool={row.tool} runs={row.runs} dense />
+                    ) : (
+                      <StreamMessage key={`tl-${i}`} t={row.t} dense />
+                    ),
+                  )}
                   {engineCalls.map((e, i) => (
                     <p key={`ec-${i}`} className="wb-2xs flex items-center gap-1.5 font-mono text-slate-400">
                       {e.ok ? <CheckCircle2 size={11} className="shrink-0 text-emerald-400" /> : <XCircle size={11} className="shrink-0 text-severity-critical" />}
@@ -948,6 +992,11 @@ export default function AgiConsole({
       </div>
 
       <div className="w-full shrink-0 border-t border-phantix-700/40 p-3">
+        {clarification && onAnswer && (
+          <div className="mx-auto mb-2 max-w-3xl">
+            <ClarificationAsk clarification={clarification} onAnswer={onAnswer} />
+          </div>
+        )}
         {running && !paused && !instruction.trim() && (
           <div className="mx-auto mb-2 flex max-w-3xl flex-wrap items-center gap-1.5">
             <Sparkles size={11} className="text-gold-400/70" />

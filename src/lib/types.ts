@@ -606,6 +606,8 @@ export interface AgiSession {
   /** Present on GET/POST session; always coerce with normalizeAgiSession. */
   job?: AgiSessionJob | Record<string, unknown> | null;
   loop?: AgiLoopBrief | null;
+  /** Open ASK_OPERATOR clarification (cleared on answer). */
+  clarification?: Record<string, unknown> | null;
 }
 
 export interface AgiTranscriptChunk {

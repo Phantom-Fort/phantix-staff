@@ -482,7 +482,7 @@ export default function SandboxAdmin() {
                           <td className="px-4 py-3 text-xs text-slate-400">{m.contactEmail ?? "—"}</td>
                           <td className="px-4 py-3">
                             <select
-                              className="rounded-lg border border-phantix-700/50 bg-phantix-950/70 px-2 py-1 text-xs text-slate-300"
+                              className="input !w-auto !py-1 text-xs"
                               value={m.status}
                               onChange={(e) => void patchMember(m.memberId, e.target.value)}
                             >

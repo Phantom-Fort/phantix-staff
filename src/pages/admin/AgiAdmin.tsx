@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   ShieldCheck, Activity, RefreshCw, Play, Square, Send, Plus, Loader2,
   Globe2, Crosshair, Boxes, FileText, Wrench, Users, Terminal, CheckCircle2, XCircle,
-  Brain, GitBranch, ShieldAlert, Eye, X, Clock, Pencil, SlidersHorizontal, BookOpen, Search, ArrowLeft, Radar,
+  Brain, GitBranch, ShieldAlert, Eye, X, Clock, Pencil, SlidersHorizontal, BookOpen, Search, ArrowLeft, Radar, CornerUpLeft,
 } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatCard, StatusBadge, SeverityBadge, TableSkeleton, EmptyState, Tabs, Modal } from "@/components/ui";
 import { AGI_CONTRIBUTOR_GUIDE_MD } from "@/lib/agiContributorGuide";
@@ -23,10 +23,11 @@ import {
   loadAgiSkills, upsertAgiSkill, resolvedAgiSkills, loadAgiFindings, promoteAgiFinding, setAgiFindingStatus,
   setAgiCredentials, setAgiRegistration, getAgiPreflight, provideAgiInfo, provideAgiOtp, runAgiShell, listAgiJobs,
   agiErrorDetail, streamAgiSession, loadAgiEngineCatalog, loadAgiEngineLearning, loadAgiSessionJob, loadAgiApkAssets, trainAgiSession,
-  loadAgiSessionSkillPlan, normalizeAgiLoop,
+  loadAgiSessionSkillPlan, normalizeAgiLoop, answerAgiClarification,
 } from "@/lib/agi";
 import { EngineLearningPanel, EngineSnapshotCards, JobCoveragePanel, EngineCallList, AgiSkillPlanBanner, AgiToolsToProvisionStrip, CollapseCard } from "@/components/AgiCoevolution";
 import AgiPrompts from "@/components/AgiPrompts";
+import { openClarificationFrom } from "@/lib/agiStreamGroup";
 import type { AgiEngineCapability, AgiSessionJob, AgiSkillPlan, AgiToolPlan, AgiToolToProvision, EngineCallEvent } from "@/lib/types";
 import type {
   AgiAction, AgiEngagement, AgiFinding, AgiPolicy, AgiSession, AgiSkill, AgiToolInstallRequest, AgiTranscriptChunk,
@@ -411,6 +412,29 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
     chatSend.requestSend(msg, dispatchChat);
   };
 
+  // ── Clarification asks (ASK_OPERATOR) ────────────────────────────────────
+  const [answeredClarificationId, setAnsweredClarificationId] = useState<string | null>(null);
+  const [answering, setAnswering] = useState(false);
+  const openClarification = useMemo(
+    () => openClarificationFrom(session, transcript, answeredClarificationId),
+    [session, transcript, answeredClarificationId],
+  );
+
+  const handleAnswer = useCallback(async (clarificationId: string, answer: string) => {
+    setAnswering(true);
+    setThinking(false);
+    try {
+      await answerAgiClarification(session.id, { clarification_id: clarificationId, answer });
+      setAnsweredClarificationId(clarificationId);
+      toast("success", "Clarification answered", "The agent is resuming the assessment.");
+      void poll();
+    } catch (e) {
+      toast("error", "Answer failed", agiErrorDetail(e).message);
+    } finally {
+      setAnswering(false);
+    }
+  }, [session.id, toast, poll]);
+
   const stop = async () => {
     setStopping(true);
     try {
@@ -445,6 +469,7 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
         <button onClick={() => setShowControls((v) => !v)} className={cx("btn-ghost !px-2.5 !py-1.5 !text-[11px]", showControls && "text-gold-300")}><SlidersHorizontal size={12} className="mr-1 inline" /> Controls</button>
         <button onClick={() => void poll()} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><RefreshCw size={12} /> Refresh</button>
         <button onClick={() => void trainAgiSession(session.id).then(() => toast("success", "Train queued"))} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]">Train now</button>
+        <button onClick={() => onStopped?.()} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]" title="Back to session selection"><CornerUpLeft size={12} className="mr-1 inline" /> Sessions</button>
         <span className="ml-auto min-w-0 truncate font-mono text-[10px] text-slate-500" title={`engagement #${session.engagement_id}${session.container_id ? ` · ${session.container_id}` : ""}`}>engagement #{session.engagement_id}{session.container_id ? ` · ${session.container_id}` : ""}</span>
       </div>
       <div className="min-h-0 flex-1">
@@ -454,6 +479,7 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
           onTogglePause={() => setPaused((v) => !v)}
           stopping={stopping}
           onStop={() => void stop()}
+          onExit={() => onStopped?.()}
           session={session}
           engagement={engagement}
           transcript={transcript}
@@ -479,6 +505,8 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
           onInstruction={setInput}
           onSend={send}
           sendHint={chatSend.hint}
+          clarification={openClarification}
+          onAnswer={handleAnswer}
           policyBanner={null}
           overrideDrafts={overrideDrafts}
           onOverrideDraft={(id, cmd) => setOverrideDrafts((prev) => ({ ...prev, [id]: cmd }))}
@@ -634,7 +662,7 @@ function SessionControls({ session, running }: { session: AgiSession; running: b
 
   const ready = preflight?.ready === true;
   const requests: { key: string; label: string; hint?: string }[] = preflight?.info_requests ?? [];
-  const field = "w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40";
+  const field = "input !px-3 !py-2 text-xs";
 
   return (
     <div className="border-t border-phantix-700/40 bg-phantix-950/70 p-3">
@@ -803,7 +831,7 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
     } finally { setCreating(false); }
   };
 
-  const field = "w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3.5 py-2.5 text-sm text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40";
+  const field = "input";
 
   return (
     <div className="space-y-3">
@@ -1330,7 +1358,7 @@ export default function AgiAdmin() {
                     <select
                       value={selectedEng?.id ?? ""}
                       onChange={(e) => setSelectedEng(engagements.data.find((x) => x.id === Number(e.target.value)) ?? null)}
-                      className="w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none focus:border-gold-400/40"
+                      className="input"
                     >
                       <option value="">Select engagement…</option>
                       {engagements.data.map((e) => <option key={e.id} value={e.id}>{e.name} (#{e.id})</option>)}
@@ -1356,7 +1384,7 @@ export default function AgiAdmin() {
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <div>
                     <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Autonomy</label>
-                    <select value={autonomy} onChange={(e) => setAutonomy(e.target.value as "low" | "medium" | "high")} className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-2.5 py-1.5 text-[11px] text-slate-200 outline-none focus:border-gold-400/40">
+                    <select value={autonomy} onChange={(e) => setAutonomy(e.target.value as "low" | "medium" | "high")} className="input !w-auto !py-1.5 text-[11px]">
                       <option value="low">low — operator-driven</option>
                       <option value="medium">medium — auto recon, gate auth</option>
                       <option value="high">high — reserved</option>
@@ -1449,15 +1477,15 @@ export default function AgiAdmin() {
                     className="w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 py-1.5 pl-8 pr-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40"
                   />
                 </div>
-                <select value={skillKind} onChange={(e) => { setSkillKind(e.target.value); setSkillPage(1); }} className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-gold-400/40">
+                <select value={skillKind} onChange={(e) => { setSkillKind(e.target.value); setSkillPage(1); }} className="input !w-auto !py-1.5 text-xs">
                   {skillKinds.map((k) => <option key={k} value={k}>{k === "all" ? "All kinds" : k}</option>)}
                 </select>
-                <select value={skillSort} onChange={(e) => setSkillSort(e.target.value as typeof skillSort)} className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-gold-400/40">
+                <select value={skillSort} onChange={(e) => setSkillSort(e.target.value as typeof skillSort)} className="input !w-auto !py-1.5 text-xs">
                   <option value="score">Sort · score</option>
                   <option value="uses">Sort · uses</option>
                   <option value="name">Sort · name</option>
                 </select>
-                <select value={skillPageSize} onChange={(e) => { setSkillPageSize(Number(e.target.value)); setSkillPage(1); }} className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-gold-400/40">
+                <select value={skillPageSize} onChange={(e) => { setSkillPageSize(Number(e.target.value)); setSkillPage(1); }} className="input !w-auto !py-1.5 text-xs">
                   <option value={10}>10 / page</option>
                   <option value={25}>25 / page</option>
                   <option value={50}>50 / page</option>
@@ -1721,7 +1749,7 @@ function SkillFormModal({
     }
   };
 
-  const field = "w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 font-mono text-[11px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40";
+  const field = "input !px-3 !py-2 font-mono text-[11px]";
 
   return (
     <Modal open={open} onClose={onClose} title={skill ? `Edit skill — ${skill.skill_id}` : "Create skill"} wide>
