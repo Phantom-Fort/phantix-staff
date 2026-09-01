@@ -43,6 +43,7 @@ const navSections: {
       { to: "/server", label: "Server", icon: <Server size={18} /> },
       { to: "/scanner-tools", label: "Scanner Tools", icon: <ScanLine size={18} /> },
       { to: "/bus", label: "Event Bus", icon: <Radio size={18} /> },
+      { to: "/analytics", label: "Analytics", icon: <BarChart3 size={18} /> },
       { to: "/docs", label: "API Reference", icon: <BookOpen size={18} /> },
     ],
   },

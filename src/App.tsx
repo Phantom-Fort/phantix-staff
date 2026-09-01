@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from "react";
+﻿import React, { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { StoreProvider, ToastViewport, useStore } from "@/lib/store";
 import Layout from "@/components/Layout";
@@ -26,6 +26,7 @@ import EngineJobs from "@/pages/admin/EngineJobs";
 import SuperadminTerminal from "@/pages/admin/Terminal";
 import AgiAdmin from "@/pages/admin/AgiAdmin";
 import SandboxAdmin from "@/pages/admin/Sandbox";
+import AnalyticsAdmin from "@/pages/admin/Analytics";
 import { AGI_ENABLED } from "@/lib/api";
 
 function RequireStaff({ children }: { children: React.ReactNode }) {
@@ -80,13 +81,14 @@ export default function App() {
             <Route path="/server" element={<RequireAdmin><ServerOps /></RequireAdmin>} />
             <Route path="/scanner-tools" element={<RequireAdmin><ScannerTools /></RequireAdmin>} />
             <Route path="/bus" element={<RequireAdmin><BusDiagnostics /></RequireAdmin>} />
+            <Route path="/analytics" element={<RequireAdmin><AnalyticsAdmin /></RequireAdmin>} />
             <Route path="/compliance" element={<RequireAdmin><ComplianceAdmin /></RequireAdmin>} />
             <Route path="/tooling" element={<RequireAdmin><ToolingAdmin /></RequireAdmin>} />
             <Route path="/discovery" element={<RequireAdmin><DiscoveryAdmin /></RequireAdmin>} />
             <Route path="/experience" element={<RequireAdmin><ExperienceAdmin /></RequireAdmin>} />
             <Route path="/ai" element={<RequireAdmin><AiAdmin /></RequireAdmin>} />
             <Route path="/vapt-admin" element={<RequireAdmin><VaptAdmin /></RequireAdmin>} />
-            <Route path="/docs" element={<RequireAdmin><Suspense fallback={<div className="p-6 text-sm text-slate-400">Loading API reference…</div>}><ApiDocs /></Suspense></RequireAdmin>} />
+            <Route path="/docs" element={<RequireAdmin><Suspense fallback={<div className="p-6 text-sm text-slate-400">Loading API referenceâ€¦</div>}><ApiDocs /></Suspense></RequireAdmin>} />
             {AGI_ENABLED && <Route path="/agi" element={<RequireAgiAdmin><AgiAdmin /></RequireAgiAdmin>} />}
 
             {/* Superadmin */}

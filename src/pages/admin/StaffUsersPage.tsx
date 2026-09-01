@@ -8,10 +8,10 @@ import { timeAgo } from "@/lib/utils";
 import type { StaffUserDetail } from "@/lib/types";
 
 const demoStaff: StaffUserDetail[] = [
-  { id: 1, email: "super@phantix.site", full_name: "System Superadmin", role: "superadmin", is_active: true, last_login_at: new Date().toISOString(), created_at: "2026-01-01T00:00:00Z", created_by: null },
-  { id: 2, email: "admin@phantix.site", full_name: "Platform Admin", role: "admin", is_active: true, last_login_at: new Date(Date.now() - 86400000).toISOString(), created_at: "2026-01-15T00:00:00Z", created_by: 1 },
-  { id: 3, email: "support@phantix.site", full_name: "Support Lead", role: "support", is_active: true, last_login_at: new Date(Date.now() - 3600000).toISOString(), created_at: "2026-02-01T00:00:00Z", created_by: 1 },
-  { id: 4, email: "support2@phantix.site", full_name: "Support Agent", role: "support", is_active: true, last_login_at: new Date(Date.now() - 7200000).toISOString(), created_at: "2026-03-01T00:00:00Z", created_by: 2 },
+  { id: 1, email: "super@phantixlabs.com", full_name: "System Superadmin", role: "superadmin", is_active: true, last_login_at: new Date().toISOString(), created_at: "2026-01-01T00:00:00Z", created_by: null },
+  { id: 2, email: "admin@phantixlabs.com", full_name: "Platform Admin", role: "admin", is_active: true, last_login_at: new Date(Date.now() - 86400000).toISOString(), created_at: "2026-01-15T00:00:00Z", created_by: 1 },
+  { id: 3, email: "support@phantixlabs.com", full_name: "Support Lead", role: "support", is_active: true, last_login_at: new Date(Date.now() - 3600000).toISOString(), created_at: "2026-02-01T00:00:00Z", created_by: 1 },
+  { id: 4, email: "support2@phantixlabs.com", full_name: "Support Agent", role: "support", is_active: true, last_login_at: new Date(Date.now() - 7200000).toISOString(), created_at: "2026-03-01T00:00:00Z", created_by: 2 },
 ];
 
 export default function StaffUsers() {

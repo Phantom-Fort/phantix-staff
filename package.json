@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Phantix Staff Portal — internal admin, support, and superadmin console (staff.phantix.site)",
+  "description": "Phantix Staff Portal â€” internal admin, support, and superadmin console (staff.phantixlabs.com)",
   "scripts": {
     "dev": "vite --port 5175",
     "build": "tsc -b && vite build",

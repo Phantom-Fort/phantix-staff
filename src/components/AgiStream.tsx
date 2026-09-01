@@ -6,6 +6,7 @@ import {
 import { marked } from "marked";
 import { Tool } from "@/components/prompt-kit/tool";
 import { linkify } from "@/lib/linkify";
+import { normalizeAgiMarkdown } from "@/lib/agiMarkdown";
 import { personaForChunk, type AgentPersona } from "@/lib/agiGraph";
 import type { AgiTranscriptChunk, Severity } from "@/lib/types";
 import { cx } from "@/lib/utils";
@@ -16,8 +17,13 @@ marked.setOptions({ breaks: true, gfm: true });
 // app's `.prose-doc` stylesheet (gold links, styled code blocks/tables/lists)
 // so the agent output never leaks literal `**`/`##` markers. Memoized on the
 // source so a growing streaming message only re-parses when it actually changes.
+// Engine copy arrives with `○` bullets as plain text — normalize those into
+// real markdown lists first so lists render with proper indentation.
 const StreamMarkdown = memo(function StreamMarkdown({ source }: { source: string }) {
-  const html = useMemo(() => (source ? (marked.parse(source) as string) : ""), [source]);
+  const html = useMemo(
+    () => (source ? (marked.parse(normalizeAgiMarkdown(source)) as string) : ""),
+    [source],
+  );
   return (
     <div
       className="prose-doc max-w-none"
@@ -33,7 +39,7 @@ StreamMarkdown.displayName = "StreamMarkdown";
 // events, and the working indicator identically.
 
 const PERSONA_META: Record<AgentPersona, { label: string; tint: string }> = {
-  orchestrator: { label: "Orchestrator", tint: "text-gold-300" },
+  orchestrator: { label: "Phantix Autonomous Agent", tint: "text-gold-300" },
   recon: { label: "Recon agent", tint: "text-severity-low" },
   exploit: { label: "Web exploit agent", tint: "text-severity-high" },
 };
@@ -136,6 +142,106 @@ export function splitToolContent(content: string): { command: string; body: stri
   const first = lines[0].trim();
   const looksLikeCmd = first.length > 0 && first.length <= 200 && CMD_RE.test(first) && !first.startsWith("{");
   return { command: looksLikeCmd ? first : "", body: looksLikeCmd ? lines.slice(1).join("\n") : lines.join("\n") };
+}
+
+// ── Pi mid-turn helpers (pi_subagent) ────────────────────────────────────────
+// The runner delegates bounded helper tasks to a headless `pi` process. Helpers
+// render as compact cards — never full bubbles — and soft-fails are warnings.
+
+const PI_SOFT_FAIL = /pi_not_installed|pi_auth_required|pi_timeout|pi_failed|pi_spawn_failed|task_required/i;
+
+function piMeta(t: AgiTranscriptChunk): {
+  profile: string;
+  task: string;
+  result: string;
+  resultLine: string | null;
+  failed: boolean;
+  error: string | null;
+  message: string | null;
+  latencyMs: number | null;
+  tools: string | null;
+} {
+  const meta = (t.meta ?? {}) as Record<string, unknown>;
+  const content = t.content ?? "";
+  const lines = content.split("\n").map((l) => l.trim()).filter(Boolean);
+  const resultLine = lines.find((l) => /^RESULT:/i.test(l)) ?? null;
+  const error = typeof meta.error === "string" && meta.error ? meta.error : content.match(/\berror=([\w-]+)/i)?.[1] ?? null;
+  const failed = meta.ok === false || Boolean(error && PI_SOFT_FAIL.test(error)) || PI_SOFT_FAIL.test(content);
+  const task =
+    (typeof meta.task === "string" && meta.task) ||
+    content.match(/task='([^']*)'/i)?.[1] ||
+    content.match(/task="([^"]*)"/i)?.[1] ||
+    lines.find((l) => !/^RESULT:/i.test(l) && !/^\[PI_SUBAGENT/i.test(l)) ||
+    "Helper task";
+  return {
+    profile: (typeof meta.profile === "string" && meta.profile) || content.match(/profile=(\w+)/i)?.[1] || "helper",
+    task: task.replace(/^(Task|Helper task):\s*/i, "").trim() || "Helper task",
+    result: (typeof meta.result_text === "string" && meta.result_text) || (resultLine ? content : ""),
+    resultLine,
+    failed,
+    error,
+    message: (typeof meta.message === "string" && meta.message) || null,
+    latencyMs: typeof meta.latency_ms === "number" ? (meta.latency_ms as number) : Number(content.match(/latency_ms=(\d+)/i)?.[1] ?? NaN) || null,
+    tools: (typeof meta.tools === "string" && meta.tools) || content.match(/tools=([^\s\]]+)/i)?.[1] || null,
+  };
+}
+
+function PiHelperCard({ t, dense = false, observe = false }: { t: AgiTranscriptChunk; dense?: boolean; observe?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const p = useMemo(() => piMeta(t), [t.content]);
+  const title = p.profile === "scout" ? "Pi scout" : "Pi helper";
+  const accent = p.failed
+    ? { ring: "border-severity-medium/40 bg-severity-medium/[0.06]", icon: "bg-severity-medium/15 text-severity-medium", Icon: ShieldAlert }
+    : { ring: "border-phantix-700/40 bg-phantix-900/50", icon: "bg-phantix-800/80 text-gold-400", Icon: Bot };
+
+  return (
+    <div className={cx("group relative min-w-0 overflow-hidden rounded-xl border", dense ? "max-w-full" : "max-w-[94%]", accent.ring)}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className={cx("flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-phantix-800/40", dense ? "py-1.5" : "py-2")}
+      >
+        <span className={cx("flex h-6 w-6 shrink-0 items-center justify-center rounded-md", dense ? "h-5 w-5" : "", accent.icon)}>
+          <accent.Icon size={12} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className={cx("flex items-center gap-1.5", dense ? "text-[11px]" : "text-xs")}>
+            <span className="truncate font-semibold text-slate-200">{title}</span>
+            <span className="chip shrink-0 !px-1.5 !py-0 font-mono text-[9px] uppercase text-slate-400">{p.profile}</span>
+            {p.latencyMs != null && <span className="shrink-0 font-mono text-[9px] tabular-nums text-slate-500">{(p.latencyMs / 1000).toFixed(1)}s</span>}
+          </span>
+          <span className={cx("block truncate text-slate-400", dense ? "text-[10px]" : "wb-xs")}>
+            {p.failed && p.error
+              ? `Helper unavailable (${p.error}) — the main agent continues.`
+              : observe
+                ? "Helper result attached"
+                : p.task}
+          </span>
+        </span>
+        <span className={cx("shrink-0 text-slate-500 transition-transform", open && "rotate-180")}>
+          <ChevronDown size={12} />
+        </span>
+      </button>
+      {open && (
+        <div className="space-y-2 border-t border-phantix-700/30 px-3 py-2.5">
+          {p.task && <p className={cx("leading-relaxed text-slate-300", dense ? "text-[10px]" : "wb-xs")}>{p.task}</p>}
+          {p.failed && p.message && (
+            <p className={cx("leading-relaxed text-severity-medium", dense ? "text-[10px]" : "wb-xs")}>{p.message}</p>
+          )}
+          {(p.result || p.resultLine) && (
+            <pre className={cx("wb-scroll overflow-x-auto whitespace-pre-wrap break-words rounded-lg border border-phantix-700/40 bg-phantix-950/70 p-2 font-mono leading-5 text-slate-300", dense ? "text-[10px]" : "text-[11px]")}>
+              {p.resultLine ?? p.result}
+            </pre>
+          )}
+          {p.tools && (
+            <p className="font-mono text-[10px] text-slate-500">tools: {p.tools}</p>
+          )}
+        </div>
+      )}
+      <CopyBtn text={t.content} className="absolute right-2 top-2 z-10 !opacity-0 group-hover:!opacity-100" />
+    </div>
+  );
 }
 
 // ── Grouped tool calls ───────────────────────────────────────────────────────
@@ -362,6 +468,19 @@ export const StreamMessage = memo(function StreamMessage({ t, last = false, dens
   const time = streamTime(t.created_at);
 
   if (t.role === "tool") {
+    // Pi mid-turn helpers render as compact cards, not generic tool dumps.
+    if (t.meta?.tool === "pi_subagent") {
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          className="flex justify-start"
+        >
+          <PiHelperCard t={t} dense={dense} />
+        </motion.div>
+      );
+    }
     return (
       <motion.div
         initial={{ opacity: 0, y: 6 }}
@@ -372,6 +491,21 @@ export const StreamMessage = memo(function StreamMessage({ t, last = false, dens
         <div className={cx("min-w-0", dense ? "w-full" : "max-w-[94%]")}>
           <ToolCallCard t={t} dense={dense} />
         </div>
+      </motion.div>
+    );
+  }
+
+  // `[PI_SUBAGENT …]` observe lines are redundant with the structured helper
+  // cards — collapse them so the timeline stays scannable.
+  if (/^\s*\[PI_SUBAGENT\b/i.test(t.content)) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.16, ease: "easeOut" }}
+        className="flex justify-start"
+      >
+        <PiHelperCard t={t} dense={dense} observe />
       </motion.div>
     );
   }

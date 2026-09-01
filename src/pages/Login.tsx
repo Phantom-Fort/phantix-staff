@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Shield, Mail, Lock, Eye, EyeOff, Loader2, AlertTriangle } from "lucide-react";
@@ -75,7 +75,7 @@ export default function Login() {
               <input
                 type="email"
                 className="input pl-9"
-                placeholder="admin@phantix.site"
+                placeholder="admin@phantixlabs.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoFocus
