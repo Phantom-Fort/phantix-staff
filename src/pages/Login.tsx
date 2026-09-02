@@ -37,7 +37,7 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4">
+    <div className="relative min-h-screen flex items-center justify-center p-4 bg-phantix-950">
       <div className="absolute right-6 top-6 z-20"><ThemeToggle /></div>
       <motion.div
         initial={{ opacity: 0, y: 24 }}
@@ -48,8 +48,8 @@ export default function Login() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <BrandLogo className="h-14 w-auto mb-4" />
-          <h1 className="font-display text-xl font-bold text-white">Staff Portal</h1>
-          <p className="text-sm text-slate-400 mt-1">Sign in with your staff account</p>
+          <h1 className="font-display text-xl font-bold text-slate-100">Staff Portal</h1>
+          <p className="text-sm text-slate-500 mt-1">Sign in with your staff account</p>
         </div>
 
         {/* Form */}
