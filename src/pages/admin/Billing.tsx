@@ -153,7 +153,7 @@ export default function BillingAdmin() {
               <div><label className="label">Notes</label><textarea className="input" value={couponForm.notes} onChange={e => setCouponForm({ ...couponForm, notes: e.target.value })} /></div>
               <button onClick={handleGenerateCoupons} className="btn-primary w-full">Generate</button>
               {generatedCodes.length > 0 && (
-                <div className="mt-3 p-3 rounded-xl bg-gold-400/10 border border-gold-400/20">
+                <div className="mt-3 p-3 rounded-md bg-gold-400/10 border border-gold-400/20">
                   <p className="text-xs font-semibold text-gold-300 mb-2">Copy these codes â€” they won't be shown again:</p>
                   {generatedCodes.map(code => <div key={code} className="flex items-center gap-2 font-mono text-xs text-white py-1"><span>{code}</span><button onClick={() => { navigator.clipboard.writeText(code); toast("info", "Copied"); }} className="text-gold-400"><Copy size={11} /></button></div>)}
                 </div>

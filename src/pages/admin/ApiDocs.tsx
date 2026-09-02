@@ -121,7 +121,7 @@ export default function ApiDocs() {
     () => (
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-phantix-800/80 text-gold-400">
+          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-phantix-800/80 text-gold-400">
             <BookOpen size={16} />
           </span>
           <div>

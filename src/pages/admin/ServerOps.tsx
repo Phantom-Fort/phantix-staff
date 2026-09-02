@@ -456,7 +456,7 @@ export default function ServerOps() {
             ) : (
               <div className="space-y-2">
                 {d.recommendations.map((r, i) => (
-                  <div key={i} className="flex items-start gap-3 rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-sm">
+                  <div key={i} className="flex items-start gap-3 rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-sm">
                     <span className={cx("chip shrink-0 text-[10px] capitalize", sevClass[r.severity] ?? sevClass.info)}>{r.severity}</span>
                     <div className="min-w-0">
                       <p className="font-medium text-slate-200">{r.title}</p>

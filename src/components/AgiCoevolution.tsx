@@ -30,7 +30,7 @@ export function CollapseCard({
     else setInternal((v) => !v);
   };
   return (
-    <div className="overflow-hidden rounded-xl border border-phantix-700/40 bg-phantix-900/50">
+    <div className="overflow-hidden rounded-md border border-phantix-700/40 bg-phantix-900/50">
       <button
         type="button"
         onClick={toggle}
@@ -246,17 +246,17 @@ export function EngineSnapshotCards({
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      <button onClick={onOpenQueue} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4 text-left hover:border-gold-400/30">
+      <button onClick={onOpenQueue} className="rounded-md border border-phantix-700/40 bg-phantix-900/40 p-4 text-left hover:border-gold-400/30">
         <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500"><Wrench size={12} /> Tool provision</p>
         <p className="mt-1 font-display text-2xl font-semibold text-white">{pendingTools}</p>
         <p className="text-[11px] text-slate-500">need server-wide provision</p>
       </button>
-      <button onClick={onOpenEngines} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4 text-left hover:border-gold-400/30">
+      <button onClick={onOpenEngines} className="rounded-md border border-phantix-700/40 bg-phantix-900/40 p-4 text-left hover:border-gold-400/30">
         <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500"><Cpu size={12} /> Live ops</p>
         <p className="mt-1 font-display text-2xl font-semibold text-white">{catalogCount}</p>
         <p className="text-[11px] text-slate-500">AGI-callable engine ops</p>
       </button>
-      <div className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
+      <div className="rounded-md border border-phantix-700/40 bg-phantix-900/40 p-4">
         <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500"><Activity size={12} /> Top engines</p>
         {top.length === 0 ? <p className="mt-2 text-[11px] text-slate-500">No scores yet</p> : (
           <div className="mt-2 space-y-1">

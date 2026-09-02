@@ -86,7 +86,7 @@ export default function Analytics() {
         description="First-party, cookieless traffic analytics across the Phantix Labs surfaces — landing, command centre, platform and demo. No third-party trackers."
         actions={
           <div className="flex items-center gap-2">
-            <div className="flex overflow-hidden rounded-xl border border-phantix-700/50">
+            <div className="flex overflow-hidden rounded-md border border-phantix-700/50">
               {RANGES.map((r) => (
                 <button
                   key={r}

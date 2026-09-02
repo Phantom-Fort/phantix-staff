@@ -64,9 +64,9 @@ export function ContributorGuideView({ source }: { source: string }) {
         "[&_thead]:border-b [&_thead]:border-phantix-700/40 [&_thead]:bg-phantix-900/60",
         "[&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:text-slate-200 [&_th]:break-words",
         "[&_td]:border-b [&_td]:border-phantix-700/30 [&_td]:px-3 [&_td]:py-2 [&_td]:align-top [&_td]:text-slate-400 [&_td]:break-words",
-        "[&_table]:block [&_table]:overflow-x-auto [&_table]:rounded-xl [&_table]:border [&_table]:border-phantix-700/40",
+        "[&_table]:block [&_table]:overflow-x-auto [&_table]:rounded-md [&_table]:border [&_table]:border-phantix-700/40",
         // Code + architecture diagrams (box-drawing preserved via pre + monospace)
-        "[&_.guide-pre]:mt-3 [&_.guide-pre]:mb-4 [&_.guide-pre]:max-w-full [&_.guide-pre]:overflow-x-auto [&_.guide-pre]:rounded-xl [&_.guide-pre]:border [&_.guide-pre]:border-phantix-700/40 [&_.guide-pre]:bg-phantix-950/90 [&_.guide-pre]:p-4",
+        "[&_.guide-pre]:mt-3 [&_.guide-pre]:mb-4 [&_.guide-pre]:max-w-full [&_.guide-pre]:overflow-x-auto [&_.guide-pre]:rounded-md [&_.guide-pre]:border [&_.guide-pre]:border-phantix-700/40 [&_.guide-pre]:bg-phantix-950/90 [&_.guide-pre]:p-4",
         "[&_.guide-pre]:font-mono [&_.guide-pre]:text-[11px] [&_.guide-pre]:leading-[1.45] [&_.guide-pre]:text-slate-300 [&_.guide-pre]:whitespace-pre",
         "[&_.guide-pre_code]:bg-transparent [&_.guide-pre_code]:p-0 [&_.guide-pre_code]:text-inherit",
         "[&_.guide-code]:rounded [&_.guide-code]:bg-phantix-950/80 [&_.guide-code]:px-1 [&_.guide-code]:py-0.5 [&_.guide-code]:font-mono [&_.guide-code]:text-[11px] [&_.guide-code]:text-gold-200/90",

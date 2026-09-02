@@ -507,7 +507,7 @@ export default function SandboxAdmin() {
               <CardHeader title="Published updates" subtitle="Shown to enrolled orgs on Platform + Command Centre /sandbox" />
               <div className="max-h-72 space-y-2 overflow-y-auto">
                 {updates.map((u) => (
-                  <div key={u.id} className="rounded-xl border border-phantix-700/40 bg-phantix-950/40 p-3">
+                  <div key={u.id} className="rounded-md border border-phantix-700/40 bg-phantix-950/40 p-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="chip capitalize text-[10px]">{u.severity}</span>
                       <span className="text-sm font-medium text-slate-200">{u.title}</span>
@@ -525,7 +525,7 @@ export default function SandboxAdmin() {
               <CardHeader title="Recent ratings" subtitle="From enrolled orgs" />
               <div className="max-h-72 space-y-2 overflow-y-auto">
                 {ratings.map((r, i) => (
-                  <div key={r.id ?? i} className="rounded-xl border border-phantix-700/40 bg-phantix-950/40 p-3 text-xs">
+                  <div key={r.id ?? i} className="rounded-md border border-phantix-700/40 bg-phantix-950/40 p-3 text-xs">
                     <p className="font-mono text-gold-300">
                       {r.score}/5{r.nps != null ? ` · NPS ${r.nps}` : ""} · {r.area ?? "overall"}
                     </p>

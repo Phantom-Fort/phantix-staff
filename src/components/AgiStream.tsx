@@ -195,7 +195,7 @@ function PiHelperCard({ t, dense = false, observe = false }: { t: AgiTranscriptC
     : { ring: "border-phantix-700/40 bg-phantix-900/50", icon: "bg-phantix-800/80 text-gold-400", Icon: Bot };
 
   return (
-    <div className={cx("group relative min-w-0 overflow-hidden rounded-xl border", dense ? "max-w-full" : "max-w-[94%]", accent.ring)}>
+    <div className={cx("group relative min-w-0 overflow-hidden rounded-md border", dense ? "max-w-full" : "max-w-[94%]", accent.ring)}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -261,7 +261,7 @@ export function ToolGroupCard({
   const count = runs.length;
   const totalText = useMemo(() => runs.map((r) => r.content).join("\n"), [runs]);
   return (
-    <div className="group relative min-w-0 overflow-hidden rounded-xl border border-phantix-700/40 bg-phantix-950/70">
+    <div className="group relative min-w-0 overflow-hidden rounded-md border border-phantix-700/40 bg-phantix-950/70">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -332,7 +332,7 @@ export function ClarificationAsk({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className={cx("rounded-xl border border-gold-400/30 bg-gold-400/5 p-3", dense ? "max-w-full" : "max-w-[94%]")}
+      className={cx("rounded-md border border-gold-400/30 bg-gold-400/5 p-3", dense ? "max-w-full" : "max-w-[94%]")}
     >
       <p className="flex items-center gap-1.5 text-xs font-semibold text-gold-200">
         <HelpCircle size={13} /> Agent needs a clarification
@@ -384,7 +384,7 @@ export function IssuesStrip({
 }) {
   if (!findings || findings.length === 0) return null;
   return (
-    <div className="rounded-xl border border-phantix-700/40 bg-phantix-900/50 p-2.5">
+    <div className="rounded-md border border-phantix-700/40 bg-phantix-900/50 p-2.5">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           Issues found ({findings.length})
@@ -426,7 +426,7 @@ function SystemLine({ t, dense = false }: { t: AgiTranscriptChunk; dense?: boole
   if (isFinding && sev) {
     return (
       <div className="group flex justify-start">
-        <div className="flex max-w-[94%] items-start gap-2 rounded-xl border border-phantix-700/30 bg-phantix-900/50 px-2.5 py-1.5">
+        <div className="flex max-w-[94%] items-start gap-2 rounded-md border border-phantix-700/30 bg-phantix-900/50 px-2.5 py-1.5">
           <ShieldAlert size={12} className={cx("mt-0.5 shrink-0", sev === "critical" ? "text-severity-critical" : sev === "high" ? "text-severity-high" : sev === "medium" ? "text-severity-medium" : "text-slate-500")} />
           <p className={cx("min-w-0 font-mono leading-5 text-slate-400", dense ? "wb-xs" : "wb-sm")}>
             <span className="mr-1.5 inline-flex items-center gap-1 font-semibold capitalize">
@@ -540,7 +540,7 @@ export const StreamMessage = memo(function StreamMessage({ t, last = false, dens
           </p>
           <div
             className={cx(
-              "wb-base rounded-xl rounded-tr-sm border border-gold-400/25 bg-gold-400/12 px-3 py-2 text-gold-100 shadow-sm",
+              "wb-base rounded-md rounded-tr-sm border border-gold-400/25 bg-gold-400/12 px-3 py-2 text-gold-100 shadow-sm",
               sending && "animate-pulse",
             )}
           >
@@ -569,7 +569,7 @@ export const StreamMessage = memo(function StreamMessage({ t, last = false, dens
           {time && <span className="tabular-nums">{time}</span>}
           <CopyBtn text={t.content} className="!p-0.5" />
         </p>
-        <div className="wb-base rounded-xl rounded-tl-sm border border-phantix-700/40 bg-phantix-800/55 px-3 py-2 text-slate-200 shadow-sm">
+        <div className="wb-base rounded-md rounded-tl-sm border border-phantix-700/40 bg-phantix-800/55 px-3 py-2 text-slate-200 shadow-sm">
           <StreamMarkdown source={t.content} />
           {last && <StreamCaret />}
         </div>
@@ -589,7 +589,7 @@ export function TypingIndicator({ label, tool }: { label?: string | null; tool?:
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className="flex items-center gap-2.5 rounded-xl border border-phantix-700/40 bg-phantix-900/60 px-3 py-2"
+      className="flex items-center gap-2.5 rounded-md border border-phantix-700/40 bg-phantix-900/60 px-3 py-2"
     >
       <span className="flex shrink-0 items-center gap-1 px-0.5" aria-hidden>
         {[0, 1, 2].map((i) => (
@@ -633,7 +633,7 @@ export function ApprovalNotice({
       transition={{ duration: 0.2, ease: "easeOut" }}
       className="flex justify-start"
     >
-      <div className={cx("flex items-start gap-2.5 rounded-xl border border-severity-medium/40 bg-severity-medium/10 px-3 py-2.5", dense ? "max-w-full" : "max-w-[94%]")}>
+      <div className={cx("flex items-start gap-2.5 rounded-md border border-severity-medium/40 bg-severity-medium/10 px-3 py-2.5", dense ? "max-w-full" : "max-w-[94%]")}>
         <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-severity-medium/15 text-severity-medium">
           <ShieldCheck size={13} className="animate-pulse" />
         </span>

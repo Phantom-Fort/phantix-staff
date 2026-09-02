@@ -265,7 +265,7 @@ function EvidenceDrawer({
 
 function ReasoningPanel({ text, open, onToggle }: { text: string; open: boolean; onToggle?: () => void }) {
   return (
-    <div className="rounded-xl border border-phantix-600/40 bg-phantix-900/50">
+    <div className="rounded-md border border-phantix-600/40 bg-phantix-900/50">
       <button
         type="button"
         onClick={onToggle}
@@ -734,7 +734,7 @@ export default function AgiConsole({
             ) : (
               <div ref={thoughtsStick.scrollerRef} onScroll={thoughtsStick.onScroll} className="wb-scroll h-full space-y-2 overflow-y-auto px-3 py-2.5">
                 {connError && (
-                  <div className="flex items-center gap-2 rounded-xl border border-severity-critical/40 bg-severity-critical/10 px-3 py-2">
+                  <div className="flex items-center gap-2 rounded-md border border-severity-critical/40 bg-severity-critical/10 px-3 py-2">
                     <Lock size={13} className="shrink-0 text-severity-critical" />
                     <p className="wb-xs text-red-300">{connError}</p>
                   </div>
@@ -1012,7 +1012,7 @@ export default function AgiConsole({
             ))}
           </div>
         )}
-        <div className="mx-auto flex max-w-3xl items-start gap-2 rounded-xl border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 transition-colors focus-within:border-gold-400/40">
+        <div className="mx-auto flex max-w-3xl items-start gap-2 rounded-md border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 transition-colors focus-within:border-gold-400/40">
           <textarea
             value={instruction}
             onChange={(e) => {

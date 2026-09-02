@@ -154,7 +154,7 @@ export function ToastViewport() {
               initial={{ opacity: 0, y: 20, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.96 }}
-              className="pointer-events-auto glass-bright flex items-start gap-3 rounded-xl px-4 py-3 shadow-card max-w-sm"
+              className="pointer-events-auto glass-bright flex items-start gap-3 rounded-md px-4 py-3 shadow-card max-w-sm"
             >
               {icon}
               <div className="flex-1 min-w-0">
