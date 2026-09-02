@@ -120,7 +120,7 @@ export default function DiscoveryAdmin() {
               </div>
               <div>
                 <label className="label">Default Flags</label>
-                <div className="text-sm font-mono text-slate-300 bg-phantix-950/60 border border-phantix-700/40 rounded-xl p-2.5">
+                <div className="text-sm font-mono text-slate-300 bg-phantix-950/60 border border-phantix-700/40 rounded-md p-2.5">
                   {settings?.default_flags?.join(" ") || "-sV -T4"}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Applied to all scans unless overridden</p>
@@ -151,7 +151,7 @@ export default function DiscoveryAdmin() {
             </div>
             <div>
               <label className="label">Max Concurrent Jobs</label>
-              <div className="text-sm font-mono text-white bg-phantix-950/60 border border-phantix-700/40 rounded-xl p-2.5">
+              <div className="text-sm font-mono text-white bg-phantix-950/60 border border-phantix-700/40 rounded-md p-2.5">
                 {settings?.max_concurrent_jobs ?? "auto"}
               </div>
             </div>

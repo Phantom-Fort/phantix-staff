@@ -83,12 +83,12 @@ export default function ToolingAdmin() {
 
       {stats && (
         <div className="mb-4 grid grid-cols-2 md:grid-cols-6 gap-3">
-          <div className="rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-white">{stats.total_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Total tools</p></div>
-          <div className="rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-emerald-400">{stats.active_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Active</p></div>
-          <div className="rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-phantix-300">{stats.free_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Free</p></div>
-          <div className="rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-gold-400">{stats.paid_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Paid</p></div>
-          <div className="rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-blue-400">{stats.provisions ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Provisions</p></div>
-          <div className="rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-emerald-400">{stats.active_subscriptions ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Active subs</p></div>
+          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-white">{stats.total_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Total tools</p></div>
+          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-emerald-400">{stats.active_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Active</p></div>
+          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-phantix-300">{stats.free_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Free</p></div>
+          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-gold-400">{stats.paid_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Paid</p></div>
+          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-blue-400">{stats.provisions ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Provisions</p></div>
+          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-emerald-400">{stats.active_subscriptions ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Active subs</p></div>
         </div>
       )}
 

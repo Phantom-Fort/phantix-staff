@@ -113,7 +113,7 @@ function TxLine({ t, last }: { t: AgiTranscriptChunk; last: boolean }) {
   return (
     <div className={cx("flex", isOperator ? "justify-end" : "justify-start")}>
       <div className={cx(
-        "max-w-[92%] rounded-xl px-3 py-2 text-[12.5px] leading-5",
+        "max-w-[92%] rounded-md px-3 py-2 text-[12.5px] leading-5",
         isOperator && "bg-gold-400/15 border border-gold-400/20 text-gold-100",
         !isOperator && isTool && "border border-phantix-700/40 bg-phantix-950/70 font-mono text-[11px] text-slate-300",
         !isOperator && isSystem && "font-mono text-[11px] text-slate-500",
@@ -702,7 +702,7 @@ function SessionControls({ session, running }: { session: AgiSession; running: b
       {/* Auth */}
       {tab === "auth" && (
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-2 rounded-xl border border-phantix-700/40 p-3">
+          <div className="space-y-2 rounded-md border border-phantix-700/40 p-3">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Login (authenticated testing)</p>
             <input value={creds.login_url} onChange={(e) => setCreds({ ...creds, login_url: e.target.value })} placeholder="Login URL" className={field} />
             <input value={creds.username} onChange={(e) => setCreds({ ...creds, username: e.target.value })} placeholder="Username" className={field} />
@@ -710,7 +710,7 @@ function SessionControls({ session, running }: { session: AgiSession; running: b
             <button onClick={() => void saveCreds()} disabled={credsSaving} className="btn-secondary w-full !py-2 !text-[11px]">{credsSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <ShieldCheck size={12} className="mr-1 inline" />} Set credentials</button>
             <p className="text-[10px] text-slate-500">Password is never returned by the API or written to transcripts.</p>
           </div>
-          <div className="space-y-2 rounded-xl border border-phantix-700/40 p-3">
+          <div className="space-y-2 rounded-md border border-phantix-700/40 p-3">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Test-user registration</p>
             <input value={reg.register_url} onChange={(e) => setReg({ ...reg, register_url: e.target.value })} placeholder="Register URL" className={field} />
             <input value={reg.email} onChange={(e) => setReg({ ...reg, email: e.target.value })} placeholder="Email (optional)" className={field} />
@@ -927,7 +927,7 @@ function FindingsPanel({ sessionId }: { sessionId: number }) {
       {findings.loading && <TableSkeleton rows={2} />}
       {!findings.loading && list.length === 0 && <EmptyState icon={<ShieldAlert size={22} />} title="No findings yet" body="Evidence-backed findings from this session will appear here." />}
       {list.map((f) => (
-        <div key={String(f.id)} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
+        <div key={String(f.id)} className="rounded-md border border-phantix-700/40 bg-phantix-900/40 p-4">
           <div className="flex flex-wrap items-center gap-2">
             <SeverityBadge severity={f.severity} />
             {(f.impact_level || f.impact_analysis?.impact_level) && (
@@ -1028,7 +1028,7 @@ function EngagementConfigEditor({
 
 function SkillCard({ s, onEdit }: { s: AgiSkill; onEdit: () => void }) {
   return (
-    <div className="flex flex-col rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-3">
+    <div className="flex flex-col rounded-md border border-phantix-700/40 bg-phantix-900/40 p-3">
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="min-w-0 truncate font-mono text-[11px] font-semibold text-white" title={s.skill_id}>{s.skill_id}</span>
         <span className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[9px] text-slate-400">v{s.version}</span>
@@ -1323,7 +1323,7 @@ export default function AgiAdmin() {
               ) : (
                 <div className="space-y-2.5">
                   {engagements.data.map((e) => (
-                    <motion.div key={e.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
+                    <motion.div key={e.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-md border border-phantix-700/40 bg-phantix-900/40 p-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <Globe2 size={15} className="text-gold-400" />
                         <span className="text-sm font-semibold text-slate-100">{e.name}</span>
@@ -1438,7 +1438,7 @@ export default function AgiAdmin() {
                 <EmptyState icon={<Wrench size={24} />} title="Tool provision queue empty" body="No agent sessions requested a missing tool recently." />
               ) : (
                 toolInstalls.data.map((req) => (
-                  <div key={req.id} className="rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
+                  <div key={req.id} className="rounded-md border border-phantix-700/40 bg-phantix-900/40 p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <Wrench size={14} className="text-gold-400" />
                       <span className="break-all font-mono text-sm font-semibold text-white">{req.tool_name}</span>
@@ -1467,7 +1467,7 @@ export default function AgiAdmin() {
           {tab === "skills" && (
             <div className="space-y-3">
               {/* Toolbar */}
-              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-2.5">
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-phantix-700/40 bg-phantix-900/40 p-2.5">
                 <div className="relative min-w-[220px] flex-1">
                   <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
                   <input
@@ -1533,7 +1533,7 @@ export default function AgiAdmin() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-phantix-700/40 bg-phantix-900/40 px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-phantix-700/40 bg-phantix-900/40 px-3 py-2">
                   <p className="text-[11px] text-slate-500">Page {skillPage} of {totalPages}</p>
                   <div className="flex items-center gap-1.5">
                     <button disabled={skillPage <= 1} onClick={() => setSkillPage((p) => Math.max(1, p - 1))} className="btn-ghost !px-2.5 !py-1 !text-[11px] disabled:opacity-40">Prev</button>
@@ -1563,7 +1563,7 @@ export default function AgiAdmin() {
                 const isSuper = String(s.role).toLowerCase() === "superadmin";
                 const granted = Boolean(s.agi_admin) || isSuper;
                 return (
-                  <div key={s.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-phantix-700/40 bg-phantix-900/40 p-4">
+                  <div key={s.id} className="flex flex-wrap items-center gap-3 rounded-md border border-phantix-700/40 bg-phantix-900/40 p-4">
                     <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-phantix-800/70 text-slate-300">{s.full_name?.slice(0, 1) ?? "?"}</span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-100">{s.full_name || s.email}</p>
@@ -1585,7 +1585,7 @@ export default function AgiAdmin() {
             <Card className="!p-0 overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-phantix-700/40 px-5 py-3.5">
                 <div className="flex items-center gap-2.5">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-phantix-800/70 text-gold-400"><BookOpen size={17} /></span>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-md bg-phantix-800/70 text-gold-400"><BookOpen size={17} /></span>
                   <div>
                     <p className="font-display text-sm font-semibold text-white">Autonomous Agent Contributor Guide</p>
                     <p className="text-[11px] text-slate-500">Internal engineering reference — visible to agent admins only. Architecture, security model, APIs, deploy, and how to extend.</p>
@@ -1832,7 +1832,7 @@ function PolicyPanel({ toast, policies }: { toast: (k: "success" | "error" | "in
         <Card>
           <CardHeader title={active.title} subtitle={`Version ${active.version} · published ${active.published_at ? formatDateTime(active.published_at) : "—"}`} action={<StatusBadge status="active" />} />
           <div
-            className="prose-doc max-w-none max-h-72 overflow-y-auto overflow-x-hidden break-words rounded-xl bg-phantix-950/60 p-4"
+            className="prose-doc max-w-none max-h-72 overflow-y-auto overflow-x-hidden break-words rounded-md bg-phantix-950/60 p-4"
             dangerouslySetInnerHTML={{ __html: marked.parse(active.body_md) as string }}
           />
         </Card>

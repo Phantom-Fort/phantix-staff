@@ -96,7 +96,7 @@ export function StatCard({ label, value, icon, trend, trendLabel, className }: {
             </p>
           )}
         </div>
-        {icon && <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-phantix-800/70 text-phantix-300">{icon}</div>}
+        {icon && <div className="flex h-10 w-10 items-center justify-center rounded-md bg-phantix-800/70 text-phantix-300">{icon}</div>}
       </div>
     </div>
   );
@@ -185,7 +185,7 @@ export function PageHeaderSkeleton({ actions = false }: { actions?: boolean }) {
         <div className="skeleton h-8 w-72 max-w-full rounded" />
         <div className="mt-3 skeleton h-3 w-96 max-w-full rounded" />
       </div>
-      {actions && <div className="flex gap-2"><div className="skeleton h-9 w-28 rounded-xl" /><div className="skeleton h-9 w-32 rounded-xl" /></div>}
+      {actions && <div className="flex gap-2"><div className="skeleton h-9 w-28 rounded-md" /><div className="skeleton h-9 w-32 rounded-md" /></div>}
     </div>
   );
 }
@@ -206,7 +206,7 @@ export function CardListSkeleton({ rows = 5, className }: { rows?: number; class
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="card animate-pulse border-phantix-700/40 bg-phantix-900/50 p-4">
           <div className="flex items-center gap-3">
-            <div className="skeleton h-10 w-10 shrink-0 rounded-xl" />
+            <div className="skeleton h-10 w-10 shrink-0 rounded-md" />
             <div className="min-w-0 flex-1 space-y-2">
               <div className="skeleton h-4 w-2/3 rounded" />
               <div className="skeleton h-3 w-1/3 rounded" />
@@ -339,7 +339,7 @@ export function EmptyState({ icon, title, body, action }: { icon: React.ReactNod
 
 export function Tabs({ tabs, active, onChange }: { tabs: { id: string; label: React.ReactNode; count?: number }[]; active: string; onChange: (id: string) => void }) {
   return (
-    <div className="mb-5 flex flex-wrap items-center gap-1 rounded-xl bg-phantix-900/60 border border-phantix-700/40 p-1 w-fit">
+    <div className="mb-5 flex flex-wrap items-center gap-1 rounded-md bg-phantix-900/60 border border-phantix-700/40 p-1 w-fit">
       {tabs.map((t) => (
         <button key={t.id} onClick={() => onChange(t.id)} className={cx("relative rounded-lg px-3.5 py-2 text-sm font-medium transition-colors", active === t.id ? "text-phantix-950" : "text-slate-400 hover:text-slate-100")}>
           {active === t.id && <motion.span layoutId="tab-pill" className="absolute inset-0 rounded-lg bg-gradient-to-b from-gold-400 to-gold-600" transition={{ type: "spring", stiffness: 400, damping: 32 }} />}
@@ -526,7 +526,7 @@ export function Menu({
             transition={{ duration: 0.14, ease: "easeOut" }}
             role="menu"
             className={cx(
-              "absolute z-[60] mt-1.5 min-w-[180px] overflow-hidden rounded-xl border border-phantix-700/50 bg-phantix-900/95 p-1 shadow-card backdrop-blur-xl",
+              "absolute z-[60] mt-1.5 min-w-[180px] overflow-hidden rounded-md border border-phantix-700/50 bg-phantix-900/95 p-1 shadow-card backdrop-blur-xl",
               align === "right" ? "right-0" : "left-0",
               menuClassName,
             )}

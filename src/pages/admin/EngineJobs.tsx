@@ -150,7 +150,7 @@ export default function EngineJobs() {
       ) : (
         <>
           {/* Summary bar */}
-          <div className="flex items-center gap-4 mb-4 p-3 rounded-xl bg-phantix-800/40 border border-phantix-700/40 text-sm">
+          <div className="flex items-center gap-4 mb-4 p-3 rounded-md bg-phantix-800/40 border border-phantix-700/40 text-sm">
             <span className="text-slate-400">Total Active: <span className="text-white font-bold">{data.totalActiveJobs}</span></span>
             <span className="text-slate-400">Orgs Sampled: <span className="text-white">{data.organizationsSampled}</span></span>
             <span className="text-slate-400">Celery Workers: <span className={cx("font-mono", data.celery.available ? "text-emerald-400" : "text-severity-medium")}>{data.celery.workerCount} workers</span></span>
