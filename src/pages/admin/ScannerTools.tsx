@@ -135,7 +135,7 @@ export default function ScannerTools() {
                       <td className="td">
                         {t.docker_available ? (
                           <div className="flex items-center gap-1">
-                            <Container size={12} className="text-blue-400" />
+                            <Container size={12} className="text-emerald-400" />
                             <span className="text-xs text-slate-400">available</span>
                           </div>
                         ) : (
