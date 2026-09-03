@@ -89,7 +89,7 @@ export default function Dashboard() {
             <div className="space-y-2">
               <div className="flex justify-between rounded-lg bg-phantix-800/40 px-3 py-2.5 text-sm">
                 <span className="text-slate-400">Open Tickets</span>
-                <Link to="/support" className="font-mono text-blue-400 hover:text-blue-300">{s.open_support_tickets}</Link>
+                <Link to="/support" className="font-mono text-gold-400 hover:text-gold-300">{s.open_support_tickets}</Link>
               </div>
               {s.critical_open_tickets > 0 && (
                 <div className="flex justify-between rounded-lg bg-severity-critical/5 border border-severity-critical/20 px-3 py-2.5 text-sm">
