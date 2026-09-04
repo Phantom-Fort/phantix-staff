@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { Activity, Radio, RefreshCw, Zap } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatusBadge, TableSkeleton, EmptyState } from "@/components/ui";
 import { useResource } from "@/lib/useResource";

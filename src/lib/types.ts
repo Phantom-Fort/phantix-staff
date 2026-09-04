@@ -1,4 +1,4 @@
-﻿// ── Staff Portal Types --- matches backend API docs ────────────────────────────
+// ── Staff Portal Types --- matches backend API docs ────────────────────────────
 
 export type StaffRole = "superadmin" | "admin" | "support";
 

@@ -128,7 +128,7 @@ export default function Clients() {
                     <td className="td">
                       <div>
                         <p className="text-sm font-medium text-slate-100">{client.name}</p>
-                        <p className="text-xs text-slate-500">{client.email} � {client.slug} � {client.country}</p>
+                        <p className="text-xs text-slate-500">{client.email} · {client.slug} · {client.country}</p>
                         {client.flags?.length > 0 && (
                           <div className="flex items-center gap-1 mt-0.5">
                             {client.flags.map((f) => (
