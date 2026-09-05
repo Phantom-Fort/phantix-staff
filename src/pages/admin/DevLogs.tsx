@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { RefreshCw, AlertTriangle, Info, AlertCircle, Bug, Plus, ChevronDown, ChevronRight, Search, FileJson2, Eye, EyeOff } from "lucide-react";
 import { PageHeader, Card, TableSkeleton, EmptyState, Modal } from "@/components/ui";

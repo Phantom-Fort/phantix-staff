@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Phantix API Reference</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #050b1d; }
+    body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+
+    #topbar {
+      display: flex; align-items: center; gap: 10px;
+      height: 48px; padding: 0 20px;
+      border-bottom: 1px solid #1e2a52;
+      background: #0a1128;
+      color: #e2e8f0; font-size: 13px;
+    }
+    #topbar a { color: #e8b54d; text-decoration: none; }
+    #topbar a:hover { text-decoration: underline; }
+    #topbar .dot { width: 8px; height: 8px; border-radius: 999px; background: #e8b54d; }
+
+    #status {
+      padding: 20px; color: #94a3b8; font-size: 14px;
+      max-width: 640px; margin: 48px auto; line-height: 1.6;
+    }
+    #status.error { color: #f87171; }
+
+    #redoc { height: calc(100vh - 48px); }
+  </style>
+</head>
+<body>
+  <div id="topbar">
+    <span class="dot"></span>
+    <strong>Phantix API Reference</strong>
+    <span style="color:#64748b">·</span>
+    <span>staff-only</span>
+    <span style="flex:1"></span>
+    <a href="/dashboard">Back to staff portal</a>
+  </div>
+
+  <div id="status">Loading API schema…</div>
+  <div id="redoc"></div>
+
+  <script src="/redoc.standalone.js"></script>
+  <script>
+    var DARK_THEME = {
+      spacing: { unit: 4, sectionHorizontal: 40, sectionVertical: 24 },
+      colors: {
+        tonalOffset: 0.2,
+        primary: { main: "#e8b54d", light: "#f4d488", dark: "#c9972f", contrastText: "#050b1d" },
+        success: { main: "#34d399", light: "#6ee7b7", dark: "#059669", contrastText: "#050b1d" },
+        warning: { main: "#fbbf24", light: "#fcd34d", dark: "#d97706", contrastText: "#050b1d" },
+        error: { main: "#f87171", light: "#fca5a5", dark: "#dc2626", contrastText: "#ffffff" },
+        gray: { 50: "#e2e8f0", 100: "#94a3b8" },
+        border: { light: "#1e2a52", dark: "#0d1530" },
+        text: { primary: "#e2e8f0", secondary: "#94a3b8" },
+        responses: {
+          success: { color: "#34d399", backgroundColor: "#0d1530", tabTextColor: "#34d399" },
+          error: { color: "#f87171", backgroundColor: "#0d1530", tabTextColor: "#f87171" },
+          redirect: { color: "#fbbf24", backgroundColor: "#0d1530", tabTextColor: "#fbbf24" },
+          info: { color: "#60a5fa", backgroundColor: "#0d1530", tabTextColor: "#60a5fa" }
+        },
+        http: {
+          get: "#34d399", post: "#e8b54d", put: "#60a5fa", options: "#a78bfa",
+          patch: "#f472b6", delete: "#f87171", basic: "#a78bfa", link: "#60a5fa", head: "#34d399"
+        },
+        schema: {
+          typeLabelColor: "#60a5fa", labelsTextColor: "#e2e8f0", requireLabelColor: "#f87171",
+          labelsShelf: { backgroundColor: "transparent" }
+        }
+      },
+      logo: { gutterBg: "#0d1530", maxHeight: "48px", gutterBorderColor: "#1e2a52" },
+      rightPanel: { backgroundColor: "#0d1530", width: "44%", textColor: "#e2e8f0" },
+      code: {
+        backgroundColor: "#070c1c", textColor: "#e2e8f0",
+        token: { keyword: "#e8b54d", string: "#86efac", number: "#a78bfa", boolean: "#fbbf24" }
+      },
+      typography: {
+        fontSize: "13px", fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+        headings: { fontFamily: "'Space Grotesk', 'Inter', sans-serif", fontWeight: "600" },
+        code: { fontSize: "12px", fontFamily: "'JetBrains Mono', ui-monospace, monospace" },
+        links: { color: "#e8b54d", visited: "#e8b54d", hover: "#f4d488", textDecoration: "none" }
+      },
+      sidebar: {
+        backgroundColor: "#0a1128", textColor: "#e2e8f0", activeTextColor: "#e8b54d",
+        groupItems: { activeTextColor: "#e8b54d", textColor: "#94a3b8" }, width: "270px"
+      },
+      fab: { backgroundColor: "#1e2a52", color: "#e2e8f0" },
+      buttons: {
+        get: { color: "#050b1d", backgroundColor: "#34d399" },
+        post: { color: "#050b1d", backgroundColor: "#e8b54d" },
+        put: { color: "#050b1d", backgroundColor: "#60a5fa" },
+        delete: { color: "#ffffff", backgroundColor: "#f87171" },
+        options: { color: "#050b1d", backgroundColor: "#a78bfa" },
+        patch: { color: "#050b1d", backgroundColor: "#f472b6" },
+        basic: { color: "#050b1d", backgroundColor: "#a78bfa" },
+        link: { color: "#050b1d", backgroundColor: "#60a5fa" },
+        head: { color: "#050b1d", backgroundColor: "#34d399" }
+      }
+    };
+
+    (function () {
+      var status = document.getElementById("status");
+      var token = sessionStorage.getItem("staff_access_token");
+
+      if (!token) {
+        status.className = "error";
+        status.textContent = "You are not signed in. Open the staff portal, sign in, then open the API Reference again — this page needs your staff session.";
+        return;
+      }
+
+      fetch("/api/v1/staff/docs/openapi.json", {
+        headers: { Authorization: "Bearer " + token }
+      })
+        .then(function (res) {
+          if (!res.ok) throw new Error("HTTP " + res.status + " — the API schema may not be reachable.");
+          return res.json();
+        })
+        .then(function (spec) {
+          status.style.display = "none";
+          Redoc.init(spec, { theme: DARK_THEME, hideDownloadButton: false }, document.getElementById("redoc"));
+        })
+        .catch(function (err) {
+          status.className = "error";
+          status.textContent = "Could not load the API schema: " + err.message;
+        });
+    })();
+  </script>
+</body>
+</html>

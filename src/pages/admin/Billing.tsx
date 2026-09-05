@@ -139,7 +139,7 @@ export default function BillingAdmin() {
           {coupons.length === 0 ? <EmptyState icon={<Ticket size={24} />} title="No coupons" body="Generate beta access codes for trial access." /> : (
             <div className="space-y-2">
               {coupons.map(c => (
-                <Card key={c.id}><div className="flex flex-wrap items-center gap-3"><span className={cx("chip", c.is_active ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{c.is_active ? "Active" : "Inactive"}</span><span className="font-mono text-sm text-slate-200">{c.code}</span><span className="text-xs text-slate-400">{c.label} â€” {c.duration_days}d Â· {c.redemption_count}{c.max_redemptions ? `/${c.max_redemptions}` : ""} used</span><span className="ml-auto text-xs text-slate-500">{timeAgo(c.created_at)}</span>{c.is_active && <button onClick={() => handleDeactivateCoupon(c.id)} className="btn-ghost text-xs px-2 py-1 text-severity-critical"><XCircle size={12} /></button>}</div></Card>
+                <Card key={c.id}><div className="flex flex-wrap items-center gap-3"><span className={cx("chip", c.is_active ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{c.is_active ? "Active" : "Inactive"}</span><span className="font-mono text-sm text-slate-200">{c.code}</span><span className="text-xs text-slate-400">{c.label} — {c.duration_days}d · {c.redemption_count}{c.max_redemptions ? `/${c.max_redemptions}` : ""} used</span><span className="ml-auto text-xs text-slate-500">{timeAgo(c.created_at)}</span>{c.is_active && <button onClick={() => handleDeactivateCoupon(c.id)} className="btn-ghost text-xs px-2 py-1 text-severity-critical"><XCircle size={12} /></button>}</div></Card>
               ))}
             </div>
           )}
@@ -154,7 +154,7 @@ export default function BillingAdmin() {
               <button onClick={handleGenerateCoupons} className="btn-primary w-full">Generate</button>
               {generatedCodes.length > 0 && (
                 <div className="mt-3 p-3 rounded-md bg-gold-400/10 border border-gold-400/20">
-                  <p className="text-xs font-semibold text-gold-300 mb-2">Copy these codes â€” they won't be shown again:</p>
+                  <p className="text-xs font-semibold text-gold-300 mb-2">Copy these codes — they won't be shown again:</p>
                   {generatedCodes.map(code => <div key={code} className="flex items-center gap-2 font-mono text-xs text-white py-1"><span>{code}</span><button onClick={() => { navigator.clipboard.writeText(code); toast("info", "Copied"); }} className="text-gold-400"><Copy size={11} /></button></div>)}
                 </div>
               )}

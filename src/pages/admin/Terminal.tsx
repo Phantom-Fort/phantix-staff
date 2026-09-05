@@ -54,7 +54,7 @@ const demoCapability: TerminalCapability = {
   websocketPath: "/api/v1/admin/super/terminal/ws",
   auth: "Staff JWT required (role=superadmin)",
   activeSessions: 0,
-  warning: "Demo terminal Ã¢â‚¬â€ connect a live API to open a real PTY session.",
+  warning: "Demo terminal ’” connect a live API to open a real PTY session.",
   staff: { id: 1, email: "admin@example.com", role: "superadmin" },
 };
 
@@ -179,14 +179,14 @@ export default function SuperadminTerminal() {
         }
         switch (msg.type) {
           case "ready":
-            termRef.current?.writeln(`\r\n\x1b[1;32m[session ready ${String(msg.sessionId ?? "")} Ã¢â‚¬â€ mode ${String(msg.mode ?? "local")}]\x1b[0m`);
+            termRef.current?.writeln(`\r\n\x1b[1;32m[session ready ${String(msg.sessionId ?? "")} ’” mode ${String(msg.mode ?? "local")}]\x1b[0m`);
             termRef.current?.focus();
             break;
           case "output":
             termRef.current?.write(String(msg.data ?? ""));
             break;
           case "resized":
-            // ack Ã¢â‚¬â€ nothing needed
+            // ack ’” nothing needed
             break;
           case "error":
             termRef.current?.writeln(`\r\n\x1b[1;31m[error] ${String(msg.message ?? "unknown")}\x1b[0m`);
@@ -217,7 +217,7 @@ export default function SuperadminTerminal() {
         termRef.current?.writeln("\r\n\x1b[1;31m[connection error]\x1b[0m");
       };
 
-      // Input Ã¢â€ â€™ server
+      // Input →’ server
       termRef.current?.onData((data) => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: "input", data }));
@@ -276,7 +276,7 @@ export default function SuperadminTerminal() {
     <div>
       <PageHeader
         title="Superadmin Terminal"
-        description="Secure interactive shell to the Phantix API runtime Ã¢â‚¬â€ superadmin only, fully audited"
+        description="Secure interactive shell to the Phantix API runtime ’” superadmin only, fully audited"
         actions={
           <div className="flex items-center gap-2">
             <span className={cx("flex items-center gap-1.5 text-xs font-mono", connected ? "text-emerald-400" : "text-slate-500")}>
@@ -304,7 +304,7 @@ export default function SuperadminTerminal() {
               {cap?.mode === "ssh" && cap?.sshTarget && <span className="font-mono text-xs text-slate-400">ssh: {cap.sshTarget}</span>}
               {cap?.maxSessions != null && <span className="text-xs text-slate-400">{cap.activeSessions ?? 0}/{cap.maxSessions} sessions</span>}
               {cap?.idleSeconds != null && <span className="text-xs text-slate-400">idle close: {Math.round(cap.idleSeconds / 60)}m</span>}
-              {cap?.staff && <span className="ml-auto text-xs text-slate-500">{cap.staff.email} Ã‚Â· {cap.staff.role}</span>}
+              {cap?.staff && <span className="ml-auto text-xs text-slate-500">{cap.staff.email} · {cap.staff.role}</span>}
             </div>
             {cap?.warning && <p className="mt-2 text-xs leading-5 text-amber-400/80">{cap.warning}</p>}
           </Card>

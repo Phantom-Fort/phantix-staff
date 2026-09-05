@@ -6,6 +6,7 @@ import {
   Users, FileCheck, Wrench, Search, Activity, LogOut, Menu, X,
   Zap, Globe, AlertTriangle, ScanLine, BarChart3, RefreshCw,
   Crosshair, Radio, FileText, TerminalSquare, Radar, BookOpen, FlaskConical,
+  ScrollText, Mail,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { APP_URL } from "@/lib/links";
@@ -23,6 +24,7 @@ const navSections: {
     adminOnly?: boolean;
     superadminOnly?: boolean;
     agiOnly?: boolean;
+    external?: boolean;
   }[];
 }[] = [
   {
@@ -44,7 +46,7 @@ const navSections: {
       { to: "/scanner-tools", label: "Scanner Tools", icon: <ScanLine size={18} /> },
       { to: "/bus", label: "Event Bus", icon: <Radio size={18} /> },
       { to: "/analytics", label: "Analytics", icon: <BarChart3 size={18} /> },
-      { to: "/docs", label: "API Reference", icon: <BookOpen size={18} /> },
+      { to: "/api-docs.html", label: "API Reference", icon: <BookOpen size={18} />, external: true },
     ],
   },
   {
@@ -52,9 +54,12 @@ const navSections: {
     role: "admin",
     items: [
       { to: "/compliance", label: "Compliance", icon: <FileCheck size={18} /> },
+      { to: "/soc-provisioning", label: "SOC Provisioning", icon: <Shield size={18} /> },
       { to: "/tooling", label: "Tooling", icon: <Wrench size={18} /> },
       { to: "/discovery", label: "Discovery", icon: <Search size={18} /> },
       { to: "/experience", label: "Experience", icon: <Zap size={18} /> },
+      { to: "/email-templates", label: "Email Templates", icon: <Mail size={18} /> },
+      { to: "/legal-documents", label: "Legal Documents", icon: <ScrollText size={18} /> },
     ],
   },
   {
@@ -111,7 +116,7 @@ export default function Layout() {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+        <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-2.5">
           {navSections.map((section) => {
             if (section.role === "admin" && !isAdmin) return null;
             if (section.role === "superadmin" && !isSuperadmin) return null;
@@ -126,21 +131,34 @@ export default function Layout() {
 
             return (
               <div key={section.label}>
-                <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                <p className="px-2.5 mb-1 text-[9px] leading-none font-semibold uppercase tracking-[0.14em] text-slate-500">
                   {section.label}
                 </p>
                 {visibleItems.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.to === "/dashboard"}
-                    className={({ isActive }) =>
-                      cx("nav-item", isActive && "active")
-                    }
-                  >
-                    {item.icon}
-                    {item.label}
-                  </NavLink>
+                  item.external ? (
+                    <a
+                      key={item.to}
+                      href={item.to}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="nav-item"
+                    >
+                      {item.icon}
+                      {item.label}
+                    </a>
+                  ) : (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.to === "/dashboard"}
+                      className={({ isActive }) =>
+                        cx("nav-item", isActive && "active")
+                      }
+                    >
+                      {item.icon}
+                      {item.label}
+                    </NavLink>
+                  )
                 ))}
               </div>
             );
@@ -217,15 +235,29 @@ export default function Layout() {
                   <div key={section.label} className="mb-3">
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1">{section.label}</p>
                     {visibleItems.map((item) => (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        onClick={() => setMenuOpen(false)}
-                        className={({ isActive }) => cx("nav-item py-2", isActive && "active")}
-                      >
-                        {item.icon}
-                        {item.label}
-                      </NavLink>
+                      item.external ? (
+                        <a
+                          key={item.to}
+                          href={item.to}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="nav-item py-2"
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          {item.icon}
+                          {item.label}
+                        </a>
+                      ) : (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setMenuOpen(false)}
+                          className={({ isActive }) => cx("nav-item py-2", isActive && "active")}
+                        >
+                          {item.icon}
+                          {item.label}
+                        </NavLink>
+                      )
                     ))}
                   </div>
                 );

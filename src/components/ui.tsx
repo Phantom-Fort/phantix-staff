@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Loader2, ChevronDown, WifiOff, RefreshCw } from "lucide-react";
 import { cx, titleCase, severityColor } from "@/lib/utils";
