@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, FileCode2, FileText, Loader2, Plus, RefreshCw, Search, Send } from "lucide-react";
 import { PageHeader, Card, CardHeader, Modal, Spinner } from "@/components/ui";
+import MarkdownView from "@/components/MarkdownView";
 import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { cx } from "@/lib/utils";
@@ -326,10 +327,14 @@ export default function ContributeKnowledge() {
               <p className="text-xs text-slate-500">
                 Select a {tab === "yaml" ? "YAML pack" : "document"} to read it here.
               </p>
-            ) : (
+            ) : tab === "yaml" ? (
               <pre className="max-h-[64vh] overflow-auto whitespace-pre-wrap rounded-md border border-phantix-700/30 bg-phantix-950/60 p-3 text-[12px] leading-5 text-slate-300">
                 {docBody}
               </pre>
+            ) : (
+              <div className="max-h-[64vh] overflow-auto rounded-md border border-phantix-700/30 bg-phantix-950/50 p-4 text-[13px]">
+                <MarkdownView source={docBody} />
+              </div>
             )}
           </Card>
         </div>
