@@ -153,6 +153,9 @@ type AuditVerify = {
   first_bad?: string | number | null;
   broken_sequence?: string | number | null;
   first_tampered_event_uid?: string | null;
+  first_bad_reason?: "content" | "link" | string | null;
+  content_mismatches?: number;
+  link_mismatches?: number;
 };
 
 function AuditChainCard() {
@@ -175,6 +178,7 @@ function AuditChainCard() {
     d.intact ?? d.valid ?? d.ok ?? d.verified;
   const firstBad =
     d.first_bad_sequence ?? d.first_bad ?? d.broken_sequence ?? d.first_tampered_event_uid ?? null;
+  const reason = d.first_bad_reason ?? null;
 
   if (intact === true) {
     return (
@@ -212,6 +216,15 @@ function AuditChainCard() {
               </p>
               {firstBad != null && (
                 <p className="mt-2 font-mono text-xs text-severity-critical">first bad sequence: {String(firstBad)}</p>
+              )}
+              {reason != null && (
+                <p className="mt-1 max-w-xl text-xs text-slate-400">
+                  {reason === "link"
+                    ? "reason: linkage fork — the event is self-consistent but chains to a different predecessor than the row before it (typically concurrent writes)."
+                    : reason === "content"
+                      ? "reason: content mismatch — the event's stored fields no longer match its hash (possible tampering)."
+                      : `reason: ${String(reason)}`}
+                </p>
               )}
             </div>
           </div>
