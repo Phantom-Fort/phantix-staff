@@ -494,6 +494,39 @@ export function Tabs({ tabs, active, onChange }: { tabs: { id: string; label: Re
   );
 }
 
+export function Pagination({
+  page,
+  pageSize,
+  total,
+  onPageChange,
+  itemLabel = "entries",
+  className,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  onPageChange: (page: number) => void;
+  itemLabel?: string;
+  className?: string;
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const current = Math.min(Math.max(1, page), totalPages);
+  const from = total === 0 ? 0 : (current - 1) * pageSize + 1;
+  const to = Math.min(total, current * pageSize);
+  return (
+    <div className={cx("mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-phantix-700/40 bg-phantix-900/40 px-3 py-2", className)}>
+      <p className="text-[11px] text-slate-500">
+        {total === 0 ? `0 ${itemLabel}` : `Showing ${from}\u2013${to} of ${total.toLocaleString()} ${itemLabel}`}
+      </p>
+      <div className="flex items-center gap-1.5">
+        <button type="button" disabled={current <= 1} onClick={() => onPageChange(Math.max(1, current - 1))} className="btn-ghost !px-2.5 !py-1 !text-[11px] disabled:opacity-40">Prev</button>
+        <span className="tabular-nums text-[11px] text-slate-400">Page {current} / {totalPages}</span>
+        <button type="button" disabled={current >= totalPages} onClick={() => onPageChange(Math.min(totalPages, current + 1))} className="btn-ghost !px-2.5 !py-1 !text-[11px] disabled:opacity-40">Next</button>
+      </div>
+    </div>
+  );
+}
+
 export function ProgressBar({ value, color = "#E8B54D" }: { value: number; color?: string }) {
   return (
     <div className="h-1.5 w-full overflow-hidden rounded-full bg-phantix-700/50">

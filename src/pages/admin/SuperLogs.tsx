@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FileText, RefreshCw, Wifi, WifiOff, Search, Filter, ChevronDown, ChevronRight, Bug, AlertTriangle, Info, AlertCircle, Clock, Activity, FileJson2 } from "lucide-react";
-import { PageHeader, Card, CardHeader, StatCard, AnimatedNumber, TableSkeleton, EmptyState, SeverityBadge } from "@/components/ui";
+import { PageHeader, Card, CardHeader, StatCard, AnimatedNumber, TableSkeleton, EmptyState, SeverityBadge, Pagination } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
 import { api, DEMO_MODE, tokens, API_BASE } from "@/lib/api";
@@ -36,6 +36,9 @@ const logTypeBadge = (t: string) => {
 const logTypes = ["app","auth","http","access","audit","bus","ai","security","system","dual_control","scan","alert","report"];
 const levels = ["debug","info","warning","error","critical"];
 
+/** Rows per page — keeps the log table to a single screen instead of endless scroll. */
+const PAGE_SIZE = 100;
+
 export default function SuperLogs() {
   const { toast } = useStore();
   const [logTypeFilter, setLogTypeFilter] = useState("");
@@ -44,11 +47,12 @@ export default function SuperLogs() {
   const [liveConnected, setLiveConnected] = useState(false);
   const [liveEvents, setLiveEvents] = useState<SuperLog[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
 
   const logs = useResource<{ items: SuperLog[]; total: number }>(
     async (signal) => {
       if (DEMO_MODE) return { items: demoLogs, total: demoLogs.length };
-      const params: Record<string, string | number | boolean> = { limit: 100 };
+      const params: Record<string, string | number | boolean> = { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
       if (logTypeFilter) params.log_type = logTypeFilter;
       if (levelFilter) params.level = levelFilter;
       if (orgFilter) params.organization_id = Number(orgFilter);
@@ -57,7 +61,26 @@ export default function SuperLogs() {
     {} as any,
   );
 
-  const items = liveEvents.length > 0 ? [...liveEvents, ...(logs.data?.items || [])].slice(0, 100) : (logs.data?.items || []);
+  const items = page === 1 && liveEvents.length > 0
+    ? [...liveEvents, ...(logs.data?.items || [])].slice(0, PAGE_SIZE)
+    : (logs.data?.items || []);
+
+  // Any filter change returns to the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [logTypeFilter, levelFilter, orgFilter]);
+
+  // Refetch the REST page when a filter or the page changes (skip the mount
+  // run — useResource already fetched).
+  const didMount = React.useRef(false);
+  const queryKey = JSON.stringify([logTypeFilter, levelFilter, orgFilter, page]);
+  useEffect(() => {
+    if (DEMO_MODE) return;
+    if (!didMount.current) { didMount.current = true; return; }
+    const t = window.setTimeout(() => logs.refresh(), 300);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey]);
 
   // SSE stream for tail (auto-reconnect with backoff)
   useEffect(() => {
@@ -172,7 +195,7 @@ export default function SuperLogs() {
         ) : items.length === 0 ? (
           <EmptyState icon={<Bug size={24} />} title="No logs" body="No entries match current filters" />
         ) : (
-          <div className="overflow-x-auto">
+          <div className={cx("overflow-x-auto transition-opacity", logs.loading && "opacity-50")}>
             <table className="w-full">
               <thead>
                 <tr className="border-b border-phantix-700/40">
@@ -237,6 +260,14 @@ export default function SuperLogs() {
           </div>
         )}
       </Card>
+
+      <Pagination
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={logs.data?.total ?? 0}
+        onPageChange={setPage}
+        itemLabel="entries"
+      />
     </div>
   );
 }

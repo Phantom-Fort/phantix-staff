@@ -220,7 +220,9 @@ async function request<T>(
 
 export const api = {
   get: <T>(path: string, opts?: RequestOpts) =>
-    dedupedRequest("GET", path, opts?.body, () => request<T>("GET", path, opts)),
+    // Include query params in the dedupe key: two GETs to the same path with
+    // different params are different requests (e.g. per-category tool loads).
+    dedupedRequest("GET", path, opts?.params, () => request<T>("GET", path, opts)),
   post: <T>(path: string, body?: unknown, opts?: RequestOpts) => request<T>("POST", path, { ...opts, body }),
   put: <T>(path: string, body?: unknown, opts?: RequestOpts) => request<T>("PUT", path, { ...opts, body }),
   patch: <T>(path: string, body?: unknown, opts?: RequestOpts) => request<T>("PATCH", path, { ...opts, body }),

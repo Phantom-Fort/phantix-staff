@@ -591,6 +591,10 @@ export async function getAgiSession(sessionId: number): Promise<AgiSession | nul
 }
 
 export async function loadActiveAgiSession(): Promise<AgiSession | null> {
+  // F-04: the backend exposes no sessions-list route, so
+  // GET /admin/agi/sessions?status=… 404s. The only reliable handle on a live
+  // session is the id persisted at start time; recover it through the
+  // per-session endpoint and otherwise report that there is no active session.
   const persisted = readPersistedAgiSession();
   if (persisted) {
     const s = await getAgiSession(persisted.id);
@@ -600,15 +604,7 @@ export async function loadActiveAgiSession(): Promise<AgiSession | null> {
   if (DEMO_MODE) {
     return liveDemoSession && isLiveStatus(liveDemoSession.status) ? liveDemoSession : null;
   }
-  try {
-    const res = await api.get<AgiSession[] | { items?: AgiSession[] }>("/admin/agi/sessions?status=running,paused,provisioning");
-    const list = Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : [];
-    const live = list.find((s) => isLiveStatus(s.status)) ?? null;
-    if (live) persistAgiSession(live);
-    return live;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 export async function stopAgiSession(sessionId: number): Promise<AgiSession> {
