@@ -129,6 +129,22 @@ type RequestOpts = {
   timeoutMs?: number;
 };
 
+// ── 401 policy: session expiry vs. auth-realm mismatch ──────────────────────
+// Only the staff realm authenticates staff JWTs: /staff/* (login + profile)
+// and /admin/* (admin/support console). Role gaps inside those routers come
+// back as 403, so a 401 there really does mean the staff session is gone.
+//
+// Other realms — e.g. the organization-user /audit/* API — refuse a staff
+// token with 401 too. Treating that as expiry used to wipe the session the
+// instant the dashboard's audit-chain widget loaded, signing the user out
+// right after login. Scope the destructive clear to the staff realm only.
+const STAFF_REALM_RE = /^\/(?:staff|admin)(?:\/|$)/;
+
+/** True when a 401 from `path` should invalidate the stored staff session. */
+function invalidatesStaffSession(path: string): boolean {
+  return STAFF_REALM_RE.test(path);
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -183,7 +199,7 @@ async function request<T>(
     try {
       detail = (await res.json()).detail;
     } catch { /* non-JSON */ }
-    if (res.status === 401) {
+    if (res.status === 401 && invalidatesStaffSession(path)) {
       tokens.staff = null;
       tokens.email = null;
     }
@@ -222,7 +238,7 @@ export const api = {
     if (!res.ok) {
       let detail: unknown = res.statusText;
       try { detail = (await res.json()).detail; } catch { /* non-JSON */ }
-      if (res.status === 401) { tokens.staff = null; tokens.email = null; }
+      if (res.status === 401 && invalidatesStaffSession(path)) { tokens.staff = null; tokens.email = null; }
       throw new ApiError(res.status, detail, res.headers.get("X-Correlation-ID") || undefined);
     }
     if (res.status === 204) return undefined as T;

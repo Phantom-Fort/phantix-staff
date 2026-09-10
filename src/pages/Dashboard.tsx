@@ -139,9 +139,11 @@ export default function Dashboard() {
 }
 
 // ── Audit chain verification (staging-rollout §10) ───────────────────────────
-// GET /api/v1/audit/verify-chain. Response shape is backend-defined and may use
-// intact|valid|ok|verified with first_bad_sequence|first_bad|broken_sequence —
-// normalise defensively so an intact/broken state always renders.
+// GET /api/v1/admin/audit/verify-chain (staff JWT). Returns one rolled-up
+// platform state; the org-scoped /audit/verify-chain rejects staff tokens.
+// Response shape may use intact|valid|ok|verified with
+// first_bad_sequence|first_bad|broken_sequence — normalise defensively so an
+// intact/broken state always renders.
 type AuditVerify = {
   intact?: boolean;
   valid?: boolean;
@@ -150,11 +152,12 @@ type AuditVerify = {
   first_bad_sequence?: string | number | null;
   first_bad?: string | number | null;
   broken_sequence?: string | number | null;
+  first_tampered_event_uid?: string | null;
 };
 
 function AuditChainCard() {
   const verify = useResource<AuditVerify>(
-    async () => api.get<AuditVerify>("/audit/verify-chain") ?? {},
+    async () => api.get<AuditVerify>("/admin/audit/verify-chain") ?? {},
     {} as AuditVerify,
     "audit-verify-chain",
   );
@@ -171,7 +174,7 @@ function AuditChainCard() {
   const intact =
     d.intact ?? d.valid ?? d.ok ?? d.verified;
   const firstBad =
-    d.first_bad_sequence ?? d.first_bad ?? d.broken_sequence ?? null;
+    d.first_bad_sequence ?? d.first_bad ?? d.broken_sequence ?? d.first_tampered_event_uid ?? null;
 
   if (intact === true) {
     return (
