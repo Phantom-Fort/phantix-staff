@@ -311,6 +311,11 @@ export default function Layout() {
             <Outlet />
           </div>
         </main>
+
+        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-phantix-700/60 bg-phantix-950/60 px-4 py-3 text-[11px] text-slate-600 lg:px-6">
+          <span>SecureGraph Staff Portal · internal admin &amp; support console · every action is audited</span>
+          <span className="font-mono">API v1 · staff-only</span>
+        </footer>
       </div>
     </div>
   );

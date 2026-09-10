@@ -203,6 +203,12 @@ async function request<T>(
       tokens.staff = null;
       tokens.email = null;
     }
+    // First-login password change pending: let the app route to the change screen.
+    if (res.status === 403 && detail && typeof detail === "object" && "code" in detail) {
+      if ((detail as { code?: string }).code === "password_change_required") {
+        window.dispatchEvent(new CustomEvent("phantix:password-change-required"));
+      }
+    }
     // Login throttling (staging-rollout §8): failed attempts are throttled per
     // identifier — 5 failures/5 min → 429. Never present it as a wrong password.
     if (res.status === 429) {

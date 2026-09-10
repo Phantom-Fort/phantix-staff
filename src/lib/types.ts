@@ -480,6 +480,8 @@ export interface StaffUserDetail {
   last_login_at: string | null;
   created_at: string;
   created_by: number | null;
+  agi_admin?: boolean;
+  must_change_password?: boolean;
 }
 
 // ── SECUREGRAPH AGI Management (staff) — admin/agi/* ──────────────────────────────
