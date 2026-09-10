@@ -84,17 +84,32 @@ export default function AiAdmin() {
       } else {
         res = demoPrompts.find((p) => p.prompt_key === key) || { prompt_key: key };
       }
+      const versions: any[] = Array.isArray(res.versions) ? res.versions : [];
+      const activeVersion =
+        versions.find((v) => v?.is_active) ??
+        versions.find((v) => Number(v?.version) === Number(res.active)) ??
+        versions[0] ??
+        {};
+      // The detail endpoint nests prompt text under `versions[]`; older/simple
+      // payloads may still put it at the top level, so accept both.
+      const src: any = {
+        ...res,
+        ...activeVersion,
+        system_prompt: res.system_prompt ?? activeVersion.system_prompt,
+        user_template: res.user_template ?? activeVersion.user_template,
+        allowed_evidence_keys: res.allowed_evidence_keys ?? activeVersion.allowed_evidence_keys,
+      };
       const detailObj: PromptDetail = {
-        prompt_key: String(res.prompt_key ?? key),
-        version: Number(res.version ?? res.active_version ?? 0),
-        is_active: Boolean(res.is_active ?? res.active),
-        system_prompt: String(res.system_prompt ?? ""),
-        user_template: String(res.user_template ?? ""),
-        output_schema: res.output_schema,
-        allowed_evidence_keys: Array.isArray(res.allowed_evidence_keys) ? res.allowed_evidence_keys.map(String) : [],
-        changelog: String(res.changelog ?? ""),
-        updated_by: (res.updated_by as string) ?? undefined,
-        updated_at: (res.updated_at as string) ?? undefined,
+        prompt_key: String(src.prompt_key ?? key),
+        version: Number(src.version ?? res.active_version ?? 0),
+        is_active: Boolean(src.is_active ?? res.active),
+        system_prompt: String(src.system_prompt ?? ""),
+        user_template: String(src.user_template ?? ""),
+        output_schema: src.output_schema,
+        allowed_evidence_keys: Array.isArray(src.allowed_evidence_keys) ? src.allowed_evidence_keys.map(String) : [],
+        changelog: String(src.changelog ?? ""),
+        updated_by: (src.updated_by as string) ?? undefined,
+        updated_at: (src.updated_at as string) ?? undefined,
       };
       setDetail(detailObj);
       setEditForm({
