@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import Login from "@/pages/Login";
 import StaffPasswordResetRequest from "@/pages/StaffPasswordResetRequest";
 import StaffPasswordResetComplete from "@/pages/StaffPasswordResetComplete";
+import StaffChangePassword from "@/pages/StaffChangePassword";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/admin/Clients";
 import SupportTickets from "@/pages/admin/Support";
@@ -43,6 +44,7 @@ function RequireStaff({ children }: { children: React.ReactNode }) {
   const { session } = useStore();
   const location = useLocation();
   if (!session?.authenticated) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (session.mustChangePassword) return <Navigate to="/change-password" replace />;
   return <>{children}</>;
 }
 
@@ -50,6 +52,7 @@ function RequireContributor({ children }: { children: React.ReactNode }) {
   const { session, isContributor } = useStore();
   const location = useLocation();
   if (!session?.authenticated) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (session.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (!isContributor) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
@@ -58,6 +61,7 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { session, isAdmin } = useStore();
   const location = useLocation();
   if (!session?.authenticated) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (session.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
@@ -65,6 +69,7 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 function RequireSuperadmin({ children }: { children: React.ReactNode }) {
   const { session, isSuperadmin } = useStore();
   if (!session?.authenticated) return <Navigate to="/login" replace />;
+  if (session.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (!isSuperadmin) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
@@ -73,7 +78,14 @@ function RequireAgiAdmin({ children }: { children: React.ReactNode }) {
   const { session, isAgiAdmin } = useStore();
   const location = useLocation();
   if (!session?.authenticated) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (session.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (!isAgiAdmin) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { session } = useStore();
+  if (!session?.authenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -83,6 +95,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/change-password" element={<RequireAuth><StaffChangePassword /></RequireAuth>} />
           <Route path="/password-reset" element={<StaffPasswordResetRequest />} />
           <Route path="/reset-password" element={<StaffPasswordResetComplete />} />
           <Route element={<Layout />}>

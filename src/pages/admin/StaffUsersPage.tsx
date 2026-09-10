@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Users, Plus, RefreshCw, Shield, Pencil } from "lucide-react";
+import { Users, Plus, RefreshCw, Shield, Pencil, KeyRound } from "lucide-react";
 import { PageHeader, Card, StatusBadge, TableSkeleton, EmptyState, Modal } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
@@ -17,7 +17,7 @@ const demoStaff: StaffUserDetail[] = [
 export default function StaffUsers() {
   const { toast, isSuperadmin } = useStore();
   const [showCreate, setShowCreate] = useState(false);
-  const [newStaff, setNewStaff] = useState({ email: "", full_name: "", role: "support", password: "" });
+  const [newStaff, setNewStaff] = useState({ email: "", full_name: "", role: "support" });
   const [creating, setCreating] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffUserDetail | null>(null);
   const [staffForm, setStaffForm] = useState({ full_name: "", role: "support", is_active: true, password: "" });
@@ -35,13 +35,17 @@ export default function StaffUsers() {
   const data = DEMO_MODE ? demoStaff : (staff.data?.length ? staff.data : []);
 
   const handleCreate = async () => {
-    if (!newStaff.email || !newStaff.password) { toast("error", "Required fields", "Email and password required"); return; }
+    if (!newStaff.email || !newStaff.full_name) { toast("error", "Required fields", "Name and email are required"); return; }
     setCreating(true);
     try {
-      await api.post("/staff", newStaff);
-      toast("success", "Staff created", newStaff.email);
+      const res = await api.post<{ email_sent?: boolean; email_error?: string | null }>("/staff", newStaff);
+      if (res?.email_sent === false) {
+        toast("warning", "Staff created — email not sent", res.email_error || "Check SMTP configuration.");
+      } else {
+        toast("success", "Staff created", `Temporary password emailed to ${newStaff.email}`);
+      }
       setShowCreate(false);
-      setNewStaff({ email: "", full_name: "", role: "support", password: "" });
+      setNewStaff({ email: "", full_name: "", role: "support" });
       staff.refresh();
     } catch (e) {
       toast("error", "Create failed", e instanceof Error ? e.message : "");
@@ -94,6 +98,11 @@ export default function StaffUsers() {
                       <div>
                         <p className="text-sm font-medium text-slate-100">{s.full_name}</p>
                         <p className="text-xs text-slate-500">{s.email}</p>
+                        {s.must_change_password && (
+                          <span className="chip mt-1 text-[10px] text-severity-medium bg-severity-medium/10 border-severity-medium/30">
+                            password change pending
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="td">
@@ -137,9 +146,12 @@ export default function StaffUsers() {
               <option value="superadmin">Superadmin</option>
             </select>
           </div>
-          <div>
-            <label className="label">Password</label>
-            <input className="input" type="password" value={newStaff.password} onChange={(e) => setNewStaff((s) => ({ ...s, password: e.target.value }))} />
+          <div className="flex items-start gap-2 rounded-lg bg-phantix-800/50 border border-phantix-700/40 px-3 py-2 text-xs text-slate-400">
+            <KeyRound size={14} className="mt-0.5 shrink-0 text-gold-400" />
+            <span>
+              The account is created with the temporary password <span className="font-mono text-gold-300">Pa$$w0rd!</span> and
+              emailed to the user. They must set their own password on first sign-in.
+            </span>
           </div>
           <button onClick={handleCreate} disabled={creating} className="btn-primary w-full">
             {creating && <RefreshCw size={14} className="animate-spin" />}

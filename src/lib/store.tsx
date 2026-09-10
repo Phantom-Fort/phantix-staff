@@ -10,7 +10,18 @@ type StaffSession = {
   fullName: string;
   role: StaffRole;
   agi_admin?: boolean;
+  /** Set when the account was provisioned with a temporary password. */
+  mustChangePassword?: boolean;
 } | null;
+
+type MeResponse = {
+  full_name: string;
+  role: StaffRole;
+  email: string;
+  is_active: boolean;
+  agi_admin?: boolean;
+  must_change_password?: boolean;
+};
 
 type ToastKind = "success" | "error" | "info" | "warning";
 type Toast = { id: number; kind: ToastKind; title: string; body?: string };
@@ -20,6 +31,8 @@ type Store = {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   hydrateSession: () => void;
+  /** Clear the first-login password-change requirement after a successful change. */
+  clearMustChangePassword: () => void;
   isAdmin: boolean;
   isContributor: boolean;
   isSuperadmin: boolean;
@@ -75,6 +88,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       email: string;
       full_name: string;
       role: StaffRole;
+      must_change_password?: boolean;
     }>("/staff/login", { username: email, password });
     tokens.staff = res.access_token;
     tokens.email = res.email || email;
@@ -82,14 +96,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     let fullName = res.full_name || email;
     let role: StaffRole = res.role || "support";
     let agiAdmin = false;
+    let mustChangePassword = Boolean(res.must_change_password);
     try {
-      const me = await api.get<{ full_name: string; role: StaffRole; email: string; is_active: boolean; agi_admin?: boolean }>("/staff/me");
+      const me = await api.get<MeResponse>("/staff/me");
       fullName = me.full_name || fullName;
       role = me.role || role;
       agiAdmin = Boolean(me.agi_admin);
+      mustChangePassword = Boolean(me.must_change_password);
       if (me.email) tokens.email = me.email;
     } catch { /* keep login response values */ }
-    setSession({ authenticated: true, email: tokens.email || email, fullName, role, agi_admin: agiAdmin });
+    setSession({ authenticated: true, email: tokens.email || email, fullName, role, agi_admin: agiAdmin, mustChangePassword });
   }, []);
 
   const logout = useCallback(() => {
@@ -102,14 +118,37 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const hydrateSession = useCallback(async () => {
     if (!tokens.staff) return;
     try {
-      const me = await api.get<{ full_name: string; role: StaffRole; email: string; is_active: boolean; agi_admin?: boolean }>("/staff/me");
+      const me = await api.get<MeResponse>("/staff/me");
       const email = me.email || tokens.email || emailFromToken() || "";
       tokens.email = email;
-      setSession({ authenticated: true, email, fullName: me.full_name || "", role: me.role || "support", agi_admin: Boolean(me.agi_admin) });
+      setSession({
+        authenticated: true,
+        email,
+        fullName: me.full_name || "",
+        role: me.role || "support",
+        agi_admin: Boolean(me.agi_admin),
+        mustChangePassword: Boolean(me.must_change_password),
+      });
     } catch {
       const email = tokens.email || emailFromToken() || "";
       if (email) setSession({ authenticated: true, email, fullName: "", role: "support" });
     }
+  }, []);
+
+  const clearMustChangePassword = useCallback(() => {
+    setSession((s) => (s ? { ...s, mustChangePassword: false } : s));
+  }, []);
+
+  // Resolve the full profile once on load (role, must_change_password, validity).
+  useEffect(() => {
+    if (tokens.staff) void hydrateSession();
+  }, [hydrateSession]);
+
+  // The API client signals a 403 password_change_required from any call.
+  useEffect(() => {
+    const onRequired = () => setSession((s) => (s ? { ...s, mustChangePassword: true } : s));
+    window.addEventListener("phantix:password-change-required", onRequired);
+    return () => window.removeEventListener("phantix:password-change-required", onRequired);
   }, []);
 
   const isAdmin = session?.role === "admin" || session?.role === "superadmin";
@@ -133,7 +172,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   return (
-    <Ctx.Provider value={{ session, login, logout, hydrateSession, isAdmin, isContributor, isSuperadmin, isAgiAdmin, toasts, toast, dismissToast }}>
+    <Ctx.Provider value={{ session, login, logout, hydrateSession, clearMustChangePassword, isAdmin, isContributor, isSuperadmin, isAgiAdmin, toasts, toast, dismissToast }}>
       {children}
     </Ctx.Provider>
   );
