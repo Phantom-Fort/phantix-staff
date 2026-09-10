@@ -1250,7 +1250,7 @@ export default function AgiAdmin() {
   return (
     <div className="overflow-x-hidden">
       <PageHeader
-        title="Phantix Autonomous Agent Management"
+        title="SecureGraph Autonomous Agent Management"
         description="Scope engagements, run sessions, approve state-changing steps, provision tools and manage skills for the autonomous agent."
         actions={
           <button onClick={() => { loadStatus(); engagements.refresh(); toolInstalls.refresh(); skills.refresh(); }} className="btn-ghost text-sm px-3 py-1.5">

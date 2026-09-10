@@ -179,7 +179,7 @@ export function EngineLearningPanel({ orgId }: { orgId?: number }) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Live engine ops" subtitle="AGI reads org data through Phantix engines — never raw databases." />
+        <CardHeader title="Live engine ops" subtitle="AGI reads org data through SecureGraph engines — never raw databases." />
         {grouped.length === 0 ? (
           <p className="text-xs text-slate-500">No catalog yet.</p>
         ) : (

@@ -1,6 +1,6 @@
 // ── Staff Portal Types --- matches backend API docs ────────────────────────────
 
-export type StaffRole = "superadmin" | "admin" | "support";
+export type StaffRole = "superadmin" | "admin" | "support" | "contributor";
 
 export type Severity = "critical" | "high" | "medium" | "low" | "info";
 
@@ -393,18 +393,45 @@ export interface ToolItem {
   version: string | null;
 }
 
+export interface PlanPricesNgn {
+  free?: number | null;
+  starter?: number | null;
+  growth?: number | null;
+  enterprise?: number | null;
+}
+
+export interface BillingTierRow {
+  key: string;
+  list_price_ngn: number | null;
+  yearly_price_ngn: number | null;
+  sales_motion: string;
+}
+
 export interface BillingSettings {
   monthly_price_ngn: number;
   yearly_price_ngn: number;
   currency: string;
+  first_month_discount_percent?: number;
+  yearly_month_equivalent?: number;
+  plan_prices_ngn?: PlanPricesNgn | null;
+  tiers?: BillingTierRow[] | null;
+  is_active?: boolean;
+  notes?: string | null;
+  updated_by?: string | null;
   updated_at: string;
 }
 
 export interface PricingPreview {
-  monthly: number;
-  yearly: number;
-  yearly_monthly_eq: number;
-  savings_percent: number;
+  monthly?: number;
+  yearly?: number;
+  yearly_monthly_eq?: number;
+  savings_percent?: number;
+  plan?: string;
+  monthly_list_price_ngn?: number;
+  yearly_price_ngn?: number;
+  yearly_savings_vs_12_months_ngn?: number;
+  first_month_discount_percent?: number;
+  plan_prices_ngn?: PlanPricesNgn | null;
 }
 
 export interface ServerOverview {
@@ -455,7 +482,7 @@ export interface StaffUserDetail {
   created_by: number | null;
 }
 
-// ── PHANTIX AGI Management (staff) — admin/agi/* ──────────────────────────────
+// ── SECUREGRAPH AGI Management (staff) — admin/agi/* ──────────────────────────────
 export interface AgiStatus {
   enabled: boolean;
   runner_url: string;

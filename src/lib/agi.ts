@@ -1,4 +1,4 @@
-// PHANTIX AGI Management — staff portal data module.
+// SECUREGRAPH AGI Management — staff portal data module.
 // Mirrors app/engines/control_plane/api/admin/admin_agi.py (base /admin/agi).
 // Demo-mode fallbacks so the portal is usable without a live runner.
 

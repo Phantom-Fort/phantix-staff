@@ -5,6 +5,7 @@ import {
   Gauge, Boxes, Layers, Clock, Wifi, WifiOff, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatCard, TableSkeleton, StatusBadge, ProgressBar } from "@/components/ui";
+import { PrometheusMetrics } from "@/components/PrometheusMetrics";
 import { useResource } from "@/lib/useResource";
 import { useSmartPoll } from "@/lib/usePolling";
 import { useStore } from "@/lib/store";
@@ -479,6 +480,9 @@ export default function ServerOps() {
               ))}
             </div>
           </Card>
+
+          {/* Prometheus exposition — the same numbers an external scraper sees */}
+          <PrometheusMetrics />
         </div>
       )}
     </div>

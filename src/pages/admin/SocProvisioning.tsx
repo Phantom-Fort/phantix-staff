@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ScrollText, RefreshCw, Search, ShieldCheck, Loader2, Database, CheckCircle2, AlertTriangle } from "lucide-react";
-import { PageHeader, Card, CardHeader, Spinner, EmptyState, StatusBadge } from "@/components/ui";
+import { PageHeader, Card, CardHeader, EmptyState, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { cx } from "@/lib/utils";
@@ -101,7 +101,15 @@ export default function SocProvisioning() {
               </button>
             </div>
           ) : clientsLoading && !clients.length ? (
-            <div className="flex justify-center py-8"><Spinner /></div>
+            <div className="space-y-1">
+              <div className="skeleton mb-2 h-9 w-full rounded-md" />
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-2 rounded-md border border-phantix-700/40 px-3 py-2" style={{ opacity: 1 - i * 0.11 }}>
+                  <div className="skeleton h-3.5 w-3.5 shrink-0 rounded" />
+                  <div className="skeleton h-3 w-36 max-w-full rounded" />
+                </div>
+              ))}
+            </div>
           ) : (
             <>
               <div className="mb-2 flex items-center gap-2 rounded-md border border-phantix-700/50 bg-phantix-950/50 px-3 py-2">
