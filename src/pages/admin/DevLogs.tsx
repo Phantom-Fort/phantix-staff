@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { RefreshCw, AlertTriangle, Info, AlertCircle, Bug, Plus, ChevronDown, ChevronRight, Search, FileJson2, Eye, EyeOff } from "lucide-react";
-import { PageHeader, Card, TableSkeleton, EmptyState, Modal } from "@/components/ui";
+import { PageHeader, Card, TableSkeleton, EmptyState, Modal, Pagination } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { api, DEMO_MODE } from "@/lib/api";
 import { useStore } from "@/lib/store";
@@ -29,6 +29,9 @@ type AppLog = {
 
 // Engine logType catalog (also fetched from GET /admin/logs/types when available).
 const DEFAULT_LOG_TYPES = ["scan", "report", "auth", "session", "http", "dual_control", "access", "ai", "alert", "worker", "exception", "crash", "lifecycle", "app", "security", "system", "audit", "bus"];
+
+/** Rows per page — keeps the log table to a single screen instead of endless scroll. */
+const PAGE_SIZE = 100;
 
 const LOG_TYPE_LABELS: Record<string, string> = {
   scan: "Scanner job / web step",
@@ -77,6 +80,18 @@ function logTypeBadge(logType: string): string {
   return known[logType] ?? "text-slate-400 bg-slate-400/10 border-slate-500/30";
 }
 
+/** Count rows by log_type × level (client-side fallback for the server summary). */
+function summarizeLogs(items: AppLog[]): Record<string, Record<string, number>> {
+  const summary: Record<string, Record<string, number>> = {};
+  for (const log of items) {
+    const type = log.log_type || "unknown";
+    const level = log.level || "info";
+    summary[type] = summary[type] ?? {};
+    summary[type][level] = (summary[type][level] ?? 0) + 1;
+  }
+  return summary;
+}
+
 function SummaryStrip({ summary }: { summary?: Record<string, unknown> }) {
   if (!summary || Object.keys(summary).length === 0) return null;
   const chips: Array<[string, string, number]> = [];
@@ -115,6 +130,7 @@ export default function DevLogs() {
   const [showAccess, setShowAccess] = useState(false);
   const [logTypes, setLogTypes] = useState<string[]>(DEFAULT_LOG_TYPES);
   const [expandedId, setExpandedId] = useState<number | string | null>(null);
+  const [page, setPage] = useState(1);
   const [issueTimeline, setIssueTimeline] = useState<AppLog[] | null>(null);
 
   // Log type catalog from the API (support+), fallback to the static catalog.
@@ -132,8 +148,13 @@ export default function DevLogs() {
   const logs = useResource<{ items: AppLog[]; total: number; summary?: Record<string, unknown> }>(
     async () => {
       if (DEMO_MODE) return { items: demoLogs, total: demoLogs.length, summary: demoSummary };
+      // The backend summary aggregation (include_summary=true) currently
+      // returns 500, so we ask for rows only and build the type×level strip
+      // client-side below. Once that endpoint is fixed this can go back to true.
       const params: Record<string, string | number | boolean> = {
-        include_summary: true,
+        include_summary: false,
+        limit: PAGE_SIZE,
+        offset: (page - 1) * PAGE_SIZE,
       };
       // Access GET polls are excluded by default; toggle to include the noise.
       if (!showAccess) params.exclude_log_types = "access";
@@ -148,14 +169,22 @@ export default function DevLogs() {
     "staff-application-logs",
   );
 
-  // Refetch from the API (server-side filters + summary) when a filter changes.
-  const filterKey = JSON.stringify([logTypeFilter, levelFilter, orgFilter, engineFilter, q, showAccess]);
+  // Any filter change returns to the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [logTypeFilter, levelFilter, orgFilter, engineFilter, q, showAccess]);
+
+  // Refetch from the API (server-side filters + paging) when a filter or the
+  // page changes. Skip the mount run — useResource already fetched.
+  const didMount = React.useRef(false);
+  const queryKey = JSON.stringify([logTypeFilter, levelFilter, orgFilter, engineFilter, q, showAccess, page]);
   useEffect(() => {
     if (DEMO_MODE) return;
+    if (!didMount.current) { didMount.current = true; return; }
     const t = window.setTimeout(() => logs.refresh(), 300);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterKey]);
+  }, [queryKey]);
 
   const openIssue = async (issue: string) => {
     try {
@@ -176,6 +205,10 @@ export default function DevLogs() {
   }, [issueId]);
 
   const data = DEMO_MODE ? demoLogs : (logs.data?.items || []);
+
+  // Prefer a server summary when one is present; otherwise derive it from the
+  // rows so the summary strip keeps working without the failing aggregation.
+  const clientSummary = React.useMemo(() => summarizeLogs(data), [data]);
 
   const filtered = data.filter((log: AppLog) => {
     if (logTypeFilter && log.log_type !== logTypeFilter) return false;
@@ -236,7 +269,13 @@ export default function DevLogs() {
         )}
       </div>
 
-      <SummaryStrip summary={logs.data?.summary} />
+      <SummaryStrip summary={logs.data?.summary ?? clientSummary} />
+
+      {logs.error && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-severity-critical/30 bg-severity-critical/10 px-3 py-2 text-xs text-severity-critical">
+          <AlertCircle size={13} /> Failed to load logs: {logs.error}
+        </div>
+      )}
 
       <Card>
         {logs.loading && !logs.data?.items?.length ? (
@@ -244,7 +283,7 @@ export default function DevLogs() {
         ) : filtered.length === 0 ? (
           <EmptyState icon={<Bug size={24} />} title="No logs" body="No diagnostic entries match current filters. Access polls are hidden unless toggled." />
         ) : (
-          <div className="overflow-x-auto">
+          <div className={cx("overflow-x-auto transition-opacity", logs.loading && "opacity-50")}>
             <table className="w-full">
               <thead>
                 <tr className="border-b border-phantix-700/40">
@@ -319,6 +358,14 @@ export default function DevLogs() {
           </div>
         )}
       </Card>
+
+      <Pagination
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={logs.data?.total ?? 0}
+        onPageChange={setPage}
+        itemLabel="entries"
+      />
 
       <Modal open={issueTimeline !== null} onClose={() => setIssueTimeline(null)} title="Issue timeline" wide>
         {issueTimeline ? (

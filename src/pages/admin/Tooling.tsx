@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Wrench, RefreshCw, DollarSign, Plus, Edit3, EyeOff, Eye, Upload } from "lucide-react";
+import { Wrench, RefreshCw, DollarSign, Plus, Edit3, EyeOff, Eye, Upload, AlertTriangle } from "lucide-react";
 import { PageHeader, Card, StatusBadge, Modal, TableSkeleton, EmptyState } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
@@ -25,6 +25,33 @@ const demoTools: AdminTool[] = [
 
 type Provision = { id: number; organization_id: number; tool_key: string; status: string; admin_notes: string; created_at: string };
 
+// The backend's unfiltered catalog query (GET /admin/tooling/tools) currently
+// returns 500 while a category-filtered query succeeds — a serialization
+// failure on a row that does not match PlatformToolRead. Load the known
+// categories in parallel and merge them so the page still works; revert to a
+// single request once the backend list endpoint is fixed.
+const TOOL_CATEGORIES = ["scanning", "compliance", "monitoring", "reporting", "integration", "incident"] as const;
+
+async function loadToolCatalog(): Promise<AdminTool[]> {
+  if (DEMO_MODE) return demoTools;
+  const pages = await Promise.all(
+    TOOL_CATEGORIES.map(async (category) => {
+      try {
+        return await api.get<AdminTool[]>("/admin/tooling/tools", { params: { include_inactive: true, category } });
+      } catch {
+        return null; // one bad category should not blank the whole catalog
+      }
+    }),
+  );
+  const loaded = pages.filter((page): page is AdminTool[] => Array.isArray(page));
+  if (loaded.length === 0) throw new Error("Could not reach the tooling catalog");
+  const byId = new Map<number, AdminTool>();
+  for (const page of loaded) {
+    for (const tool of page) byId.set(tool.id, tool);
+  }
+  return [...byId.values()];
+}
+
 export default function ToolingAdmin() {
   const { toast } = useStore();
   const [tab, setTab] = useState<"catalog" | "provisions">("catalog");
@@ -38,8 +65,8 @@ export default function ToolingAdmin() {
   const [provisions, setProvisions] = useState<Provision[]>([]);
   const [stats, setStats] = useState<{ total_tools: number; active_tools: number; free_tools: number; paid_tools: number; provisions: number; active_subscriptions: number } | null>(null);
 
-  const toolsRes = useResource<AdminTool[]>(async () => DEMO_MODE ? demoTools : ((await api.get<any>("/admin/tooling/tools?include_inactive=true"))?.items ?? await api.get<any>("/admin/tooling/tools?include_inactive=true") ?? []), []);
-  const data = DEMO_MODE ? demoTools : (toolsRes.data?.length ? toolsRes.data : []);
+  const toolsRes = useResource<AdminTool[]>(loadToolCatalog, []);
+  const data = DEMO_MODE ? demoTools : (toolsRes.data ?? []);
 
   React.useEffect(() => {
     if (DEMO_MODE) return;
@@ -93,7 +120,7 @@ export default function ToolingAdmin() {
       )}
 
       {tab === "catalog" && (
-        toolsRes.loading ? <TableSkeleton rows={4} /> : data.length === 0 ? <EmptyState icon={<Wrench size={24} />} title="No tools" action={<button onClick={handleSeed} className="btn-primary">Seed Defaults</button>} /> : (
+        toolsRes.loading ? <TableSkeleton rows={4} /> : toolsRes.error ? <EmptyState icon={<AlertTriangle size={24} />} title="Could not load catalog" body={toolsRes.error} action={<button onClick={() => toolsRes.refresh()} className="btn-primary">Retry</button>} /> : data.length === 0 ? <EmptyState icon={<Wrench size={24} />} title="No tools" action={<button onClick={handleSeed} className="btn-primary">Seed Defaults</button>} /> : (
           <div className="grid md:grid-cols-2 gap-4">
             {data.sort((a, b) => a.sort_order - b.sort_order).map(t => (
               <Card key={t.id} className={cx("", !t.is_active && "opacity-60")}>

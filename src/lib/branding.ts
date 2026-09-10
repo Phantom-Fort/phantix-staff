@@ -10,6 +10,15 @@
 
 const TOKENS_URL = "/api/v1/branding/tokens";
 const CACHE_TTL_MS = 60 * 60 * 1000; // one hour
+// If the route is temporarily unavailable (cold deploy / offline), hold off
+// before hitting it again instead of re-requesting on every call.
+const RETRY_TTL_MS = 5 * 60 * 1000;
+// Cross-page-load backoff (per tab): a missing/not-yet-deployed route used to
+// log a 404 on every hard load. After a failed attempt, skip the request for a
+// while so the console stays quiet; the endpoint is retried once the window
+// expires or the tab is reopened.
+const BACKOFF_KEY = "phantix_brand_tokens_backoff";
+const BACKOFF_MS = 30 * 60 * 1000;
 
 export type SeverityKey = "critical" | "high" | "medium" | "low" | "info" | "unrated";
 
@@ -97,22 +106,55 @@ function pickColor(entry: SeverityEntry | undefined, fallback: string): string {
   return fallback;
 }
 
+function inBackoff(): boolean {
+  if (typeof sessionStorage === "undefined") return false;
+  try {
+    const raw = sessionStorage.getItem(BACKOFF_KEY);
+    if (!raw) return false;
+    return Date.now() - Number(raw) < BACKOFF_MS;
+  } catch {
+    return false;
+  }
+}
+
+function markBackoff(): void {
+  if (typeof sessionStorage === "undefined") return;
+  try { sessionStorage.setItem(BACKOFF_KEY, String(Date.now())); } catch { /* storage blocked */ }
+}
+
+function clearBackoff(): void {
+  if (typeof sessionStorage === "undefined") return;
+  try { sessionStorage.removeItem(BACKOFF_KEY); } catch { /* storage blocked */ }
+}
+
 async function load(): Promise<void> {
   if (applied && Date.now() < cacheExpiry) return;
+  if (inBackoff()) return;
   let res: Response;
   try {
     const headers: Record<string, string> = {};
     if (etag) headers["If-None-Match"] = etag;
     res = await fetch(TOKENS_URL, { headers, cache: "no-store" });
   } catch {
-    return; // offline/blocked → CSS fallbacks (already canonical)
+    // offline/blocked → canonical fallbacks; back off before retrying.
+    markBackoff();
+    applied = true;
+    cacheExpiry = Date.now() + RETRY_TTL_MS;
+    return;
   }
   if (res.status === 304) {
+    clearBackoff();
     applied = true;
     cacheExpiry = Date.now() + CACHE_TTL_MS;
     return;
   }
-  if (!res.ok) return;
+  if (!res.ok) {
+    // Route not ready (e.g. mid-deploy) → keep fallbacks, back off, retry later.
+    markBackoff();
+    applied = true;
+    cacheExpiry = Date.now() + RETRY_TTL_MS;
+    return;
+  }
   try {
     const data = (await res.json()) as {
       severity?: Record<string, SeverityEntry>;
@@ -129,10 +171,13 @@ async function load(): Promise<void> {
     applied = true;
     cacheExpiry = Date.now() + CACHE_TTL_MS;
     etag = res.headers.get("ETag") ?? "";
+    clearBackoff();
     applyToCss();
     window.dispatchEvent(new CustomEvent("phantix:brand-tokens", { detail: { severity: current } }));
   } catch {
-    /* unparseable body → keep fallbacks */
+    /* unparseable body → keep fallbacks; retry after the cool-off */
+    applied = true;
+    cacheExpiry = Date.now() + RETRY_TTL_MS;
   }
 }
 
