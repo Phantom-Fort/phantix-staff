@@ -27,7 +27,15 @@
     }
     #status.error { color: #f87171; }
 
-    #redoc { height: calc(100vh - 48px); }
+    #redoc { height: calc(100vh - 48px); background: #050b1d; }
+
+    /* Safety net: ReDoc renders some chrome with hard-coded dark text. Keep
+       headings / menu / body readable on the dark canvas without overriding
+       the themed badges (which set their own colours inline). */
+    #redoc h1, #redoc h2, #redoc h3, #redoc h4, #redoc h5 { color: #f1f5f9; }
+    #redoc .menu-content { background: #0a1128; }
+    #redoc .menu-content .operation-type { color: #050b1d; }
+    #redoc .api-content > div > div > div > p { color: #cbd5e1; }
   </style>
 </head>
 <body>
@@ -53,8 +61,15 @@
         success: { main: "#34d399", light: "#6ee7b7", dark: "#059669", contrastText: "#050b1d" },
         warning: { main: "#fbbf24", light: "#fcd34d", dark: "#d97706", contrastText: "#050b1d" },
         error: { main: "#f87171", light: "#fca5a5", dark: "#dc2626", contrastText: "#ffffff" },
-        gray: { 50: "#e2e8f0", 100: "#94a3b8" },
-        border: { light: "#1e2a52", dark: "#0d1530" },
+        // Full inverted grey ramp. ReDoc uses many grey keys for text and
+        // surfaces; only defining 50/100 made every other key fall back to the
+        // light theme's dark values → unreadable dark-on-dark.
+        gray: {
+          50: "#0b1120", 100: "#0f172a", 200: "#1e293b", 300: "#334155",
+          400: "#64748b", 500: "#94a3b8", 600: "#cbd5e1", 700: "#e2e8f0",
+          800: "#f1f5f9", 900: "#f8fafc"
+        },
+        border: { light: "#1e293b", dark: "#0b1120" },
         text: { primary: "#e2e8f0", secondary: "#94a3b8" },
         responses: {
           success: { color: "#34d399", backgroundColor: "#0d1530", tabTextColor: "#34d399" },
@@ -67,15 +82,15 @@
           patch: "#f472b6", delete: "#f87171", basic: "#a78bfa", link: "#60a5fa", head: "#34d399"
         },
         schema: {
-          typeLabelColor: "#60a5fa", labelsTextColor: "#e2e8f0", requireLabelColor: "#f87171",
-          labelsShelf: { backgroundColor: "transparent" }
+          typeLabelColor: "#93c5fd", labelsTextColor: "#e2e8f0", requireLabelColor: "#fca5a5",
+          nestedBackground: "#0f172a", labelsShelf: { backgroundColor: "transparent" }
         }
       },
       logo: { gutterBg: "#0d1530", maxHeight: "48px", gutterBorderColor: "#1e2a52" },
       rightPanel: { backgroundColor: "#0d1530", width: "44%", textColor: "#e2e8f0" },
       code: {
         backgroundColor: "#070c1c", textColor: "#e2e8f0",
-        token: { keyword: "#e8b54d", string: "#86efac", number: "#a78bfa", boolean: "#fbbf24" }
+        token: { keyword: "#e8b54d", string: "#86efac", number: "#a78bfa", boolean: "#fbbf24", comment: "#94a3b8" }
       },
       typography: {
         fontSize: "13px", fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
@@ -85,7 +100,7 @@
       },
       sidebar: {
         backgroundColor: "#0a1128", textColor: "#e2e8f0", activeTextColor: "#e8b54d",
-        groupItems: { activeTextColor: "#e8b54d", textColor: "#94a3b8" }, width: "270px"
+        groupItems: { activeTextColor: "#e8b54d", textColor: "#cbd5e1" }, width: "270px"
       },
       fab: { backgroundColor: "#1e2a52", color: "#e2e8f0" },
       buttons: {

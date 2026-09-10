@@ -26,6 +26,25 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/** Drop a leading metadata header so it never renders as body text.
+ *  Handles both fenced (``---…---``) and bare (``title: …`` … ``---``) forms. */
+function stripFrontmatter(src: string): string {
+  const lines = src.split(/\r?\n/);
+  if (lines[0]?.trim() === "---") {
+    let i = 1;
+    while (i < lines.length && lines[i].trim() !== "---") i++;
+    return lines.slice(i + 1).join("\n").replace(/^\s+/, "");
+  }
+  const meta = /^[A-Za-z_][\w-]*:\s/;
+  if (lines[0] && meta.test(lines[0])) {
+    let i = 0;
+    while (i < lines.length && lines[i].trim() && meta.test(lines[i])) i++;
+    if (lines[i]?.trim() === "---") i++;
+    return lines.slice(i).join("\n").replace(/^\s+/, "");
+  }
+  return src;
+}
+
 function inline(text: string): string {
   // Escape first, then re-introduce safe tags from markdown markers.
   let t = esc(text);
@@ -281,7 +300,7 @@ function ListView({ nodes, ordered, nested = false }: { nodes: ListNode[]; order
 // ── Renderer ────────────────────────────────────────────────────────────────
 
 export default function MarkdownView({ source }: { source: string }) {
-  const blocks = useMemo(() => parseBlock(source || ""), [source]);
+  const blocks = useMemo(() => parseBlock(stripFrontmatter(source || "")), [source]);
   return (
     <div className="min-w-0 max-w-full break-words">
       {blocks.map((b, idx) => {
