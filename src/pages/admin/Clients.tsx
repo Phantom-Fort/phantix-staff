@@ -9,6 +9,12 @@ import { api, DEMO_MODE } from "@/lib/api";
 import { timeAgo, cx } from "@/lib/utils";
 import { APP_URL } from "@/lib/links";
 import type { ClientOrg, ClientConnections, ClientExperience } from "@/lib/types";
+import {
+  type EnterpriseAiAllowance,
+  formatAiNgn,
+  formatCredits,
+  FX_NGN_PER_USD,
+} from "@/lib/billingMetering";
 
 const demoClients: ClientOrg[] = [
   { id: 1, name: "Acme Financial Group", slug: "acme-financial", email: "admin@acme.ng", country: "NG", industry: "fintech", plan: "Scale", setup_complete: true, company_verified: true, identity_verified: true, is_active: true, created_at: "2026-06-01T00:00:00Z", last_active_at: new Date().toISOString(), notes: null, flags: [] },
@@ -19,12 +25,15 @@ const demoClients: ClientOrg[] = [
 ];
 
 export default function Clients() {
-  const { toast, isAdmin } = useStore();
+  const { toast, isAdmin, isSuperadmin } = useStore();
   const [search, setSearch] = useState("");
   const [selectedClient, setSelectedClient] = useState<number | null>(null);
   const [suspendNote, setSuspendNote] = useState("");
   const [editingClient, setEditingClient] = useState<ClientOrg | null>(null);
   const [editForm, setEditForm] = useState({ is_active: true, admin_notes: "", admin_tags: "" });
+  const [aiAllowance, setAiAllowance] = useState<EnterpriseAiAllowance | null>(null);
+  const [aiNgnInput, setAiNgnInput] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
 
   const clients = useResource<ClientOrg[]>(
     async (signal) => {
@@ -60,11 +69,63 @@ export default function Clients() {
     {} as any,
   );
 
+  const loadAiAllowance = async (id: number) => {
+    if (DEMO_MODE) {
+      setAiAllowance({
+        organization_id: id,
+        plan: "enterprise",
+        currency: "NGN",
+        fx_ngn_per_usd: FX_NGN_PER_USD,
+        ai_usd_mo: 50,
+        ai_ngn_mo: 75000,
+        ai_credits_mo: 50000,
+        configured: true,
+      });
+      setAiNgnInput("75000");
+      return;
+    }
+    try {
+      const res = await api.get<EnterpriseAiAllowance>(
+        `/admin/billing/organizations/${id}/enterprise-ai-allowance`,
+      );
+      setAiAllowance(res);
+      setAiNgnInput(res.ai_ngn_mo != null ? String(Math.round(res.ai_ngn_mo)) : "");
+    } catch {
+      setAiAllowance(null);
+      setAiNgnInput("");
+    }
+  };
+
   const handleSelectClient = (id: number | null) => {
     setSelectedClient(id);
     if (id != null) {
       clientDetail.refresh();
       clientExperience.refresh();
+      void loadAiAllowance(id);
+    } else {
+      setAiAllowance(null);
+      setAiNgnInput("");
+    }
+  };
+
+  const saveEnterpriseAiNgn = async (orgId: number) => {
+    const ngn = Number(aiNgnInput);
+    if (!Number.isFinite(ngn) || ngn < 0) {
+      toast("error", "Invalid NGN budget");
+      return;
+    }
+    setAiBusy(true);
+    try {
+      const res = await api.patch<EnterpriseAiAllowance>(
+        `/admin/billing/organizations/${orgId}/enterprise-ai-ngn?ai_ngn_mo=${encodeURIComponent(String(ngn))}`,
+      );
+      setAiAllowance({ ...res, organization_id: orgId });
+      setAiNgnInput(res.ai_ngn_mo != null ? String(Math.round(Number(res.ai_ngn_mo))) : String(ngn));
+      toast("success", "Enterprise AI budget updated", `${formatAiNgn(res.ai_ngn_mo)} → ${formatCredits(res.ai_credits_mo)} credits`);
+    } catch (e) {
+      toast("error", "Update failed", e instanceof Error ? e.message : "");
+    } finally {
+      setAiBusy(false);
     }
   };
 
@@ -163,7 +224,7 @@ export default function Clients() {
       {/* Client Detail Modal */}
       <Modal
         open={selectedClient !== null}
-        onClose={() => setSelectedClient(null)}
+        onClose={() => handleSelectClient(null)}
         title="Client Details"
         wide
       >
@@ -237,6 +298,54 @@ export default function Clients() {
                 ) : (
                   <p className="text-xs text-slate-500">Experience profile unavailable</p>
                 )}
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">AI credit budget</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-phantix-950/60 border border-phantix-700/40 p-3">
+                    <p className="text-xs text-slate-400">Plan</p>
+                    <p className="text-sm text-white font-medium">{aiAllowance?.plan || c.plan || "—"}</p>
+                  </div>
+                  <div className="rounded-lg bg-phantix-950/60 border border-phantix-700/40 p-3">
+                    <p className="text-xs text-slate-400">AI NGN / mo</p>
+                    <p className="text-sm text-white font-medium">{formatAiNgn(aiAllowance?.ai_ngn_mo)}</p>
+                  </div>
+                  <div className="rounded-lg bg-phantix-950/60 border border-phantix-700/40 p-3">
+                    <p className="text-xs text-slate-400">Credits / mo</p>
+                    <p className="text-sm text-white font-medium">{formatCredits(aiAllowance?.ai_credits_mo)}</p>
+                  </div>
+                  <div className="rounded-lg bg-phantix-950/60 border border-phantix-700/40 p-3">
+                    <p className="text-xs text-slate-400">FX</p>
+                    <p className="text-sm text-white font-mono">₦{(aiAllowance?.fx_ngn_per_usd ?? FX_NGN_PER_USD).toLocaleString()}/USD</p>
+                  </div>
+                </div>
+                {isSuperadmin && (
+                  <div className="mt-3 flex flex-wrap items-end gap-2">
+                    <div className="min-w-[160px] flex-1">
+                      <label className="label">Enterprise AI budget (NGN / mo)</label>
+                      <input
+                        className="input font-mono"
+                        type="number"
+                        min={0}
+                        value={aiNgnInput}
+                        onChange={(e) => setAiNgnInput(e.target.value)}
+                        placeholder="e.g. 75000"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-secondary text-xs px-3 py-2"
+                      disabled={aiBusy}
+                      onClick={() => void saveEnterpriseAiNgn(c.id)}
+                    >
+                      Save AI budget
+                    </button>
+                  </div>
+                )}
+                <p className="mt-2 text-[11px] text-slate-500">
+                  Starter ≈ ₦7,500 · Growth ≈ ₦30,000 · Enterprise custom. Security AI uses DeepSeek with Z.AI GLM Flash fallback.
+                </p>
               </div>
 
               {isAdmin && !c.company_verified && (c.flags?.includes("pending_verification") || !c.setup_complete) && (

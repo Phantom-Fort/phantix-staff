@@ -1,14 +1,19 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { MotionConfig } from "framer-motion";
 import App from "./App";
 import { bootstrapTheme } from "./lib/theme";
 // Geist + Geist Mono (Xalgorix-style typography) — variable woff2, loaded first
 // so the app never flashes a fallback face.
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
+import { initAnalytics } from "./lib/analytics";
+import { loadBrandTokens } from "./lib/branding";
 import "./index.css";
 
 bootstrapTheme();
+initAnalytics();
+loadBrandTokens();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {
@@ -16,7 +21,12 @@ if (!rootEl) {
 } else {
   ReactDOM.createRoot(rootEl).render(
     <React.StrictMode>
-      <App />
+      {/* reducedMotion="user" drops transform/layout animation for anyone who
+          asked the OS for calmer motion; quick opacity fades still carry the
+          reveal so content never snaps in (Learn UI — reduced motion). */}
+      <MotionConfig reducedMotion="user">
+        <App />
+      </MotionConfig>
     </React.StrictMode>,
   );
 }

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { FlaskConical, Plus, Megaphone, RefreshCw, ExternalLink } from "lucide-react";
-import { PageHeader, Card, CardHeader, Modal, StatusBadge, EmptyState, Spinner } from "@/components/ui";
+import { PageHeader, Card, CardHeader, Modal, StatusBadge, EmptyState, Spinner, PageHeaderSkeleton, CardListSkeleton } from "@/components/ui";
 import { api, DEMO_MODE } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { timeAgo, cx } from "@/lib/utils";
@@ -324,8 +324,20 @@ export default function SandboxAdmin() {
 
   if (loading && !board && programs.length === 0) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <Spinner className="h-6 w-6" />
+      <div>
+        <PageHeaderSkeleton actions />
+        <div className="mb-4 flex flex-wrap gap-2">
+          {[0, 1].map((i) => <div key={i} className="skeleton h-6 w-28 rounded-full" />)}
+        </div>
+        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="card !p-4">
+              <div className="skeleton h-2.5 w-20 rounded" />
+              <div className="skeleton mt-2 h-6 w-16 rounded" />
+            </div>
+          ))}
+        </div>
+        <CardListSkeleton rows={4} />
       </div>
     );
   }

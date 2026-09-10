@@ -6,16 +6,69 @@ import { useStore } from "@/lib/store";
 import { api, DEMO_MODE, API_BASE } from "@/lib/api";
 import { formatNaira, timeAgo, cx } from "@/lib/utils";
 import type { BillingSettings, PricingPreview } from "@/lib/types";
+import {
+  type CreditMeteringMap,
+  formatAiNgn,
+  formatCredits,
+  FX_NGN_PER_USD,
+} from "@/lib/billingMetering";
 
 interface GatewayStatus { configured: boolean; test_mode: boolean; public_key_prefix: string; secret_key_configured: boolean; callback_url: string; environment: string; }
 interface CouponItem { id: number; label: string; code: string; duration_days: number; max_redemptions: number | null; redemption_count: number; remaining_redemptions: number | null; is_active: boolean; notes: string | null; created_at: string; }
 interface RedemptionItem { id: number; organization_id: number; coupon_id: number; code_snapshot: string; redeemed_at: string; access_ends_at: string; status: string; }
 
-const demoBilling: BillingSettings = { monthly_price_ngn: 100000, yearly_price_ngn: 1000000, currency: "NGN", updated_at: "2026-07-01T00:00:00Z" };
-const demoPricing: PricingPreview = { monthly: 100000, yearly: 1000000, yearly_monthly_eq: 83333, savings_percent: 17 };
+const demoBilling: BillingSettings = {
+  monthly_price_ngn: 9900,
+  yearly_price_ngn: 99000,
+  currency: "NGN",
+  first_month_discount_percent: 50,
+  yearly_month_equivalent: 10,
+  plan_prices_ngn: { free: 0, starter: 9900, growth: 19900, enterprise: null },
+  tiers: [
+    { key: "free", list_price_ngn: 0, yearly_price_ngn: null, sales_motion: "self_serve" },
+    { key: "starter", list_price_ngn: 9900, yearly_price_ngn: 99000, sales_motion: "self_serve" },
+    { key: "growth", list_price_ngn: 19900, yearly_price_ngn: 199000, sales_motion: "self_serve" },
+    { key: "enterprise", list_price_ngn: null, yearly_price_ngn: null, sales_motion: "quote" },
+  ],
+  is_active: true,
+  updated_at: "2026-07-01T00:00:00Z",
+};
+const demoPricing: PricingPreview = {
+  monthly: 9900,
+  yearly: 99000,
+  yearly_monthly_eq: 8250,
+  savings_percent: 17,
+  monthly_list_price_ngn: 9900,
+  yearly_price_ngn: 99000,
+  yearly_savings_vs_12_months_ngn: 19800,
+  first_month_discount_percent: 50,
+  plan_prices_ngn: { free: 0, starter: 9900, growth: 19900, enterprise: null },
+};
 const demoGateway: GatewayStatus = { configured: true, test_mode: true, public_key_prefix: "pk_test_abc...", secret_key_configured: true, callback_url: "https://platform.phantixlabs.com/billing/callback", environment: "staging" };
 const demoCoupons: CouponItem[] = [{ id: 1, label: "Design Partners", code: "BETA-7F3K-9Q2M", duration_days: 31, max_redemptions: 1, redemption_count: 0, remaining_redemptions: 1, is_active: true, notes: "Q3 partners", created_at: new Date().toISOString() }];
 const demoRedemptions: RedemptionItem[] = [{ id: 1, organization_id: 24, coupon_id: 1, code_snapshot: "BETA-7F3K-9Q2M", redeemed_at: "2026-07-28T10:00:00Z", access_ends_at: "2026-08-28T10:00:00Z", status: "active" }];
+const demoMetering: CreditMeteringMap = {
+  currency: "NGN",
+  fx: { ngn_per_usd: FX_NGN_PER_USD },
+  credit_ngn: 1.5,
+  credit_usd: 0.001,
+  plan_ai_ngn_mo: { free: 150, starter: 7500, growth: 30000 },
+  plan_ai_usd_mo: { free: 0.1, starter: 5, growth: 20 },
+  plan_credits_mo: { free: 100, starter: 5000, growth: 20000, enterprise: "custom" },
+  clusters: { economy_security: ["deepseek", "zai", "glm-4-flash"], economy_general: ["qwen-turbo"] },
+  ngn_per_1m_tokens: { "deepseek-v4-flash": 315, "glm-4-flash": 150, "qwen-turbo": 225, "gpt-4o": 7500 },
+  usd_per_1m_tokens: { "deepseek-v4-flash": 0.21, "glm-4-flash": 0.1 },
+  multipliers_vs_deepseek_flash: { "deepseek-v4-flash": 1, "glm-4-flash": 0.48, "qwen-turbo": 0.71, "gpt-4o": 23.81 },
+  security_providers: {
+    primary: "deepseek",
+    primary_model: "deepseek-v4-flash",
+    fallback: "zhipu",
+    fallback_model: "glm-4-flash",
+    user_choice: false,
+    note: "Pentest, AGI, and security agents use DeepSeek only; Z.AI GLM Flash is automatic fallback.",
+  },
+  metering_note: "1 credit = ₦1.50 of LLM spend (FX ₦1,500/USD). Starter ≈ ₦7,500/mo; Growth ≈ ₦30,000/mo.",
+};
 
 export default function BillingAdmin() {
   const { toast } = useStore();
@@ -23,7 +76,7 @@ export default function BillingAdmin() {
   const [showPriceChange, setShowPriceChange] = useState(false);
   const [showRenewalConfirm, setShowRenewalConfirm] = useState(false);
   const [showCouponGen, setShowCouponGen] = useState(false);
-  const [newMonthlyPrice, setNewMonthlyPrice] = useState("");
+  const [tierPrices, setTierPrices] = useState({ free: "0", starter: "9900", growth: "19900", enterprise: "" });
   const [newYearlyMonthEq, setNewYearlyMonthEq] = useState("10");
   const [discountPercent, setDiscountPercent] = useState(50);
   const [isActive, setIsActive] = useState(true);
@@ -32,6 +85,7 @@ export default function BillingAdmin() {
   const [gateway, setGateway] = useState<GatewayStatus | null>(null);
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [redemptions, setRedemptions] = useState<RedemptionItem[]>([]);
+  const [metering, setMetering] = useState<CreditMeteringMap | null>(null);
 
   const { data: billing, loading, refresh } = useResource<BillingSettings>(async () => DEMO_MODE ? demoBilling : api.get("/admin/billing/settings"), {} as any);
   const { data: pricing } = useResource<PricingPreview>(async () => DEMO_MODE ? demoPricing : api.get("/admin/billing/pricing-preview"), {} as any);
@@ -41,21 +95,64 @@ export default function BillingAdmin() {
       api.get<GatewayStatus>("/admin/billing/gateway").then(setGateway).catch(() => {});
       api.get<CouponItem[] | { items: CouponItem[] }>("/admin/coupons").then((r) => setCoupons(Array.isArray(r) ? r : r.items ?? [])).catch(() => {});
       api.get<RedemptionItem[] | { items: RedemptionItem[] }>("/admin/coupon-redemptions?limit=20").then((r) => setRedemptions(Array.isArray(r) ? r : r.items ?? [])).catch(() => {});
+      api.get<CreditMeteringMap>("/admin/billing/credits-metering").then(setMetering).catch(() => setMetering(null));
     } else {
-      setGateway(demoGateway); setCoupons(demoCoupons); setRedemptions(demoRedemptions);
+      setGateway(demoGateway); setCoupons(demoCoupons); setRedemptions(demoRedemptions); setMetering(demoMetering);
     }
   }, []);
 
+  const openPriceChange = () => {
+    const p = billing?.plan_prices_ngn;
+    setTierPrices({
+      free: "0",
+      starter: String(p?.starter ?? billing?.monthly_price_ngn ?? 9900),
+      growth: String(p?.growth ?? 19900),
+      enterprise: p?.enterprise == null ? "" : String(p.enterprise),
+    });
+    setNewYearlyMonthEq(String(billing?.yearly_month_equivalent ?? 10));
+    setDiscountPercent(billing?.first_month_discount_percent ?? 50);
+    setIsActive(billing?.is_active !== false);
+    setShowPriceChange(true);
+  };
+
   const handlePriceChange = async () => {
-    const monthly = Number(newMonthlyPrice);
-    if (!monthly || monthly < 0) { toast("error", "Invalid price"); return; }
+    const starter = Number(tierPrices.starter);
+    const growth = Number(tierPrices.growth);
+    if (!Number.isFinite(starter) || starter < 0 || !Number.isFinite(growth) || growth < 0) {
+      toast("error", "Invalid Starter or Growth price");
+      return;
+    }
+    const enterpriseRaw = tierPrices.enterprise.trim();
+    const enterprise = enterpriseRaw === "" ? null : Number(enterpriseRaw);
+    if (enterprise !== null && (!Number.isFinite(enterprise) || enterprise < 0)) {
+      toast("error", "Enterprise price must be empty (quote) or ≥ 0");
+      return;
+    }
     try {
-      await api.put("/admin/billing/settings", { monthly_price_ngn: monthly, yearly_month_equivalent: Number(newYearlyMonthEq) || 10, first_month_discount_percent: discountPercent, is_active: isActive, notes: "Updated via staff portal" });
-      toast("success", "Price updated");
+      await api.put("/admin/billing/settings", {
+        plan_prices_ngn: { free: 0, starter, growth, enterprise },
+        yearly_month_equivalent: Number(newYearlyMonthEq) || 10,
+        first_month_discount_percent: discountPercent,
+        is_active: isActive,
+        notes: "Updated via staff portal",
+      });
+      toast("success", "Tier prices updated");
       setShowPriceChange(false);
       refresh();
     } catch (e) { toast("error", "Update failed", e instanceof Error ? e.message : ""); }
   };
+
+  const formatTierPrice = (value: number | null | undefined) =>
+    value == null ? "Quote" : formatNaira(value);
+
+  const yearlySavingsPct = (() => {
+    if (typeof pricing?.savings_percent === "number") return pricing.savings_percent;
+    const monthly = pricing?.monthly_list_price_ngn ?? billing?.monthly_price_ngn ?? 0;
+    const yearly = pricing?.yearly_price_ngn ?? billing?.yearly_price_ngn ?? 0;
+    const full = monthly * 12;
+    if (!full) return 0;
+    return Math.round(((full - yearly) / full) * 100);
+  })();
 
   const handleGenerateCoupons = async () => {
     try {
@@ -87,25 +184,55 @@ export default function BillingAdmin() {
         <div className="space-y-4">
           {loading ? <TableSkeleton rows={3} /> : (
             <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <StatCard label="Free" value={formatTierPrice(billing?.plan_prices_ngn?.free ?? 0)} icon={<DollarSign size={18} />} />
+                <StatCard label="Starter /mo" value={formatTierPrice(billing?.plan_prices_ngn?.starter ?? billing?.monthly_price_ngn)} icon={<DollarSign size={18} />} />
+                <StatCard label="Growth /mo" value={formatTierPrice(billing?.plan_prices_ngn?.growth)} icon={<BarChart3 size={18} />} />
+                <StatCard label="Enterprise" value={formatTierPrice(billing?.plan_prices_ngn?.enterprise)} icon={<DollarSign size={18} />} />
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <StatCard label="Monthly List Price" value={formatNaira(billing?.monthly_price_ngn || 0)} icon={<DollarSign size={18} />} />
-                <StatCard label="Yearly Price" value={formatNaira(billing?.yearly_price_ngn || 0)} icon={<BarChart3 size={18} />} />
-                <StatCard label="Yearly Savings" value={`${pricing?.savings_percent ?? 0}%`} icon={<DollarSign size={18} />} />
+                <StatCard label="Starter yearly" value={formatNaira(billing?.yearly_price_ngn || 0)} icon={<BarChart3 size={18} />} />
+                <StatCard label="Yearly savings" value={`${yearlySavingsPct}%`} icon={<DollarSign size={18} />} />
+                <StatCard label="1st-month discount" value={`${billing?.first_month_discount_percent ?? pricing?.first_month_discount_percent ?? 50}%`} icon={<CreditCard size={18} />} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <StatCard label="AI Starter (NGN/mo)" value={formatAiNgn(metering?.plan_ai_ngn_mo?.starter)} icon={<CreditCard size={18} />} />
+                <StatCard label="AI Growth (NGN/mo)" value={formatAiNgn(metering?.plan_ai_ngn_mo?.growth)} icon={<CreditCard size={18} />} />
+                <StatCard label="1 AI credit" value={metering ? `₦${metering.credit_ngn}` : "—"} icon={<DollarSign size={18} />} />
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={() => { setNewMonthlyPrice(String(billing?.monthly_price_ngn || 100000)); setNewYearlyMonthEq("10"); setDiscountPercent(50); setShowPriceChange(true); }} className="btn-secondary text-sm">Change Pricing</button>
+                <button onClick={openPriceChange} className="btn-secondary text-sm">Change Pricing</button>
                 <button onClick={() => setShowRenewalConfirm(true)} className="btn-secondary text-sm"><RefreshCw size={14} /> Run Renewals</button>
               </div>
+              {metering && (
+                <Card>
+                  <CardHeader title="AI credit metering" subtitle={`FX ₦${metering.fx?.ngn_per_usd ?? FX_NGN_PER_USD}/USD · ${formatCredits(metering.plan_credits_mo?.starter)} / ${formatCredits(metering.plan_credits_mo?.growth)} credits`} />
+                  <p className="text-xs text-slate-400 mb-3">{metering.metering_note}</p>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div><span className="text-slate-400">Security primary:</span> <span className="font-mono text-xs text-slate-200">{metering.security_providers?.primary_model}</span></div>
+                    <div><span className="text-slate-400">Fallback:</span> <span className="font-mono text-xs text-slate-200">{metering.security_providers?.fallback_model} (Z.AI)</span></div>
+                    <div><span className="text-slate-400">User choice:</span> <span className="text-slate-300">{metering.security_providers?.user_choice ? "Yes" : "No"}</span></div>
+                    <div><span className="text-slate-400">DeepSeek ×1M:</span> <span className="font-mono text-xs text-slate-300">{formatAiNgn(metering.ngn_per_1m_tokens?.["deepseek-v4-flash"])}</span></div>
+                    <div><span className="text-slate-400">GLM Flash ×1M:</span> <span className="font-mono text-xs text-slate-300">{formatAiNgn(metering.ngn_per_1m_tokens?.["glm-4-flash"])}</span></div>
+                    <div><span className="text-slate-400">GPT-4o ×1M:</span> <span className="font-mono text-xs text-slate-300">{formatAiNgn(metering.ngn_per_1m_tokens?.["gpt-4o"])}</span></div>
+                  </div>
+                </Card>
+              )}
             </>
           )}
-          <Modal open={showPriceChange} onClose={() => setShowPriceChange(false)} title="Change Platform Pricing">
+          <Modal open={showPriceChange} onClose={() => setShowPriceChange(false)} title="Change Tier Pricing (NGN)">
             <div className="space-y-3">
-              <div><label className="label">Monthly Price (NGN)</label><input className="input font-mono" type="number" value={newMonthlyPrice} onChange={e => setNewMonthlyPrice(e.target.value)} /></div>
-              <div className="flex items-center justify-between"><label className="label">First-month discount</label><span className="text-gold-300 font-mono">{discountPercent}%</span></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="label">Free</label><input className="input font-mono" type="number" value={0} disabled /></div>
+                <div><label className="label">Starter /mo</label><input className="input font-mono" type="number" min={0} value={tierPrices.starter} onChange={e => setTierPrices({ ...tierPrices, starter: e.target.value })} /></div>
+                <div><label className="label">Growth /mo</label><input className="input font-mono" type="number" min={0} value={tierPrices.growth} onChange={e => setTierPrices({ ...tierPrices, growth: e.target.value })} /></div>
+                <div><label className="label">Enterprise (empty = quote)</label><input className="input font-mono" type="number" min={0} placeholder="Quote" value={tierPrices.enterprise} onChange={e => setTierPrices({ ...tierPrices, enterprise: e.target.value })} /></div>
+              </div>
+              <div className="flex items-center justify-between"><label className="label">First-month discount (self-serve)</label><span className="text-gold-300 font-mono">{discountPercent}%</span></div>
               <input type="range" min={0} max={100} value={discountPercent} onChange={e => setDiscountPercent(Number(e.target.value))} className="w-full accent-gold-400" />
               <div><label className="label">Yearly months equivalent</label><input className="input font-mono w-20" type="number" min={1} max={12} value={newYearlyMonthEq} onChange={e => setNewYearlyMonthEq(e.target.value)} /></div>
               <div className="flex items-center gap-2"><label className="label">Active</label><button onClick={() => setIsActive(!isActive)}>{isActive ? <ToggleRight size={20} className="text-emerald-400" /> : <ToggleLeft size={20} className="text-slate-500" />}</button><span className="text-xs text-slate-400">{isActive ? "New subscriptions allowed" : "Blocking new subscriptions"}</span></div>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-severity-high/10 border border-severity-high/20 text-xs text-severity-high"><AlertTriangle size={14} />Changing pricing affects all future subscriptions.</div>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-severity-high/10 border border-severity-high/20 text-xs text-severity-high"><AlertTriangle size={14} />Updates Free / Starter / Growth / Enterprise list prices for landing and checkout. Starter still drives Paystack renewals.</div>
               <button onClick={handlePriceChange} className="btn-primary w-full">Confirm</button>
             </div>
           </Modal>

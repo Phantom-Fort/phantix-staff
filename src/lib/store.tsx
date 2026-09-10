@@ -21,6 +21,7 @@ type Store = {
   logout: () => void;
   hydrateSession: () => void;
   isAdmin: boolean;
+  isContributor: boolean;
   isSuperadmin: boolean;
   isAgiAdmin: boolean;
   toasts: Toast[];
@@ -113,6 +114,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const isAdmin = session?.role === "admin" || session?.role === "superadmin";
   const isSuperadmin = session?.role === "superadmin";
+  const isContributor = isAdmin || session?.role === "contributor";
   const isAgiAdmin = Boolean(session?.agi_admin) || isSuperadmin;
 
   // Auto-redirect to login when token expires (401 clears tokens via api client)
@@ -131,7 +133,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   return (
-    <Ctx.Provider value={{ session, login, logout, hydrateSession, isAdmin, isSuperadmin, isAgiAdmin, toasts, toast, dismissToast }}>
+    <Ctx.Provider value={{ session, login, logout, hydrateSession, isAdmin, isContributor, isSuperadmin, isAgiAdmin, toasts, toast, dismissToast }}>
       {children}
     </Ctx.Provider>
   );

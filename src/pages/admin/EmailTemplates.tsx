@@ -21,9 +21,9 @@ interface EmailTemplate {
 }
 
 const demoTemplates: EmailTemplate[] = [
-  { id: 1, template_key: "otp.login", category: "transactional", name: "Login OTP", subject: "Your Phantix login code", html_body: "<p>Code: {{code}}</p>", text_body: "Code: {{code}}", is_active: true, created_at: new Date().toISOString() },
+  { id: 1, template_key: "otp.login", category: "transactional", name: "Login OTP", subject: "Your SecureGraph login code", html_body: "<p>Code: {{code}}</p>", text_body: "Code: {{code}}", is_active: true, created_at: new Date().toISOString() },
   { id: 2, template_key: "alert.critical", category: "transactional", name: "Critical alert", subject: "[CRITICAL] {{title}}", html_body: "<p>{{body}}</p>", is_active: true, created_at: new Date().toISOString() },
-  { id: 3, template_key: "marketing.launch", category: "marketing", name: "Launch announcement", subject: "Phantix is live", html_body: "<p>We're live.</p>", is_active: false, created_at: new Date().toISOString() },
+  { id: 3, template_key: "marketing.launch", category: "marketing", name: "Launch announcement", subject: "SecureGraph is live", html_body: "<p>We're live.</p>", is_active: false, created_at: new Date().toISOString() },
 ];
 
 const emptyForm = { template_key: "", category: "transactional", name: "", subject: "", html_body: "", text_body: "" };
@@ -169,7 +169,7 @@ export default function EmailTemplates() {
           </div>
           <div>
             <label className="label">Subject</label>
-            <input className="input" value={editor.form.subject} onChange={(e) => setEditor((p) => ({ ...p, form: { ...p.form, subject: e.target.value } }))} placeholder="Your Phantix login code" />
+            <input className="input" value={editor.form.subject} onChange={(e) => setEditor((p) => ({ ...p, form: { ...p.form, subject: e.target.value } }))} placeholder="Your SecureGraph login code" />
           </div>
           <div>
             <label className="label">HTML body</label>

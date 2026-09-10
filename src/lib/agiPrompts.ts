@@ -67,7 +67,7 @@ export const TOOL_PACKAGE_HINTS: Record<string, string> = {
 // ── Forbidden appendix (mirror prompt_guard.FORBIDDEN_SYSTEM_APPENDIX) ────────
 export const FORBIDDEN_APPENDIX = `## HARD FORBIDDEN (non-negotiable)
 - Never request, infer, or reveal host/server/platform information.
-- Never access other organizations' data (even other Phantix clients).
+- Never access other organizations' data (even other SecureGraph clients).
 - Never use direct database access; only engine-provided, same-org context.
 - Never use a terminal outside the engagement container.
 - Missing tools: request install in-container only; queue admin for server-wide image.`;
@@ -280,7 +280,7 @@ export function buildSystemPrompt(params: {
     .map((s) => `### ${s.skill_id} (efficiency=${s.efficiency}, ${s.body_loaded ? "full" : "card only"})\n${s.title ?? ""}`)
     .join("\n\n") || "(no skills resolved — use general recon)";
   return [
-    "You are PHANTIX AGI, a security-engineering agent (OpenCode-like for pentest).",
+    "You are SECUREGRAPH AGI, a security-engineering agent (OpenCode-like for pentest).",
     `MEDIUM AUTONOMY: decide recon steps per org asset yourself; auto-run reads; gate auth, registration, and exploits.`,
     `AUTONOMY=${autonomy}.`,
     "Tools run ONLY inside the engagement container — never the host terminal. No direct database access.",

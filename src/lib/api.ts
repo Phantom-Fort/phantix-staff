@@ -89,6 +89,18 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Wait (seconds) carried by a 429 "too many failed attempts" response, if the
+ * server put a number in the detail. No Retry-After header yet — callers should
+ * fall back to a generic "try again shortly" when this returns null.
+ */
+export function throttleSeconds(err: unknown): number | null {
+  if (!(err instanceof ApiError) || err.status !== 429) return null;
+  const msg = typeof err.message === "string" ? err.message : "";
+  const m = msg.match(/(\d+)\s*seconds?/i);
+  return m ? Math.max(1, parseInt(m[1], 10)) : null;
+}
+
 // ── Correlation ID (00-shared-auth-and-client.md §6) ────────────────────────
 // Surface X-Correlation-ID on failures so support can trace a request.
 let lastCorrelationId: string | null = null;
@@ -175,6 +187,15 @@ async function request<T>(
       tokens.staff = null;
       tokens.email = null;
     }
+    // Login throttling (staging-rollout §8): failed attempts are throttled per
+    // identifier — 5 failures/5 min → 429. Never present it as a wrong password.
+    if (res.status === 429) {
+      const throttleMsg = typeof detail === "string" ? detail : "";
+      const sec = throttleMsg.match(/(\d+)\s*seconds?/i);
+      window.dispatchEvent(new CustomEvent("phantix:throttled", {
+        detail: { seconds: sec ? Math.max(1, parseInt(sec[1], 10)) : null },
+      }));
+    }
     throw new ApiError(res.status, detail, correlationId);
   }
   if (res.status === 204) return undefined as T;
@@ -222,7 +243,21 @@ export const api = {
     if (tokens.staff) headers["Authorization"] = `Bearer ${tokens.staff}`;
     const res = await fetch(`${API_BASE}${path}`, { method: "GET", headers });
     trackCorrelationId(res);
-    if (!res.ok) throw new ApiError(res.status, res.statusText, res.headers.get("X-Correlation-ID") || undefined);
+    if (!res.ok) {
+      // Preserve the response body on failure — HTML routes (e.g. the
+      // architecture artefacts) return the remedial command in the message.
+      let detail: unknown = res.statusText;
+      try {
+        const ct = res.headers.get("content-type") || "";
+        if (ct.includes("application/json")) {
+          const j = await res.clone().json();
+          detail = (j && typeof j === "object" && "detail" in j ? (j as { detail?: unknown }).detail : j) ?? res.statusText;
+        } else {
+          detail = (await res.text()).slice(0, 2000);
+        }
+      } catch { /* keep statusText */ }
+      throw new ApiError(res.status, detail, res.headers.get("X-Correlation-ID") || undefined);
+    }
     return res.text();
   },
 };

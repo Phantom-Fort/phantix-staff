@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import { motion } from "framer-motion";
-import { Building2, MessageSquare, Server, Wrench, FileText, Activity, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Building2, MessageSquare, Server, Wrench, FileText, Activity, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader, StatCard, AnimatedNumber, Card, CardHeader, TableSkeleton } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
@@ -113,6 +113,9 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      {/* Audit chain integrity (§10) — intact, or an unmissable broken state. */}
+      <AuditChainCard />
+
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
         <Link to="/clients" className="card p-4 flex items-center gap-3 hover:border-phantix-500/60 transition-colors">
           <Building2 size={20} className="text-phantix-400" />
@@ -133,4 +136,89 @@ export default function Dashboard() {
       </motion.div>
     </div>
   );
+}
+
+// ── Audit chain verification (staging-rollout §10) ───────────────────────────
+// GET /api/v1/audit/verify-chain. Response shape is backend-defined and may use
+// intact|valid|ok|verified with first_bad_sequence|first_bad|broken_sequence —
+// normalise defensively so an intact/broken state always renders.
+type AuditVerify = {
+  intact?: boolean;
+  valid?: boolean;
+  ok?: boolean;
+  verified?: boolean;
+  first_bad_sequence?: string | number | null;
+  first_bad?: string | number | null;
+  broken_sequence?: string | number | null;
+};
+
+function AuditChainCard() {
+  const verify = useResource<AuditVerify>(
+    async () => api.get<AuditVerify>("/audit/verify-chain") ?? {},
+    {} as AuditVerify,
+    "audit-verify-chain",
+  );
+  const skipFirstPoll = useRef(true);
+  useSmartPoll(() => {
+    if (skipFirstPoll.current) { skipFirstPoll.current = false; return; }
+    verify.refresh();
+  }, { intervalMs: 60000, hiddenIntervalMs: 300000 });
+
+  const d = verify.data;
+  // Role/permission gaps or transient failures must not alarm the whole staff.
+  if (verify.error || !d || Object.keys(d).length === 0) return null;
+
+  const intact =
+    d.intact ?? d.valid ?? d.ok ?? d.verified;
+  const firstBad =
+    d.first_bad_sequence ?? d.first_bad ?? d.broken_sequence ?? null;
+
+  if (intact === true) {
+    return (
+      <Card className="mt-6 border-emerald-400/20">
+        <CardHeader
+          title="Audit chain intact"
+          subtitle="Hash-chained audit trail verified against the last sealed entry"
+          action={
+            <button type="button" onClick={verify.refresh} className="btn-ghost !px-2 !py-1 text-xs">
+              <RefreshCw size={12} className="mr-1 inline" /> Recheck
+            </button>
+          }
+        />
+      </Card>
+    );
+  }
+
+  if (intact === false) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.99 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="mt-6 rounded-xl border-2 border-severity-critical/60 bg-severity-critical/10 p-5"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-severity-critical text-white">
+              <AlertTriangle size={19} />
+            </span>
+            <div>
+              <p className="font-display text-base font-bold text-severity-critical">Audit chain BROKEN</p>
+              <p className="mt-1 max-w-xl text-sm leading-6 text-slate-300">
+                The audit trail failed hash-chain verification. Treat this as a security incident — do not continue
+                writing audit entries until it is investigated.
+              </p>
+              {firstBad != null && (
+                <p className="mt-2 font-mono text-xs text-severity-critical">first bad sequence: {String(firstBad)}</p>
+              )}
+            </div>
+          </div>
+          <button type="button" onClick={verify.refresh} className="btn-primary !py-2 text-xs">
+            <RefreshCw size={13} className="mr-1.5 inline" /> Re-verify
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return null;
 }

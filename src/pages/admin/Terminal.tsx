@@ -3,7 +3,7 @@ import { Terminal as XTerm } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
 import "xterm/css/xterm.css";
 import { RefreshCw, Wifi, WifiOff, ShieldAlert, TerminalSquare, Play, Square, RotateCcw } from "lucide-react";
-import { PageHeader, Card, StatusBadge, EmptyState, Spinner } from "@/components/ui";
+import { PageHeader, Card, StatusBadge, EmptyState, PageHeaderSkeleton } from "@/components/ui";
 import { api, tokens, API_BASE, DEMO_MODE } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { cx } from "@/lib/utils";
@@ -264,8 +264,26 @@ export default function SuperadminTerminal() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-slate-400">
-        <Spinner className="h-5 w-5" /> Loading terminal capability...
+      <div>
+        <PageHeaderSkeleton actions />
+        <div className="space-y-4">
+          <div className="card">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <div className="skeleton h-6 w-28 rounded-full" />
+              <div className="skeleton h-3 w-32 rounded" />
+              <div className="skeleton h-3 w-24 rounded" />
+              <div className="skeleton ml-auto h-3 w-40 rounded" />
+            </div>
+          </div>
+          <div className="card !p-0 overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-phantix-700/40 bg-phantix-900/60 px-4 py-2.5">
+              <div className="skeleton h-3.5 w-3.5 rounded" />
+              <div className="skeleton h-3 w-40 rounded" />
+              <div className="skeleton ml-auto h-7 w-24 rounded-md" />
+            </div>
+            <div className="skeleton m-4 h-64 rounded-md" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -276,7 +294,7 @@ export default function SuperadminTerminal() {
     <div>
       <PageHeader
         title="Superadmin Terminal"
-        description="Secure interactive shell to the Phantix API runtime ’” superadmin only, fully audited"
+        description="Secure interactive shell to the SecureGraph API runtime ’” superadmin only, fully audited"
         actions={
           <div className="flex items-center gap-2">
             <span className={cx("flex items-center gap-1.5 text-xs font-mono", connected ? "text-emerald-400" : "text-slate-500")}>

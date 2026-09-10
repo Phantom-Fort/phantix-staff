@@ -26,15 +26,31 @@ import SuperadminTerminal from "@/pages/admin/Terminal";
 import AgiAdmin from "@/pages/admin/AgiAdmin";
 import SandboxAdmin from "@/pages/admin/Sandbox";
 import AnalyticsAdmin from "@/pages/admin/Analytics";
+import ArchitectureAdmin from "@/pages/admin/Architecture";
+import DemoRequestsAdmin from "@/pages/admin/DemoRequests";
 import SocProvisioning from "@/pages/admin/SocProvisioning";
 import EmailTemplates from "@/pages/admin/EmailTemplates";
 import LegalDocuments from "@/pages/admin/LegalDocuments";
+import ContributeHome from "@/pages/contribute/ContributeHome";
+import ContributeKnowledge from "@/pages/contribute/ContributeKnowledge";
+import ContributeCapabilities from "@/pages/contribute/ContributeCapabilities";
+import ContributeSkills from "@/pages/contribute/ContributeSkills";
+import ContributeEngines from "@/pages/contribute/ContributeEngines";
+import ContributeLearning from "@/pages/contribute/ContributeLearning";
 import { AGI_ENABLED } from "@/lib/api";
 
 function RequireStaff({ children }: { children: React.ReactNode }) {
   const { session } = useStore();
   const location = useLocation();
   if (!session?.authenticated) return <Navigate to="/login" state={{ from: location }} replace />;
+  return <>{children}</>;
+}
+
+function RequireContributor({ children }: { children: React.ReactNode }) {
+  const { session, isContributor } = useStore();
+  const location = useLocation();
+  if (!session?.authenticated) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!isContributor) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -74,6 +90,15 @@ export default function App() {
             <Route path="/dashboard" element={<RequireStaff><Dashboard /></RequireStaff>} />
             <Route path="/support" element={<RequireStaff><SupportTickets /></RequireStaff>} />
 
+            {/* Contributor workspace (+ admin/superadmin) */}
+            <Route path="/contribute" element={<RequireContributor><ContributeHome /></RequireContributor>} />
+            <Route path="/contribute/knowledge" element={<RequireContributor><ContributeKnowledge /></RequireContributor>} />
+            <Route path="/contribute/skills" element={<RequireContributor><ContributeSkills /></RequireContributor>} />
+            <Route path="/contribute/capabilities" element={<RequireContributor><ContributeCapabilities /></RequireContributor>} />
+            <Route path="/contribute/engines" element={<RequireContributor><ContributeEngines /></RequireContributor>} />
+            <Route path="/contribute/learning" element={<RequireContributor><ContributeLearning /></RequireContributor>} />
+            <Route path="/architecture" element={<RequireContributor><ArchitectureAdmin /></RequireContributor>} />
+
             {/* Admin (monitor + catalogs + advanced) */}
             <Route path="/clients" element={<RequireAdmin><Clients /></RequireAdmin>} />
             <Route path="/clients/:id" element={<RequireAdmin><Clients /></RequireAdmin>} />
@@ -84,6 +109,7 @@ export default function App() {
             <Route path="/scanner-tools" element={<RequireAdmin><ScannerTools /></RequireAdmin>} />
             <Route path="/bus" element={<RequireAdmin><BusDiagnostics /></RequireAdmin>} />
             <Route path="/analytics" element={<RequireAdmin><AnalyticsAdmin /></RequireAdmin>} />
+            <Route path="/demo-requests" element={<RequireAdmin><DemoRequestsAdmin /></RequireAdmin>} />
             <Route path="/compliance" element={<RequireAdmin><ComplianceAdmin /></RequireAdmin>} />
             <Route path="/soc-provisioning" element={<RequireAdmin><SocProvisioning /></RequireAdmin>} />
             <Route path="/email-templates" element={<RequireAdmin><EmailTemplates /></RequireAdmin>} />

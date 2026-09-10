@@ -6,7 +6,7 @@ import {
   Users, FileCheck, Wrench, Search, Activity, LogOut, Menu, X,
   Zap, Globe, AlertTriangle, ScanLine, BarChart3, RefreshCw,
   Crosshair, Radio, FileText, TerminalSquare, Radar, BookOpen, FlaskConical,
-  ScrollText, Mail,
+  ScrollText, Mail, Layers, Inbox, Sparkles, FileCode2,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { APP_URL } from "@/lib/links";
@@ -16,13 +16,14 @@ import { AGI_ENABLED } from "@/lib/api";
 
 const navSections: {
   label: string;
-  role: "all" | "admin" | "superadmin";
+  role: "all" | "admin" | "superadmin" | "contributor";
   items: {
     to: string;
     label: string;
     icon: React.ReactNode;
     adminOnly?: boolean;
     superadminOnly?: boolean;
+    contributorOnly?: boolean;
     agiOnly?: boolean;
     external?: boolean;
   }[];
@@ -38,6 +39,19 @@ const navSections: {
     ],
   },
   {
+    label: "Contribute",
+    role: "contributor",
+    items: [
+      { to: "/contribute", label: "Workspace", icon: <Sparkles size={18} />, contributorOnly: true },
+      { to: "/contribute/knowledge", label: "Knowledge", icon: <BookOpen size={18} />, contributorOnly: true },
+      { to: "/contribute/skills", label: "Skills", icon: <Brain size={18} />, contributorOnly: true },
+      { to: "/contribute/capabilities", label: "YAML packs", icon: <FileCode2 size={18} />, contributorOnly: true },
+      { to: "/contribute/engines", label: "Engines", icon: <Layers size={18} />, contributorOnly: true },
+      { to: "/contribute/learning", label: "Learning inbox", icon: <Inbox size={18} />, contributorOnly: true },
+      { to: "/architecture", label: "Atlas", icon: <Layers size={18} />, contributorOnly: true },
+    ],
+  },
+  {
     label: "Monitor",
     role: "admin",
     items: [
@@ -46,6 +60,8 @@ const navSections: {
       { to: "/scanner-tools", label: "Scanner Tools", icon: <ScanLine size={18} /> },
       { to: "/bus", label: "Event Bus", icon: <Radio size={18} /> },
       { to: "/analytics", label: "Analytics", icon: <BarChart3 size={18} /> },
+      { to: "/architecture", label: "Architecture", icon: <Layers size={18} /> },
+      { to: "/demo-requests", label: "Demo Requests", icon: <Inbox size={18} /> },
       { to: "/api-docs.html", label: "API Reference", icon: <BookOpen size={18} />, external: true },
     ],
   },
@@ -91,7 +107,7 @@ const navSections: {
 ];
 
 export default function Layout() {
-  const { session, logout, isAdmin, isSuperadmin, isAgiAdmin } = useStore();
+  const { session, logout, isAdmin, isSuperadmin, isAgiAdmin, isContributor } = useStore();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -103,6 +119,7 @@ export default function Layout() {
   const roleBadge =
     session?.role === "superadmin" ? "text-severity-critical bg-severity-critical/10 border-severity-critical/30"
     : session?.role === "admin" ? "text-severity-high bg-severity-high/10 border-severity-high/30"
+    : session?.role === "contributor" ? "text-gold-300 bg-gold-400/10 border-gold-400/30"
     : "text-severity-low bg-severity-low/10 border-severity-low/30";
 
   return (
@@ -110,19 +127,21 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-phantix-700/30 bg-phantix-950/80 backdrop-blur-xl">
         <div className="flex h-16 items-center gap-3 px-5 border-b border-phantix-700/30">
-          <img src="/logo-white.png" alt="Phantix" className="h-7 w-auto object-contain" />
+          <img src="/logo-white.png" alt="SecureGraph" className="h-7 w-auto object-contain" />
           <div>
             <p className="font-display text-sm font-bold text-white tracking-tight">Staff Portal</p>
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-2.5">
+        <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-1.5">
           {navSections.map((section) => {
             if (section.role === "admin" && !isAdmin) return null;
             if (section.role === "superadmin" && !isSuperadmin) return null;
+            if (section.role === "contributor" && !isContributor) return null;
             const visibleItems = section.items.filter((item) => {
               if (item.superadminOnly && !isSuperadmin) return false;
               if (item.adminOnly && !isAdmin) return false;
+              if (item.contributorOnly && !isContributor) return false;
               if (item.agiOnly && !isAgiAdmin) return false;
               if (item.agiOnly && !AGI_ENABLED) return false;
               return true;
@@ -131,7 +150,7 @@ export default function Layout() {
 
             return (
               <div key={section.label}>
-                <p className="px-2.5 mb-1 text-[9px] leading-none font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <p className="nav-section-label">
                   {section.label}
                 </p>
                 {visibleItems.map((item) => (
@@ -223,9 +242,11 @@ export default function Layout() {
               {navSections.map((section) => {
                 if (section.role === "admin" && !isAdmin) return null;
                 if (section.role === "superadmin" && !isSuperadmin) return null;
+                if (section.role === "contributor" && !isContributor) return null;
                 const visibleItems = section.items.filter((item) => {
                   if (item.superadminOnly && !isSuperadmin) return false;
                   if (item.adminOnly && !isAdmin) return false;
+                  if (item.contributorOnly && !isContributor) return false;
                   if (item.agiOnly && !isAgiAdmin) return false;
                   if (item.agiOnly && !AGI_ENABLED) return false;
                   return true;
@@ -233,7 +254,7 @@ export default function Layout() {
                 if (!visibleItems.length) return null;
                 return (
                   <div key={section.label} className="mb-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1">{section.label}</p>
+                    <p className="nav-section-label">{section.label}</p>
                     {visibleItems.map((item) => (
                       item.external ? (
                         <a
