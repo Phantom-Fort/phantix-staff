@@ -128,7 +128,7 @@ export default function Layout() {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-phantix-700/30 bg-phantix-950/80 backdrop-blur-xl">
+      <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-phantix-700/30 bg-[rgb(var(--surface-sidebar))]">
         <div className="flex h-16 items-center gap-3 px-5 border-b border-phantix-700/30">
           <img src="/logo-white.png" alt="SecureGraph" className="h-7 w-auto object-contain" />
           <div>
