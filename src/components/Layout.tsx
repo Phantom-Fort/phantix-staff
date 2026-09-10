@@ -26,6 +26,9 @@ const navSections: {
     contributorOnly?: boolean;
     agiOnly?: boolean;
     external?: boolean;
+    // Open in the same tab (keeps sessionStorage, e.g. the API Reference page
+    // needs the staff token). Use instead of `external` for token-bearing pages.
+    sameTab?: boolean;
   }[];
 }[] = [
   {
@@ -62,7 +65,7 @@ const navSections: {
       { to: "/analytics", label: "Analytics", icon: <BarChart3 size={18} /> },
       { to: "/architecture", label: "Architecture", icon: <Layers size={18} /> },
       { to: "/demo-requests", label: "Demo Requests", icon: <Inbox size={18} /> },
-      { to: "/api-docs.html", label: "API Reference", icon: <BookOpen size={18} />, external: true },
+      { to: "/api-docs.html", label: "API Reference", icon: <BookOpen size={18} />, external: true, sameTab: true },
     ],
   },
   {
@@ -154,7 +157,12 @@ export default function Layout() {
                   {section.label}
                 </p>
                 {visibleItems.map((item) => (
-                  item.external ? (
+                  item.sameTab ? (
+                    <a key={item.to} href={item.to} className="nav-item">
+                      {item.icon}
+                      {item.label}
+                    </a>
+                  ) : item.external ? (
                     <a
                       key={item.to}
                       href={item.to}
@@ -256,7 +264,17 @@ export default function Layout() {
                   <div key={section.label} className="mb-3">
                     <p className="nav-section-label">{section.label}</p>
                     {visibleItems.map((item) => (
-                      item.external ? (
+                      item.sameTab ? (
+                        <a
+                          key={item.to}
+                          href={item.to}
+                          className="nav-item py-2"
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          {item.icon}
+                          {item.label}
+                        </a>
+                      ) : item.external ? (
                         <a
                           key={item.to}
                           href={item.to}
