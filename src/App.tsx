@@ -6,6 +6,8 @@ import Login from "@/pages/Login";
 import StaffPasswordResetRequest from "@/pages/StaffPasswordResetRequest";
 import StaffPasswordResetComplete from "@/pages/StaffPasswordResetComplete";
 import StaffChangePassword from "@/pages/StaffChangePassword";
+import Cookies from "@/pages/Cookies";
+import CookieConsent from "@/components/CookieConsent";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/admin/Clients";
 import SupportTickets from "@/pages/admin/Support";
@@ -98,6 +100,7 @@ export default function App() {
           <Route path="/change-password" element={<RequireAuth><StaffChangePassword /></RequireAuth>} />
           <Route path="/password-reset" element={<StaffPasswordResetRequest />} />
           <Route path="/reset-password" element={<StaffPasswordResetComplete />} />
+          <Route path="/cookies" element={<Cookies />} />
           <Route element={<Layout />}>
             {/* All staff */}
             <Route path="/dashboard" element={<RequireStaff><Dashboard /></RequireStaff>} />
@@ -147,6 +150,7 @@ export default function App() {
           </Route>
         </Routes>
         <ToastViewport />
+        <CookieConsent />
       </BrowserRouter>
     </StoreProvider>
   );

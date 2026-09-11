@@ -44,7 +44,7 @@ export default function Dashboard() {
     <div>
       <PageHeader
         title="Staff Dashboard"
-        description={isAdmin ? "Platform operations overview --- clients, connections, support" : "Support operations overview"}
+        description={isAdmin ? "Platform operations overview — clients, connections, support" : "Support operations overview"}
       />
 
       {stats.loading ? (
@@ -99,7 +99,7 @@ export default function Dashboard() {
               )}
               {Object.entries(s.tickets_by_status ?? {}).length > 0 && (
                 <div className="pt-2">
-                  <p className="text-xs text-slate-500 mb-1.5">By Status</p>
+                  <p className="text-xs text-slate-400 mb-1.5">By Status</p>
                   {Object.entries(s.tickets_by_status ?? {}).map(([status, count]) => (
                     <div key={status} className="flex justify-between text-xs px-2 py-1">
                       <span className="text-slate-400 capitalize">{status.replace(/_/g, " ")}</span>

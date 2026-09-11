@@ -6,6 +6,8 @@
 // Collected server-side by POST /api/v1/analytics/collect and surfaced to
 // staff via GET /api/v1/admin/analytics/summary (staff portal → Analytics).
 
+import { getConsent } from "./consent";
+
 const COLLECT_URL = "/api/v1/analytics/collect";
 // Payload `app` per surface: "app" | "platform" | "staff" (staging-rollout §9).
 const APP_SOURCE = "staff";
@@ -77,7 +79,11 @@ function send(): void {
 }
 
 /** Install the tracker: initial view + SPA route changes. Safe to call once. */
-export function initAnalytics(): void {
+let started = false;
+
+function start(): void {
+  if (started) return;
+  started = true;
   if (DEV || DISABLED || dnt()) return;
   try {
     const wrap = (fn: History["pushState"]): History["pushState"] =>
@@ -93,4 +99,17 @@ export function initAnalytics(): void {
     /* ignore */
   }
   send();
+}
+
+/**
+ * Install the tracker only when the user has already accepted analytics.
+ * Nothing is sent before consent; the banner calls `onConsentAccepted`.
+ */
+export function initAnalytics(): void {
+  if (getConsent() === "accepted") start();
+}
+
+/** Called by the consent banner when the user accepts. */
+export function onConsentAccepted(): void {
+  start();
 }

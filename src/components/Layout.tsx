@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard, Shield, Building2, MessageSquare, Server, Brain,
   Users, FileCheck, Wrench, Search, Activity, LogOut, Menu, X,
@@ -113,6 +113,12 @@ export default function Layout() {
   const { session, logout, isAdmin, isSuperadmin, isAgiAdmin, isContributor } = useStore();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  // The app-wide <MotionConfig reducedMotion="user"> (main.tsx) already zeroes
+  // out framer-motion's height/opacity tweens for prefers-reduced-motion users;
+  // this is a belt-and-suspenders guard so the mobile menu is explicitly (not
+  // just incidentally) reduced-motion safe at the one call site that animates
+  // `height` directly (Hallmark gate 27).
+  const reduceMotion = useReducedMotion();
 
   const handleLogout = () => {
     logout();
@@ -213,6 +219,8 @@ export default function Layout() {
           <button
             className="lg:hidden rounded-lg p-2 text-slate-400 hover:bg-phantix-800/70 hover:text-white"
             onClick={() => setMenuOpen(!menuOpen)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
           >
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -244,6 +252,7 @@ export default function Layout() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             className="fixed inset-x-0 top-16 z-50 max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-phantix-700/30 bg-phantix-950/98 shadow-card lg:hidden"
           >
             <nav className="px-4 py-3 space-y-2">
@@ -312,7 +321,7 @@ export default function Layout() {
           </div>
         </main>
 
-        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-phantix-700/60 bg-phantix-950/60 px-4 py-3 text-[11px] text-slate-600 lg:px-6">
+        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-phantix-700/60 bg-phantix-950/60 px-4 py-3 text-[11px] text-slate-400 lg:px-6">
           <span>SecureGraph Staff Portal · internal admin &amp; support console · every action is audited</span>
           <span className="font-mono">API v1 · staff-only</span>
         </footer>

@@ -100,6 +100,8 @@ const CATALOG: CatalogPhase[] = [
   { id: "disc_cors", group: "discovery", label: "CORS & cookie analysis", sigs: ["cors", "access-control-allow", "cookie", "origin"], tool: "http_get" },
   { id: "disc_email", group: "discovery", label: "Email security testing", sigs: ["spf", "dmarc", "smtp", "email security", "mail record"], tool: "dns_lookup" },
   { id: "disc_cloud", group: "discovery", label: "Cloud & infrastructure exposure", sigs: ["s3", "bucket", "aws", "gcp", "azure", "cloud storage"], tool: "shell" },
+  { id: "disc_trust_boundaries", group: "discovery", label: "Identifying trust boundaries", sigs: ["trust boundary", "trust boundar", "trust zone", "trust-boundar", "boundary"], tool: "shell" },
+  { id: "disc_auth_matrix", group: "discovery", label: "Building auth/access matrix", sigs: ["access matrix", "auth matrix", "authorization matrix", "auth/access"], tool: "authenticated_get" },
   // ── VULN ──────────────────────────────────────────────────────────────
   { id: "vuln_sig", group: "vuln", label: "Signature scanning", sigs: ["nuclei", "nikto", "cve-", "signature"], tool: "nuclei" },
   { id: "vuln_inject", group: "vuln", label: "Injection testing", sigs: ["sqlmap", "sqli", "xss", "ssti", "nosql", "injection", "command injection"], tool: "sqlmap" },
@@ -128,6 +130,11 @@ const CATALOG: CatalogPhase[] = [
 ];
 
 const PHASE_BY_ID: Record<string, CatalogPhase> = Object.fromEntries(CATALOG.map((p) => [p.id, p]));
+
+/** Granular phase id → human activity label (drives the live pentest to-do). */
+export const PHASE_ACTIVITY_BY_ID: Record<string, string> = Object.fromEntries(
+  CATALOG.map((p) => [p.id, p.label]),
+);
 
 const RECON_TOOLS = /nmap|httpx|whois|dig|amass|subfinder|masscan|katana|gau|gospider/i;
 const EXPLOIT_TOOLS = /nuclei|ffuf|sqlmap|nikto|gobuster|hydra|http_probe|burp|frida|jadx/i;
