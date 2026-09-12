@@ -168,6 +168,7 @@ export default function AgentActivityAdmin() {
                     <th className="th">Domain</th>
                     <th className="th">Action</th>
                     <th className="th">Operator intent</th>
+                    <th className="th">Asked by</th>
                     <th className="th">Authorized</th>
                     <th className="th">Outcome</th>
                   </tr>
@@ -197,6 +198,18 @@ export default function AgentActivityAdmin() {
                             {row.intent || <span className="text-slate-600">—</span>}
                           </td>
                           <td className="td">
+                            {row.actor_name || row.actor_email || row.actor_user_id ? (
+                              <div>
+                                <p className="text-[11px] text-slate-300">
+                                  {row.actor_name || row.actor_email || `user #${row.actor_user_id}`}
+                                </p>
+                                <p className="text-[9px] capitalize text-slate-600">{row.actor_role || "—"}</p>
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-slate-600" title="A company key or service call, with no named user">org-level</span>
+                            )}
+                          </td>
+                          <td className="td">
                             {row.authorized === true ? (
                               <span className="chip border-emerald-400/30 text-emerald-300"><KeyRound size={10} className="mr-1 inline" />authorized</span>
                             ) : row.authorized === false ? (
@@ -222,7 +235,7 @@ export default function AgentActivityAdmin() {
                         </tr>
                         {open === row.id && (
                           <tr className="border-b border-phantix-800/40 bg-phantix-900/40">
-                            <td colSpan={7} className="px-4 py-3">
+                            <td colSpan={8} className="px-4 py-3">
                               <div className="space-y-1.5">
                                 {row.params && (
                                   <p className="text-[11px] text-slate-400">
