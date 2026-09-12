@@ -13,6 +13,7 @@ import Clients from "@/pages/admin/Clients";
 import SupportTickets from "@/pages/admin/Support";
 import ServerOps from "@/pages/admin/ServerOps";
 import AiAdmin from "@/pages/admin/AiAdmin";
+import AgentActivityAdmin from "@/pages/admin/AgentActivity";
 import ComplianceAdmin from "@/pages/admin/Compliance";
 import ToolingAdmin from "@/pages/admin/Tooling";
 import ExperienceAdmin from "@/pages/admin/Experience";
@@ -134,6 +135,7 @@ export default function App() {
             <Route path="/discovery" element={<RequireAdmin><DiscoveryAdmin /></RequireAdmin>} />
             <Route path="/experience" element={<RequireAdmin><ExperienceAdmin /></RequireAdmin>} />
             <Route path="/ai" element={<RequireAdmin><AiAdmin /></RequireAdmin>} />
+            <Route path="/agent-activity" element={<RequireAdmin><AgentActivityAdmin /></RequireAdmin>} />
             <Route path="/vapt-admin" element={<RequireAdmin><VaptAdmin /></RequireAdmin>} />
             {AGI_ENABLED && <Route path="/agi" element={<RequireAgiAdmin><AgiAdmin /></RequireAgiAdmin>} />}
 

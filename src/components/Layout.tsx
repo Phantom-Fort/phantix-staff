@@ -86,6 +86,7 @@ const navSections: {
     role: "admin",
     items: [
       { to: "/ai", label: "AI Admin", icon: <Brain size={18} /> },
+      { to: "/agent-activity", label: "Agent activity", icon: <Activity size={18} /> },
       { to: "/vapt-admin", label: "VAPT Admin", icon: <Crosshair size={18} /> },
     ],
   },
