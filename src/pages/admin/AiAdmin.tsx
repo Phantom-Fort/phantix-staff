@@ -396,7 +396,9 @@ export default function AiAdmin() {
       {tab === "scopes" && (
         <Card>
           <CardHeader title="Data scopes" subtitle="Max evidence fields each prompt may see" />
-          {(scopes.data ?? []).length === 0 ? (
+          {scopes.loading && !(scopes.data ?? []).length ? (
+            <div className="p-4"><TableSkeleton rows={3} /></div>
+          ) : (scopes.data ?? []).length === 0 ? (
             <EmptyState icon={<ShieldAlert size={24} />} title="No data scopes" body="Configure allowed evidence keys per prompt via PUT /admin/ai/data-scopes/{prompt_key}" />
           ) : (
             <div className="space-y-1.5">
@@ -420,7 +422,9 @@ export default function AiAdmin() {
         <div className="space-y-4">
           <Card>
             <CardHeader title="Cost rollup" subtitle="Monthly token + USD spend per organization" action={<DollarSign size={15} className="text-gold-400" />} />
-            {(costs.data ?? []).length === 0 ? (
+            {costs.loading && !(costs.data ?? []).length ? (
+              <div className="p-4"><TableSkeleton rows={3} /></div>
+            ) : (costs.data ?? []).length === 0 ? (
               <EmptyState icon={<DollarSign size={22} />} title="No cost data" body="Tracked via GET /admin/ai/costs" />
             ) : (
               <div className="overflow-x-auto">
@@ -451,7 +455,9 @@ export default function AiAdmin() {
           </Card>
           <Card>
             <CardHeader title="Audit trail" subtitle="Recent AI calls — model, prompt, tokens, cost" action={<Activity size={15} className="text-phantix-300" />} />
-            {(audit.data ?? []).length === 0 ? (
+            {audit.loading && !(audit.data ?? []).length ? (
+              <div className="p-4"><TableSkeleton rows={3} /></div>
+            ) : (audit.data ?? []).length === 0 ? (
               <EmptyState icon={<Activity size={22} />} title="No audit logs" body="Tracked via GET /admin/ai/audit-logs" />
             ) : (
               <div className="overflow-x-auto">

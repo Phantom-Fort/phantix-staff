@@ -2,7 +2,7 @@ import React, { useRef } from "react";
 import { motion } from "framer-motion";
 import { Building2, MessageSquare, Server, Wrench, FileText, Activity, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
-import { PageHeader, StatCard, AnimatedNumber, Card, CardHeader, TableSkeleton } from "@/components/ui";
+import { PageHeader, StatCard, AnimatedNumber, Card, CardHeader, TableSkeleton, SkeletonCard } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useSmartPoll } from "@/lib/usePolling";
 import { useStore } from "@/lib/store";
@@ -160,7 +160,10 @@ type AuditVerify = {
 
 function AuditChainCard() {
   const verify = useResource<AuditVerify>(
-    async () => api.get<AuditVerify>("/admin/audit/verify-chain") ?? {},
+    async () => {
+      if (DEMO_MODE) return { intact: true } as AuditVerify;
+      return api.get<AuditVerify>("/admin/audit/verify-chain") ?? {};
+    },
     {} as AuditVerify,
     "audit-verify-chain",
   );
@@ -171,6 +174,9 @@ function AuditChainCard() {
   }, { intervalMs: 60000, hiddenIntervalMs: 300000 });
 
   const d = verify.data;
+  if (verify.loading && (!d || Object.keys(d).length === 0)) {
+    return <SkeletonCard className="mt-6" />;
+  }
   // Role/permission gaps or transient failures must not alarm the whole staff.
   if (verify.error || !d || Object.keys(d).length === 0) return null;
 
