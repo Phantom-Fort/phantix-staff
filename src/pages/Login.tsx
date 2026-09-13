@@ -47,7 +47,7 @@ export default function Login() {
         setError("Too many failed attempts. Try again in a moment.");
       } else {
         setLockedUntil(null);
-        setError(err instanceof Error ? err.message : "Login failed --- check your credentials");
+        setError(err instanceof Error ? err.message : "Login failed — check your credentials");
       }
     } finally {
       setLoading(false);
@@ -75,16 +75,28 @@ export default function Login() {
           {DEMO_MODE && (
             <div className="flex items-center gap-2 rounded-lg bg-severity-medium/10 border border-severity-medium/30 px-3 py-2 text-xs text-severity-medium">
               <AlertTriangle size={14} />
-              Demo mode --- any email + any password works
+              Demo mode — any email + any password works
             </div>
           )}
 
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg bg-severity-critical/10 border border-severity-critical/30 px-3 py-2 text-xs text-severity-critical">
-              <AlertTriangle size={14} />
-              {retryIn > 0 ? `Too many failed attempts. Try again in ${retryIn}s.` : error}
-            </div>
-          )}
+          {/* Always mounted — reserves the alert's footprint (border included, so
+              width never changes either) so a failed login doesn't shove the
+              form down a beat after the user already started reading it. */}
+          <div
+            className={
+              "flex min-h-[2.25rem] items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors " +
+              (error
+                ? "border-severity-critical/30 bg-severity-critical/10 text-severity-critical"
+                : "border-transparent")
+            }
+          >
+            {error && (
+              <>
+                <AlertTriangle size={14} className="shrink-0" />
+                {retryIn > 0 ? `Too many failed attempts. Try again in ${retryIn}s.` : error}
+              </>
+            )}
+          </div>
 
           <div>
             <label className="label">Staff Email</label>
@@ -132,7 +144,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-xs text-slate-500 mt-6">
-          Staff accounts only --- for internal use
+          Staff accounts only — for internal use
         </p>
       </motion.div>
     </div>

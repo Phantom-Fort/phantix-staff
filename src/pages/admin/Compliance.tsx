@@ -1,9 +1,12 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { FileCheck, RefreshCw, FileUp, ListChecks, Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  FileCheck, RefreshCw, FileUp, ListChecks, Loader2, Plus, Pencil, Trash2, Search, X, Link2, ShieldCheck,
+} from "lucide-react";
 import { PageHeader, Card, CardHeader, StatusBadge, TableSkeleton, EmptyState, Modal, Tabs } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
 import { api, DEMO_MODE } from "@/lib/api";
+import { cx } from "@/lib/utils";
 
 interface ComplianceFramework {
   id: string;
@@ -15,6 +18,14 @@ interface ComplianceFramework {
   is_active: boolean;
 }
 
+interface SourceControl {
+  framework_id?: string;
+  control_id?: string;
+  title?: string | null;
+  category?: string | null;
+  risk?: string | null;
+}
+
 interface GrcQuestion {
   id: number;
   question_key: string;
@@ -24,12 +35,21 @@ interface GrcQuestion {
   risk?: string | null;
   answer_type: string;
   framework_ids: string[];
+  source_controls?: SourceControl[];
   sort_order: number;
   is_active: boolean;
   is_expert_managed: boolean;
   updated_by?: string | null;
   expert_notes?: string | null;
 }
+
+interface SourceControlDraft {
+  framework_id: string;
+  control_id: string;
+  title: string;
+}
+
+const ALL_FRAMEWORKS = "__all__";
 
 const demoFrameworks: ComplianceFramework[] = [
   { id: "iso27001", name: "ISO 27001", version: "2022", description: "Information security management standard", control_count: 93, category: "international", is_active: true },
@@ -59,6 +79,10 @@ function categoryFor(fw: { jurisdiction_triggers?: unknown; framework_id?: strin
   return "—";
 }
 
+function controlLabel(c: SourceControl): string {
+  return c.control_id ? `${c.framework_id ?? ""} · ${c.control_id}`.replace(/^ · /, "") : "—";
+}
+
 export default function ComplianceAdmin() {
   const { toast } = useStore();
   const [tab, setTab] = useState("frameworks");
@@ -85,6 +109,10 @@ export default function ComplianceAdmin() {
   );
 
   const data = DEMO_MODE ? demoFrameworks : (frameworks.data ?? []);
+  const frameworkName = useCallback(
+    (id: string) => data.find((f) => f.id === id)?.name ?? id,
+    [data],
+  );
 
   const handleSeed = async () => {
     try {
@@ -127,28 +155,30 @@ export default function ComplianceAdmin() {
     }
   };
 
-  // ── Questionnaire (per framework) ─────────────────────────────────────────
-  const [selectedFw, setSelectedFw] = useState("");
+  // ── Questionnaire ─────────────────────────────────────────────────────────
+  // Reads the generic endpoint so "All frameworks" is one readable list; expert
+  // edits send the full framework_ids + source_controls so a multi-framework
+  // question never loses its other links.
+  const [selectedFw, setSelectedFw] = useState(ALL_FRAMEWORKS);
   const [questions, setQuestions] = useState<GrcQuestion[]>([]);
   const [qLoading, setQLoading] = useState(false);
+  const [search, setSearch] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ ...emptyQuestion });
+  const [formFrameworks, setFormFrameworks] = useState<string[]>([]);
+  const [formControls, setFormControls] = useState<SourceControlDraft[]>([]);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!selectedFw && data.length) setSelectedFw(data[0].id);
-  }, [data, selectedFw]);
-
   const loadQuestions = useCallback(async (fw: string) => {
-    if (!fw) return;
+    if (DEMO_MODE) {
+      setQuestions([]);
+      return;
+    }
     setQLoading(true);
     try {
-      if (DEMO_MODE) {
-        setQuestions([]);
-        return;
-      }
-      const raw = await api.get<any>(`/admin/compliance/frameworks/${fw}/questions`);
+      const qs = fw && fw !== ALL_FRAMEWORKS ? `?framework_id=${encodeURIComponent(fw)}` : "";
+      const raw = await api.get<any>(`/admin/compliance/questionnaire/questions${qs}`);
       setQuestions(Array.isArray(raw) ? raw : (raw?.items ?? []));
     } catch (e) {
       toast("error", "Could not load questions", e instanceof Error ? e.message : "");
@@ -161,8 +191,11 @@ export default function ComplianceAdmin() {
   useEffect(() => { void loadQuestions(selectedFw); }, [selectedFw, loadQuestions]);
 
   const openNewQuestion = () => {
+    const initialFw = selectedFw !== ALL_FRAMEWORKS && selectedFw ? [selectedFw] : (data[0] ? [data[0].id] : []);
     setEditingId(null);
     setForm({ ...emptyQuestion });
+    setFormFrameworks(initialFw);
+    setFormControls([]);
     setEditorOpen(true);
   };
 
@@ -177,43 +210,66 @@ export default function ComplianceAdmin() {
       expert_notes: q.expert_notes ?? "",
       is_active: q.is_active,
     });
+    setFormFrameworks([...(q.framework_ids ?? [])]);
+    setFormControls(
+      (q.source_controls ?? []).map((c) => ({
+        framework_id: String(c.framework_id ?? ""),
+        control_id: String(c.control_id ?? ""),
+        title: String(c.title ?? ""),
+      })),
+    );
     setEditorOpen(true);
   };
+
+  const toggleFormFramework = (id: string) => {
+    setFormFrameworks((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const addControl = () =>
+    setFormControls((rows) => [...rows, { framework_id: formFrameworks[0] ?? "", control_id: "", title: "" }]);
+
+  const updateControl = (i: number, patch: Partial<SourceControlDraft>) =>
+    setFormControls((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+
+  const removeControl = (i: number) =>
+    setFormControls((rows) => rows.filter((_, idx) => idx !== i));
 
   const saveQuestion = async () => {
     if (form.prompt.trim().length < 8) {
       toast("error", "Prompt too short", "At least 8 characters.");
       return;
     }
-    if (!selectedFw) {
-      toast("error", "Pick a framework first");
+    if (!formFrameworks.length) {
+      toast("error", "Pick at least one framework");
       return;
     }
+    const controls = formControls
+      .filter((c) => c.framework_id && c.control_id.trim())
+      .map((c) => ({
+        framework_id: c.framework_id,
+        control_id: c.control_id.trim(),
+        title: c.title.trim() || null,
+      }));
     setBusy(true);
     try {
+      const payload = {
+        prompt: form.prompt,
+        category: form.category || null,
+        risk: form.risk || null,
+        answer_type: form.answer_type,
+        help_text: form.help_text || null,
+        expert_notes: form.expert_notes || null,
+        is_active: form.is_active,
+        framework_ids: formFrameworks,
+        source_controls: controls,
+      };
       if (editingId != null) {
-        await api.patch(`/admin/compliance/questionnaire/questions/${editingId}`, {
-          prompt: form.prompt,
-          category: form.category || null,
-          risk: form.risk || null,
-          answer_type: form.answer_type,
-          help_text: form.help_text || null,
-          expert_notes: form.expert_notes || null,
-          is_active: form.is_active,
-          framework_ids: [selectedFw],
-        });
+        await api.patch(`/admin/compliance/questionnaire/questions/${editingId}`, payload);
         toast("success", "Question updated");
       } else {
-        await api.post("/admin/compliance/questionnaire/questions", {
-          prompt: form.prompt,
-          category: form.category || null,
-          risk: form.risk || null,
-          answer_type: form.answer_type,
-          help_text: form.help_text || null,
-          expert_notes: form.expert_notes || null,
-          is_active: form.is_active,
-          framework_ids: [selectedFw],
-        });
+        await api.post("/admin/compliance/questionnaire/questions", payload);
         toast("success", "Question created");
       }
       setEditorOpen(false);
@@ -244,6 +300,17 @@ export default function ComplianceAdmin() {
       toast("error", "Rebuild failed", e instanceof Error ? e.message : "");
     }
   };
+
+  const visibleQuestions = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return questions;
+    return questions.filter((q) =>
+      [q.prompt, q.question_key, q.category ?? "", ...(q.framework_ids ?? [])]
+        .join(" ")
+        .toLowerCase()
+        .includes(term),
+    );
+  }, [questions, search]);
 
   return (
     <div>
@@ -333,16 +400,26 @@ export default function ComplianceAdmin() {
         <Card>
           <CardHeader
             title="GRC questionnaire catalog"
-            subtitle="Expert-curated questions per framework. Auto-generated questions are rebuilt from controls; expert edits are preserved."
+            subtitle="Read and edit every question. Multi-framework and mapped controls are preserved; expert edits survive rebuilds."
             action={
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    className="input w-56 !py-1.5 !pl-8 text-sm"
+                    placeholder="Search prompts, keys, tags…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
                 <select className="input w-auto py-1.5 text-sm" value={selectedFw} onChange={(e) => setSelectedFw(e.target.value)}>
+                  <option value={ALL_FRAMEWORKS}>All frameworks</option>
                   {data.map((fw) => <option key={fw.id} value={fw.id}>{fw.name}</option>)}
                 </select>
                 <button className="btn-ghost text-sm px-3 py-1.5" onClick={() => void rebuild()}>
                   <RefreshCw size={14} /> Rebuild
                 </button>
-                <button className="btn-primary text-sm px-3 py-1.5" onClick={openNewQuestion} disabled={!selectedFw}>
+                <button className="btn-primary text-sm px-3 py-1.5" onClick={openNewQuestion} disabled={!data.length}>
                   <Plus size={14} /> New question
                 </button>
               </div>
@@ -350,10 +427,10 @@ export default function ComplianceAdmin() {
           />
           {qLoading ? (
             <div className="p-4"><TableSkeleton rows={6} cols={4} /></div>
-          ) : questions.length === 0 ? (
+          ) : visibleQuestions.length === 0 ? (
             <EmptyState
               icon={<ListChecks size={24} />}
-              title="No questions for this framework"
+              title={questions.length ? "No questions match" : "No questions for this selection"}
               body="Seed/rebuild from framework controls, or add an expert-curated question."
               action={<button onClick={openNewQuestion} className="btn-primary">New question</button>}
             />
@@ -363,24 +440,47 @@ export default function ComplianceAdmin() {
                 <thead>
                   <tr className="border-b border-phantix-700/40">
                     <th className="th">Question</th>
+                    <th className="th">Frameworks</th>
+                    <th className="th">Mapped controls</th>
                     <th className="th">Category</th>
                     <th className="th">Risk</th>
-                    <th className="th">Answer</th>
                     <th className="th">Source</th>
                     <th className="th">Status</th>
                     <th className="th text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {questions.map((q) => (
+                  {visibleQuestions.map((q) => (
                     <tr key={q.id} className="border-b border-phantix-700/20 hover:bg-phantix-800/40 transition-colors">
-                      <td className="td max-w-[420px]">
+                      <td className="td max-w-[380px]">
                         <p className="text-sm text-slate-200">{q.prompt}</p>
                         <p className="mt-0.5 font-mono text-[10px] text-slate-500">{q.question_key}</p>
+                        {q.help_text && <p className="mt-1 text-[11px] text-slate-500">{q.help_text}</p>}
+                      </td>
+                      <td className="td">
+                        <div className="flex flex-wrap gap-1">
+                          {(q.framework_ids ?? []).map((f) => (
+                            <span key={f} className="chip border-phantix-600/40 bg-phantix-800/50 text-[10px] text-slate-300" title={frameworkName(f)}>
+                              {f}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="td max-w-[220px]">
+                        {q.source_controls?.length ? (
+                          <div className="flex flex-wrap gap-1">
+                            {q.source_controls.map((c, i) => (
+                              <span key={`${c.framework_id}-${c.control_id}-${i}`} className="chip border-gold-400/25 bg-gold-400/5 text-[10px] text-gold-200" title={c.title ?? ""}>
+                                <Link2 size={9} className="mr-0.5 inline" />{controlLabel(c)}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-600">—</span>
+                        )}
                       </td>
                       <td className="td text-xs text-slate-400">{q.category || "—"}</td>
                       <td className="td text-xs capitalize text-slate-300">{q.risk || "—"}</td>
-                      <td className="td text-xs text-slate-400">{q.answer_type}</td>
                       <td className="td text-xs">
                         {q.is_expert_managed
                           ? <span className="chip border-gold-400/30 bg-gold-400/10 text-gold-300">expert</span>
@@ -412,6 +512,32 @@ export default function ComplianceAdmin() {
             <label className="label">Prompt</label>
             <textarea className="input !min-h-[90px]" value={form.prompt} onChange={(e) => setForm({ ...form, prompt: e.target.value })} placeholder="Do you maintain an inventory of information assets?" />
           </div>
+
+          <div>
+            <label className="label">Frameworks this question applies to</label>
+            <div className="flex flex-wrap gap-1.5 rounded-md border border-phantix-700/40 bg-phantix-950/40 p-2">
+              {data.map((fw) => {
+                const on = formFrameworks.includes(fw.id);
+                return (
+                  <button
+                    key={fw.id}
+                    type="button"
+                    onClick={() => toggleFormFramework(fw.id)}
+                    className={cx(
+                      "chip text-[11px] transition-colors",
+                      on ? "border-gold-400/40 bg-gold-400/15 text-gold-200" : "border-phantix-600/40 text-slate-400 hover:text-slate-200",
+                    )}
+                    title={fw.name}
+                  >
+                    {on ? "✓ " : ""}{fw.id}
+                  </button>
+                );
+              })}
+              {!data.length && <span className="text-xs text-slate-500">No frameworks loaded.</span>}
+            </div>
+            <p className="mt-1 text-[11px] text-slate-500">Select one or more — this is preserved on save.</p>
+          </div>
+
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <label className="label">Category</label>
@@ -432,6 +558,51 @@ export default function ComplianceAdmin() {
               </select>
             </div>
           </div>
+
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="label !mb-0">Mapped source controls</label>
+              <button type="button" className="btn-ghost !px-2 !py-1 !text-xs" onClick={addControl}>
+                <Plus size={12} /> Add control
+              </button>
+            </div>
+            {formControls.length === 0 ? (
+              <p className="rounded-md border border-phantix-700/40 bg-phantix-950/40 p-2 text-[11px] text-slate-500">
+                No mapped controls. Add the framework/control this question evidences.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {formControls.map((row, i) => (
+                  <div key={i} className="grid grid-cols-12 items-center gap-2">
+                    <select
+                      className="input col-span-3 !py-1.5 text-xs"
+                      value={row.framework_id}
+                      onChange={(e) => updateControl(i, { framework_id: e.target.value })}
+                    >
+                      <option value="">framework…</option>
+                      {data.map((fw) => <option key={fw.id} value={fw.id}>{fw.id}</option>)}
+                    </select>
+                    <input
+                      className="input col-span-3 !py-1.5 text-xs"
+                      placeholder="control id (e.g. NDPA-34)"
+                      value={row.control_id}
+                      onChange={(e) => updateControl(i, { control_id: e.target.value })}
+                    />
+                    <input
+                      className="input col-span-5 !py-1.5 text-xs"
+                      placeholder="control title (optional)"
+                      value={row.title}
+                      onChange={(e) => updateControl(i, { title: e.target.value })}
+                    />
+                    <button type="button" className="col-span-1 btn-ghost !px-1.5 !py-1 text-severity-critical" onClick={() => removeControl(i)} aria-label="Remove control">
+                      <X size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="label">Help text (optional)</label>
             <textarea className="input !min-h-[60px]" value={form.help_text} onChange={(e) => setForm({ ...form, help_text: e.target.value })} />
@@ -444,11 +615,16 @@ export default function ComplianceAdmin() {
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} className="rounded accent-gold-400" />
             Active
           </label>
-          <div className="flex justify-end gap-3">
-            <button className="btn-secondary" disabled={busy} onClick={() => setEditorOpen(false)}>Cancel</button>
-            <button className="btn-primary" disabled={busy} onClick={() => void saveQuestion()}>
-              {busy ? <Loader2 size={14} className="animate-spin" /> : <FileCheck size={14} />} {editingId ? "Save changes" : "Create question"}
-            </button>
+          <div className="flex items-center justify-between gap-3">
+            <p className="flex items-center gap-1 text-[11px] text-slate-500">
+              <ShieldCheck size={12} /> {formFrameworks.length} framework(s) · {formControls.filter((c) => c.framework_id && c.control_id).length} control(s)
+            </p>
+            <div className="flex justify-end gap-3">
+              <button className="btn-secondary" disabled={busy} onClick={() => setEditorOpen(false)}>Cancel</button>
+              <button className="btn-primary" disabled={busy} onClick={() => void saveQuestion()}>
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <FileCheck size={14} />} {editingId ? "Save changes" : "Create question"}
+              </button>
+            </div>
           </div>
         </div>
       </Modal>

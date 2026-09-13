@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Wrench, RefreshCw, DollarSign, Plus, Edit3, EyeOff, Eye, Upload, AlertTriangle } from "lucide-react";
-import { PageHeader, Card, StatusBadge, Modal, TableSkeleton, EmptyState } from "@/components/ui";
+import { PageHeader, Card, StatusBadge, Modal, TableSkeleton, EmptyState, StatGridSkeleton } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
 import { api, DEMO_MODE } from "@/lib/api";
@@ -64,14 +64,17 @@ export default function ToolingAdmin() {
   const [form, setForm] = useState(emptyForm);
   const [provisions, setProvisions] = useState<Provision[]>([]);
   const [stats, setStats] = useState<{ total_tools: number; active_tools: number; free_tools: number; paid_tools: number; provisions: number; active_subscriptions: number } | null>(null);
+  const [extraLoading, setExtraLoading] = useState(!DEMO_MODE);
 
   const toolsRes = useResource<AdminTool[]>(loadToolCatalog, []);
   const data = DEMO_MODE ? demoTools : (toolsRes.data ?? []);
 
   React.useEffect(() => {
     if (DEMO_MODE) return;
-    api.get<any>("/admin/tooling/provisions?limit=50").then(r => setProvisions(r?.items ?? [])).catch(() => {});
-    api.get<any>("/admin/tooling/stats").then(r => setStats(r)).catch(() => {});
+    Promise.allSettled([
+      api.get<any>("/admin/tooling/provisions?limit=50").then(r => setProvisions(r?.items ?? [])),
+      api.get<any>("/admin/tooling/stats").then(r => setStats(r)),
+    ]).finally(() => setExtraLoading(false));
   }, []);
 
   const handleSeed = async () => { try { await api.post("/admin/tooling/tools/seed", {}); toast("success", "Seeded"); toolsRes.refresh(); } catch (e) { toast("error", "Seed failed"); } };
@@ -108,6 +111,7 @@ export default function ToolingAdmin() {
         {[{ id: "catalog", label: "Catalog" }, { id: "provisions", label: "Provisions" }].map(t => <button key={t.id} onClick={() => setTab(t.id as any)} className={cx("rounded-lg px-3 py-1.5 text-xs font-medium border", tab === t.id ? "border-gold-400/40 bg-gold-400/12 text-gold-300" : "border-transparent text-slate-500 hover:text-slate-300")}>{t.label}</button>)}
       </div>
 
+      {extraLoading && !stats && <div className="mb-4"><StatGridSkeleton count={6} /></div>}
       {stats && (
         <div className="mb-4 grid grid-cols-2 md:grid-cols-6 gap-3">
           <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-white">{stats.total_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Total tools</p></div>
@@ -151,7 +155,7 @@ export default function ToolingAdmin() {
       )}
 
       {tab === "provisions" && (
-        provisions.length === 0 ? <EmptyState icon={<Eye size={24} />} title="No provisions" body="Grant tools to organizations via the catalog." /> : (
+        extraLoading && provisions.length === 0 ? <TableSkeleton rows={4} /> : provisions.length === 0 ? <EmptyState icon={<Eye size={24} />} title="No provisions" body="Grant tools to organizations via the catalog." /> : (
           <Card className="!p-0 overflow-hidden"><table className="w-full"><thead><tr className="border-b border-phantix-700/40"><th className="th">Tool Key</th><th className="th">Org ID</th><th className="th">Status</th><th className="th">Notes</th><th className="th w-12" /></tr></thead><tbody>{provisions.map(p => <tr key={p.id} className="border-b border-phantix-800/40"><td className="td font-mono text-xs text-gold-300">{p.tool_key}</td><td className="td text-xs">#{p.organization_id}</td><td className="td"><span className={cx("chip text-[10px]", p.status === "provisioned" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{p.status}</span></td><td className="td text-xs text-slate-400 max-w-[200px] truncate">{p.admin_notes || "-"}</td><td className="td"><button onClick={() => handleSuspendProvision(p)} className="btn-ghost text-xs px-2 py-1 text-severity-medium">{p.status === "provisioned" ? "Suspend" : "Re-enable"}</button></td></tr>)}</tbody></table></Card>
         )
       )}

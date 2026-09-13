@@ -18,6 +18,7 @@ import {
   StepsContent,
 } from "@/components/prompt-kit/steps";
 import { PaneHeader, ResizeHandle } from "@/components/workbench";
+import PentestTodo from "@/components/PentestTodo";
 import { useDragResize } from "@/lib/useDragResize";
 import {
   deriveAttackGraph,
@@ -113,7 +114,7 @@ function NodeInspector({ node }: { node: AttackNode }) {
           <p className="wb-xs whitespace-pre-wrap break-words leading-relaxed text-slate-400">{node.reasoning[node.reasoning.length - 1]}</p>
         </div>
       ) : (
-        <p className="wb-xs text-slate-500">
+        <p className="wb-xs text-slate-400">
           {node.status === "active"
             ? "Working — waiting on first tool result…"
             : node.status === "blocked"
@@ -186,10 +187,10 @@ function EvidenceDrawer({
         <p className="wb-sm min-w-0 flex-1 truncate font-semibold text-white">{finding.title}</p>
         {finding.cve && <span className="chip !px-1.5 !py-0 wb-2xs font-mono text-gold-300">{finding.cve}</span>}
         <div className="flex shrink-0 rounded-lg border border-phantix-700/40 p-0.5">
-          <button onClick={() => setTab("evidence")} className={cx("wb-2xs rounded-md px-2 py-0.5", tab === "evidence" ? "bg-phantix-800 text-white" : "text-slate-500")}>Evidence</button>
-          <button onClick={() => setTab("autofix")} className={cx("wb-2xs rounded-md px-2 py-0.5", tab === "autofix" ? "bg-phantix-800 text-white" : "text-slate-500")}>Autofix</button>
+          <button onClick={() => setTab("evidence")} className={cx("wb-2xs rounded-md px-2 py-0.5", tab === "evidence" ? "bg-phantix-800 text-white" : "text-slate-400")}>Evidence</button>
+          <button onClick={() => setTab("autofix")} className={cx("wb-2xs rounded-md px-2 py-0.5", tab === "autofix" ? "bg-phantix-800 text-white" : "text-slate-400")}>Autofix</button>
         </div>
-        <button onClick={onClose} className="shrink-0 rounded p-1 text-slate-500 hover:text-slate-200" aria-label="Close evidence"><XCircle size={14} /></button>
+        <button onClick={onClose} className="shrink-0 rounded p-1 text-slate-400 hover:text-slate-200" aria-label="Close evidence"><XCircle size={14} /></button>
       </div>
       <div className="wb-scroll min-h-0 flex-1 overflow-y-auto wb-pad">
         {tab === "evidence" ? (
@@ -200,11 +201,11 @@ function EvidenceDrawer({
                 <span className={cx("inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-medium", badge.cls)}>
                   {badge.icon} {badge.label}
                 </span>
-                {v?.verifier && <span className="wb-2xs font-mono text-slate-500">{v.verifier}</span>}
-                {v?.by && <span className="wb-2xs text-slate-600">by {v.by}</span>}
+                {v?.verifier && <span className="wb-2xs font-mono text-slate-400">{v.verifier}</span>}
+                {v?.by && <span className="wb-2xs text-slate-400">by {v.by}</span>}
               </div>
               {v?.reason && <p className="wb-2xs mt-1.5 leading-relaxed text-slate-400">{v.reason}</p>}
-              {v?.attempted_at && <p className="wb-2xs mt-1 text-slate-600">checked {new Date(v.attempted_at).toLocaleString()}</p>}
+              {v?.attempted_at && <p className="wb-2xs mt-1 text-slate-400">checked {new Date(v.attempted_at).toLocaleString()}</p>}
               {onVerify && finding.status !== "validated" && finding.status !== "rejected" && (
                 <div className="mt-2 flex gap-1.5">
                   <button
@@ -226,7 +227,7 @@ function EvidenceDrawer({
                 </div>
               )}
             </div>
-            <p className="wb-2xs break-all font-mono text-slate-500">{finding.target}</p>
+            <p className="wb-2xs break-all font-mono text-slate-400">{finding.target}</p>
             {finding.evidence.request && (
               <div className="group relative">
                 <p className="wb-pane-title mb-1">Request <CopyBtn text={finding.evidence.request} className="ml-1" /></p>
@@ -239,7 +240,7 @@ function EvidenceDrawer({
                 <pre className="wb-2xs whitespace-pre-wrap rounded-lg border border-phantix-700/40 bg-phantix-950/70 p-2 font-mono leading-relaxed text-slate-300">{finding.evidence.response}</pre>
               </div>
             )}
-            <div className="flex flex-wrap gap-1.5 text-slate-500">
+            <div className="flex flex-wrap gap-1.5 text-slate-400">
               {finding.evidence.hash && <span className="chip !px-1.5 !py-0 wb-2xs font-mono">{finding.evidence.hash}</span>}
               <span className="chip !px-1.5 !py-0 wb-2xs capitalize">{finding.status}</span>
             </div>
@@ -256,7 +257,7 @@ function EvidenceDrawer({
             <button className="btn-primary w-full !py-1.5 wb-xs"><FileCode2 size={12} className="mr-1 inline" /> Stage pull request</button>
           </div>
         ) : (
-          <p className="wb-xs text-slate-500">No autofix preview for this finding.</p>
+          <p className="wb-xs text-slate-400">No autofix preview for this finding.</p>
         )}
       </div>
     </motion.div>
@@ -274,10 +275,10 @@ function ReasoningPanel({ text, open, onToggle }: { text: string; open: boolean;
         <BrainCircuit size={13} className="shrink-0 text-phantix-300" />
         <span className="wb-xs font-semibold uppercase tracking-wider text-slate-400">Reasoning</span>
         <span className="chip !px-1.5 !py-0 wb-2xs font-mono text-phantix-300">live</span>
-        <ChevronDown size={13} className={cx("ml-auto shrink-0 text-slate-500 transition-transform", open ? "" : "-rotate-90")} />
+        <ChevronDown size={13} className={cx("ml-auto shrink-0 text-slate-400 transition-transform", open ? "" : "-rotate-90")} />
       </button>
       {open && (
-        <pre className="wb-scroll wb-xs max-h-64 overflow-y-auto whitespace-pre-wrap break-words border-t border-phantix-700/30 px-3 py-2 font-mono leading-relaxed text-slate-500">
+        <pre className="wb-scroll wb-xs max-h-64 overflow-y-auto whitespace-pre-wrap break-words border-t border-phantix-700/30 px-3 py-2 font-mono leading-relaxed text-slate-400">
           {text}
         </pre>
       )}
@@ -301,7 +302,7 @@ function SessionSummary({
         {phaseStats.map((p) => (
           <span
             key={p.id}
-            className={cx("flex items-center gap-1 wb-2xs capitalize", p.live ? "text-gold-300" : p.done > 0 ? "text-emerald-300" : "text-slate-500")}
+            className={cx("flex items-center gap-1 wb-2xs capitalize", p.live ? "text-gold-300" : p.done > 0 ? "text-emerald-300" : "text-slate-400")}
             title={`${p.done}/${p.total || 0} nodes`}
           >
             <span className={cx("h-1.5 w-1.5 rounded-full", p.live ? "animate-pulse bg-gold-400" : p.done > 0 ? "bg-emerald-400" : "bg-slate-600")} />
@@ -310,10 +311,10 @@ function SessionSummary({
         ))}
       </div>
       <div className="ml-auto flex items-center gap-2.5">
-        <span className="wb-2xs text-slate-500"><span className="font-semibold text-slate-300">{turnMetrics.turns}</span> turns</span>
-        <span className="wb-2xs text-slate-500"><span className="font-semibold text-slate-300">{turnMetrics.tools}</span> tools</span>
-        <span className="wb-2xs text-slate-500"><span className="font-semibold text-slate-300">{findingsCount}</span> findings</span>
-        <span className="wb-2xs text-slate-500" title={`${turnMetrics.promptTokens} prompt + ${turnMetrics.completionTokens} completion tokens`}>
+        <span className="wb-2xs text-slate-400"><span className="font-semibold text-slate-300">{turnMetrics.turns}</span> turns</span>
+        <span className="wb-2xs text-slate-400"><span className="font-semibold text-slate-300">{turnMetrics.tools}</span> tools</span>
+        <span className="wb-2xs text-slate-400"><span className="font-semibold text-slate-300">{findingsCount}</span> findings</span>
+        <span className="wb-2xs text-slate-400" title={`${turnMetrics.promptTokens} prompt + ${turnMetrics.completionTokens} completion tokens`}>
           <span className="font-semibold text-slate-300">{(totalTokens / 1000).toFixed(1)}k</span> tokens
         </span>
       </div>
@@ -504,11 +505,11 @@ export default function AgiConsole({
   return (
     <div className="wb-pane flex h-full min-h-0 flex-col bg-phantix-950">
       <div className="flex flex-wrap items-center gap-2 border-b border-phantix-700/40 bg-phantix-900/40 px-4 py-2">
-        <span className="wb-2xs flex shrink-0 items-center gap-1.5 font-semibold uppercase tracking-[0.16em] text-slate-500">
+        <span className="wb-2xs flex shrink-0 items-center gap-1.5 font-semibold uppercase tracking-[0.16em] text-slate-400">
           <Globe2 size={12} className="text-gold-400" /> Scope
         </span>
         <div className="wb-scroll wb-fade-x flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-0.5">
-          {allowlist.length === 0 && <span className="chip !px-2 !py-0.5 wb-2xs shrink-0 text-slate-500">no allowlist</span>}
+          {allowlist.length === 0 && <span className="chip !px-2 !py-0.5 wb-2xs shrink-0 text-slate-400">no allowlist</span>}
           {allowlist.map((t) => (
             <span key={t} className="chip !px-2 !py-0.5 wb-2xs shrink-0 font-mono text-emerald-300 transition-colors hover:border-emerald-400/40" title={t}>{t}</span>
           ))}
@@ -522,7 +523,7 @@ export default function AgiConsole({
             {running && !paused && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />}
             {paused ? "paused" : running ? "live" : session.status}
           </span>
-          <span className="chip !px-2 !py-0.5 wb-2xs font-mono text-slate-500">#{session.id}</span>
+          <span className="chip !px-2 !py-0.5 wb-2xs font-mono text-slate-400">#{session.id}</span>
           {running && (
             <button onClick={onTogglePause} className="btn-secondary !px-2.5 !py-1 wb-xs" title={paused ? "Resume agent loop" : "Pause agent loop"}>
               {paused ? <Play size={12} className="mr-1 inline" /> : <Pause size={12} className="mr-1 inline" />}
@@ -590,7 +591,7 @@ export default function AgiConsole({
                     <button
                       type="button"
                       onClick={() => setLeftOpen(false)}
-                      className="rounded p-1 text-slate-500 transition-colors hover:bg-phantix-800 hover:text-slate-200"
+                      className="rounded p-1 text-slate-400 transition-colors hover:bg-phantix-800 hover:text-slate-200"
                       title="Collapse phases"
                       aria-label="Collapse phases"
                     >
@@ -617,10 +618,15 @@ export default function AgiConsole({
                               <span className={cx("h-1.5 w-1.5 rounded-full", live ? "animate-pulse bg-gold-400" : complete ? "bg-emerald-400" : "bg-slate-600")} />
                               {phase.label}
                             </span>
-                            <span className="wb-2xs font-mono text-slate-500">{done}/{total}</span>
+                            <span className="wb-2xs font-mono text-slate-400">{done}/{total}</span>
                           </div>
                           <div className="mt-1 h-1 overflow-hidden rounded-full bg-phantix-700/40">
-                            <div className={cx("h-full rounded-full transition-all duration-500", live ? "bg-gold-400" : "bg-emerald-400/80")} style={{ width: `${pct}%` }} />
+                            {/* Animate `transform: scaleX()`, not `width` (Hallmark gate 14) —
+                                stays off the layout/paint path, only composites. */}
+                            <div
+                              className={cx("h-full w-full origin-left rounded-full transition-transform duration-[400ms] ease-out", live ? "bg-gold-400" : "bg-emerald-400/80")}
+                              style={{ transform: `scaleX(${pct / 100})` }}
+                            />
                           </div>
                         </div>
                         {/* Granular phases within this group */}
@@ -638,7 +644,7 @@ export default function AgiConsole({
                               <span className={cx("wb-2xs min-w-0 flex-1 truncate", n.status === "active" || n.status === "blocked" ? "text-gold-300" : n.status === "succeeded" ? "text-emerald-300/80" : "text-slate-400")}>
                                 {n.label}
                               </span>
-                              {n.tool && <span className="wb-2xs shrink-0 font-mono text-slate-600">{n.tool}</span>}
+                              {n.tool && <span className="wb-2xs shrink-0 font-mono text-slate-400">{n.tool}</span>}
                             </button>
                           ))}
                         </div>
@@ -647,8 +653,9 @@ export default function AgiConsole({
                   })}
                 </div>
               </div>
-              <div className="wb-scroll min-h-0 flex-1 overflow-y-auto wb-pad">
-                {selected ? <NodeInspector node={selected} /> : <p className="wb-xs text-slate-500">Select a node.</p>}
+              <div className="wb-scroll min-h-0 flex-1 space-y-2 overflow-y-auto wb-pad">
+                <PentestTodo job={session.job as Parameters<typeof PentestTodo>[0]["job"]} running={running && !paused} />
+                {selected ? <NodeInspector node={selected} /> : <p className="wb-xs text-slate-400">Select a node for step details.</p>}
               </div>
             </aside>
             <ResizeHandle onMouseDown={left.onHandleMouseDown} dragging={left.dragging} label="Resize attack tree pane" onDoubleClick={() => left.setSize(LEFT.reset)} />
@@ -657,7 +664,7 @@ export default function AgiConsole({
           <button
             type="button"
             onClick={() => setLeftOpen(true)}
-            className="flex w-7 shrink-0 flex-col items-center justify-start gap-2 border-r border-phantix-700/40 bg-phantix-900/40 pt-3 text-slate-500 transition-colors hover:text-gold-300"
+            className="flex w-7 shrink-0 flex-col items-center justify-start gap-2 border-r border-phantix-700/40 bg-phantix-900/40 pt-3 text-slate-400 transition-colors hover:text-gold-300"
             title="Expand attack tree"
             aria-label="Expand attack tree"
           >
@@ -675,7 +682,7 @@ export default function AgiConsole({
                   <BrainCircuit size={12} className="text-gold-400" />
                   {activePersonaLabel}
                   <span className="wb-2xs rounded-full bg-phantix-800/80 px-1 tabular-nums text-slate-400">{personaCounts[persona]}</span>
-                  <ChevronDown size={12} className="text-slate-500" />
+                  <ChevronDown size={12} className="text-slate-400" />
                 </span>
               }
             >
@@ -690,7 +697,7 @@ export default function AgiConsole({
                     >
                       <span className="flex w-full items-center justify-between gap-4">
                         {p.label}
-                        <span className="tabular-nums text-slate-500">{personaCounts[p.id]}</span>
+                        <span className="tabular-nums text-slate-400">{personaCounts[p.id]}</span>
                       </span>
                     </MenuItem>
                   ))}
@@ -700,13 +707,13 @@ export default function AgiConsole({
             <span className="mx-1 h-3.5 w-px bg-phantix-700/50" />
             <button
               onClick={() => setLanes((v) => !v)}
-              className={cx("wb-xs rounded-md px-2 py-1 transition-colors", lanes ? "bg-phantix-800 text-white" : "text-slate-500 hover:text-slate-300")}
+              className={cx("wb-xs rounded-md px-2 py-1 transition-colors", lanes ? "bg-phantix-800 text-white" : "text-slate-400 hover:text-slate-300")}
             >
               Swimlanes
             </button>
             <button
               onClick={() => setShowTerm((v) => !v)}
-              className={cx("wb-xs flex items-center gap-1 rounded-md px-2 py-1 transition-colors", showTerm ? "bg-phantix-800 text-white" : "text-slate-500 hover:text-slate-300")}
+              className={cx("wb-xs flex items-center gap-1 rounded-md px-2 py-1 transition-colors", showTerm ? "bg-phantix-800 text-white" : "text-slate-400 hover:text-slate-300")}
             >
               <Terminal size={12} /> Terminal
             </button>
@@ -783,7 +790,7 @@ export default function AgiConsole({
                 </div>
                 <div ref={toolsStick.scrollerRef} onScroll={toolsStick.onScroll} className="wb-scroll max-h-44 space-y-1.5 overflow-y-auto wb-pad">
                   {tools.length === 0 && engineCalls.length === 0 && (
-                    <p className="wb-xs py-3 text-center text-slate-600">
+                    <p className="wb-xs py-3 text-center text-slate-400">
                       No terminal output yet — the agent is executing via engines. Ask it to run commands in the container for raw output.
                     </p>
                   )}
@@ -797,9 +804,9 @@ export default function AgiConsole({
                   {engineCalls.map((e, i) => (
                     <p key={`ec-${i}`} className="wb-2xs flex items-center gap-1.5 font-mono text-slate-400">
                       {e.ok ? <CheckCircle2 size={11} className="shrink-0 text-emerald-400" /> : <XCircle size={11} className="shrink-0 text-severity-critical" />}
-                      <span className="text-slate-500">engine</span>
+                      <span className="text-slate-400">engine</span>
                       <span className="break-all">{e.engine_id}.{e.op}</span>
-                      {e.latency_ms != null && <span className="ml-auto shrink-0 tabular-nums text-slate-600">{e.latency_ms}ms</span>}
+                      {e.latency_ms != null && <span className="ml-auto shrink-0 tabular-nums text-slate-400">{e.latency_ms}ms</span>}
                     </p>
                   ))}
                   <div ref={toolsStick.endRef} />
@@ -829,10 +836,10 @@ export default function AgiConsole({
                           {busy ? <Loader2 size={12} className="animate-spin text-severity-medium" /> : <Radar size={12} className="text-severity-medium" />}
                           <p className="wb-sm font-semibold text-amber-200">{a.tool_name ?? "state-changing step"}</p>
                           {risky && <span className="chip !px-1.5 !py-0 wb-2xs text-severity-critical">gate</span>}
-                          {busy && <span className="wb-2xs ml-auto text-slate-500">recording decision…</span>}
+                          {busy && <span className="wb-2xs ml-auto text-slate-400">recording decision…</span>}
                         </div>
                         <textarea value={draft} onChange={(e) => onOverrideDraft(a.id, e.target.value)} rows={2} className="wb-xs w-full rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1 font-mono text-slate-200 outline-none focus:border-gold-400/40" />
-                        {a.rationale && <p className="wb-2xs mt-1 line-clamp-2 leading-relaxed text-slate-500">{a.rationale}</p>}
+                        {a.rationale && <p className="wb-2xs mt-1 line-clamp-2 leading-relaxed text-slate-400">{a.rationale}</p>}
                         <div className="mt-1.5 flex gap-1.5">
                           <button onClick={() => tryApprove(a)} disabled={busy} className="btn-primary flex-1 !px-2 !py-1 wb-xs"><CheckCircle2 size={12} className="mr-1 inline" /> Approve</button>
                           <button onClick={() => onDecide(a, false)} disabled={busy} className="btn-ghost flex-1 !px-2 !py-1 wb-xs text-severity-critical"><XCircle size={12} className="mr-1 inline" /> Reject</button>
@@ -875,11 +882,11 @@ export default function AgiConsole({
                   aria-expanded={skillPlanOpen}
                   className="wb-pad-x wb-pad-y flex w-full items-center gap-1.5 text-left transition-colors hover:bg-phantix-800/40"
                 >
-                  <ChevronDown size={12} className={cx("shrink-0 text-slate-500 transition-transform duration-200", !skillPlanOpen && "-rotate-90")} />
+                  <ChevronDown size={12} className={cx("shrink-0 text-slate-400 transition-transform duration-200", !skillPlanOpen && "-rotate-90")} />
                   <BrainCircuit size={11} className="text-gold-400" />
                   <p className="wb-pane-title">Skill plan</p>
                   {skillPlan && (skillPlan.skills?.length ?? 0) > 0 && <span className="chip !px-1.5 !py-0 wb-2xs text-gold-300">{skillPlan.skills?.length ?? 0}</span>}
-                  <span className="wb-2xs ml-auto text-slate-600">{skillPlanOpen ? "Hide" : "Show"}</span>
+                  <span className="wb-2xs ml-auto text-slate-400">{skillPlanOpen ? "Hide" : "Show"}</span>
                 </button>
                 <div className={cx("wb-collapse", skillPlanOpen && "open")}>
                   <div className="wb-collapse-inner">
@@ -899,7 +906,7 @@ export default function AgiConsole({
                     <button
                       type="button"
                       onClick={() => setRightOpen(false)}
-                      className="rounded p-1 text-slate-500 transition-colors hover:bg-phantix-800 hover:text-slate-200"
+                      className="rounded p-1 text-slate-400 transition-colors hover:bg-phantix-800 hover:text-slate-200"
                       title="Collapse findings"
                       aria-label="Collapse findings"
                     >
@@ -928,7 +935,7 @@ export default function AgiConsole({
               </div>
               <div className="wb-scroll min-h-0 flex-1 overflow-y-auto">
                 {visibleFindings.length === 0 && (
-                  <p className="wb-xs px-3 py-6 text-center text-slate-600">
+                  <p className="wb-xs px-3 py-6 text-center text-slate-400">
                     {findings.length === 0 ? "No findings yet." : `No ${sevFilter} findings.`}
                   </p>
                 )}
@@ -940,7 +947,7 @@ export default function AgiConsole({
                       {(f.highlight || f.report_highlight) && <span className="wb-2xs mt-0.5 shrink-0 rounded border border-severity-critical/30 bg-severity-critical/10 px-1 text-severity-critical">pin</span>}
                       <span className="wb-xs min-w-0 flex-1 truncate text-slate-200">{f.title}</span>
                     </div>
-                    <div className="wb-2xs flex w-full items-center gap-1.5 pl-0.5 text-slate-500">
+                    <div className="wb-2xs flex w-full items-center gap-1.5 pl-0.5 text-slate-400">
                       {f.status === "validated" ? (
                         <><ShieldCheck size={9} className="text-emerald-400" /> validated</>
                       ) : f.status === "rejected" ? (
@@ -955,11 +962,11 @@ export default function AgiConsole({
                       </span>
                     )}
                     {f.verification?.reason && (
-                      <p className="wb-2xs line-clamp-2 w-full pl-0 italic leading-relaxed text-slate-500" title={f.verification.reason}>
+                      <p className="wb-2xs line-clamp-2 w-full pl-0 italic leading-relaxed text-slate-400" title={f.verification.reason}>
                         verifier: {f.verification.reason}
                       </p>
                     )}
-                    {f.business_impact && <p className="wb-2xs line-clamp-2 w-full pl-0 leading-relaxed text-slate-500">{f.business_impact}</p>}
+                    {f.business_impact && <p className="wb-2xs line-clamp-2 w-full pl-0 leading-relaxed text-slate-400">{f.business_impact}</p>}
                   </button>
                 ))}
               </div>
@@ -978,7 +985,7 @@ export default function AgiConsole({
           <button
             type="button"
             onClick={() => setRightOpen(true)}
-            className="flex w-7 shrink-0 flex-col items-center justify-start gap-2 border-l border-phantix-700/40 bg-phantix-900/40 pt-3 text-slate-500 transition-colors hover:text-gold-300"
+            className="flex w-7 shrink-0 flex-col items-center justify-start gap-2 border-l border-phantix-700/40 bg-phantix-900/40 pt-3 text-slate-400 transition-colors hover:text-gold-300"
             title="Expand findings"
             aria-label="Expand findings"
           >
@@ -1036,14 +1043,14 @@ export default function AgiConsole({
           />
           <button onClick={onSend} disabled={!running || paused || !instruction.trim()} className="btn-primary mt-0.5 !px-3 !py-1.5 wb-xs" aria-label="Send"><Send size={14} /></button>
         </div>
-        <p className="wb-xs mt-1.5 flex items-center gap-1.5 text-slate-600">
+        <p className="wb-xs mt-1.5 flex items-center gap-1.5 text-slate-400">
           <ShieldCheck size={11} className="shrink-0" />
           {sendHint === "queued"
             ? "Queued — press Enter again to send now, or wait for the current reply."
             : "Scoped to allowlist · high-risk actions require a second confirmation · pause freezes the loop"}
           <span className="ml-auto hidden shrink-0 items-center gap-1 sm:flex">
-            <kbd className="wb-2xs rounded border border-phantix-700/50 bg-phantix-900/60 px-1 font-mono text-slate-500">Enter</kbd> send
-            <kbd className="wb-2xs rounded border border-phantix-700/50 bg-phantix-900/60 px-1 font-mono text-slate-500">Shift+Enter</kbd> newline
+            <kbd className="wb-2xs rounded border border-phantix-700/50 bg-phantix-900/60 px-1 font-mono text-slate-400">Enter</kbd> send
+            <kbd className="wb-2xs rounded border border-phantix-700/50 bg-phantix-900/60 px-1 font-mono text-slate-400">Shift+Enter</kbd> newline
           </span>
         </p>
       </div>

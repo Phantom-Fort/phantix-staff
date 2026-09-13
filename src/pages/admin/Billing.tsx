@@ -52,9 +52,9 @@ const demoMetering: CreditMeteringMap = {
   fx: { ngn_per_usd: FX_NGN_PER_USD },
   credit_ngn: 1.5,
   credit_usd: 0.001,
-  plan_ai_ngn_mo: { free: 150, starter: 7500, growth: 30000 },
-  plan_ai_usd_mo: { free: 0.1, starter: 5, growth: 20 },
-  plan_credits_mo: { free: 100, starter: 5000, growth: 20000, enterprise: "custom" },
+  plan_ai_ngn_mo: { free: 0, starter: 7500, growth: 30000 },
+  plan_ai_usd_mo: { free: 0, starter: 5, growth: 20 },
+  plan_credits_mo: { free: 0, starter: 5000, growth: 20000, enterprise: "custom" },
   clusters: { economy_security: ["deepseek", "zai", "glm-4-flash"], economy_general: ["qwen-turbo"] },
   ngn_per_1m_tokens: { "deepseek-v4-flash": 315, "glm-4-flash": 150, "qwen-turbo": 225, "gpt-4o": 7500 },
   usd_per_1m_tokens: { "deepseek-v4-flash": 0.21, "glm-4-flash": 0.1 },
@@ -86,16 +86,19 @@ export default function BillingAdmin() {
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [redemptions, setRedemptions] = useState<RedemptionItem[]>([]);
   const [metering, setMetering] = useState<CreditMeteringMap | null>(null);
+  const [extraLoading, setExtraLoading] = useState(!DEMO_MODE);
 
   const { data: billing, loading, refresh } = useResource<BillingSettings>(async () => DEMO_MODE ? demoBilling : api.get("/admin/billing/settings"), {} as any);
   const { data: pricing } = useResource<PricingPreview>(async () => DEMO_MODE ? demoPricing : api.get("/admin/billing/pricing-preview"), {} as any);
 
   React.useEffect(() => {
     if (!DEMO_MODE) {
-      api.get<GatewayStatus>("/admin/billing/gateway").then(setGateway).catch(() => {});
-      api.get<CouponItem[] | { items: CouponItem[] }>("/admin/coupons").then((r) => setCoupons(Array.isArray(r) ? r : r.items ?? [])).catch(() => {});
-      api.get<RedemptionItem[] | { items: RedemptionItem[] }>("/admin/coupon-redemptions?limit=20").then((r) => setRedemptions(Array.isArray(r) ? r : r.items ?? [])).catch(() => {});
-      api.get<CreditMeteringMap>("/admin/billing/credits-metering").then(setMetering).catch(() => setMetering(null));
+      Promise.allSettled([
+        api.get<GatewayStatus>("/admin/billing/gateway").then(setGateway),
+        api.get<CouponItem[] | { items: CouponItem[] }>("/admin/coupons").then((r) => setCoupons(Array.isArray(r) ? r : r.items ?? [])),
+        api.get<RedemptionItem[] | { items: RedemptionItem[] }>("/admin/coupon-redemptions?limit=20").then((r) => setRedemptions(Array.isArray(r) ? r : r.items ?? [])),
+        api.get<CreditMeteringMap>("/admin/billing/credits-metering").then(setMetering),
+      ]).finally(() => setExtraLoading(false));
     } else {
       setGateway(demoGateway); setCoupons(demoCoupons); setRedemptions(demoRedemptions); setMetering(demoMetering);
     }
@@ -204,6 +207,7 @@ export default function BillingAdmin() {
                 <button onClick={openPriceChange} className="btn-secondary text-sm">Change Pricing</button>
                 <button onClick={() => setShowRenewalConfirm(true)} className="btn-secondary text-sm"><RefreshCw size={14} /> Run Renewals</button>
               </div>
+              {extraLoading && !metering && <TableSkeleton rows={3} />}
               {metering && (
                 <Card>
                   <CardHeader title="AI credit metering" subtitle={`FX ₦${metering.fx?.ngn_per_usd ?? FX_NGN_PER_USD}/USD · ${formatCredits(metering.plan_credits_mo?.starter)} / ${formatCredits(metering.plan_credits_mo?.growth)} credits`} />
@@ -263,7 +267,7 @@ export default function BillingAdmin() {
       {tab === "coupons" && (
         <div className="space-y-4">
           <button onClick={() => setShowCouponGen(true)} className="btn-primary text-sm"><Ticket size={14} /> Generate Coupons</button>
-          {coupons.length === 0 ? <EmptyState icon={<Ticket size={24} />} title="No coupons" body="Generate beta access codes for trial access." /> : (
+          {extraLoading && coupons.length === 0 ? <TableSkeleton rows={3} /> : coupons.length === 0 ? <EmptyState icon={<Ticket size={24} />} title="No coupons" body="Generate beta access codes for trial access." /> : (
             <div className="space-y-2">
               {coupons.map(c => (
                 <Card key={c.id}><div className="flex flex-wrap items-center gap-3"><span className={cx("chip", c.is_active ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{c.is_active ? "Active" : "Inactive"}</span><span className="font-mono text-sm text-slate-200">{c.code}</span><span className="text-xs text-slate-400">{c.label} — {c.duration_days}d · {c.redemption_count}{c.max_redemptions ? `/${c.max_redemptions}` : ""} used</span><span className="ml-auto text-xs text-slate-500">{timeAgo(c.created_at)}</span>{c.is_active && <button onClick={() => handleDeactivateCoupon(c.id)} className="btn-ghost text-xs px-2 py-1 text-severity-critical"><XCircle size={12} /></button>}</div></Card>
@@ -292,7 +296,7 @@ export default function BillingAdmin() {
 
       {tab === "redemptions" && (
         <div className="space-y-2">
-          {redemptions.length === 0 ? <EmptyState icon={<CheckCircle2 size={24} />} title="No redemptions" body="No organizations have redeemed coupons yet." /> : (
+          {extraLoading && redemptions.length === 0 ? <TableSkeleton rows={3} /> : redemptions.length === 0 ? <EmptyState icon={<CheckCircle2 size={24} />} title="No redemptions" body="No organizations have redeemed coupons yet." /> : (
             <Card className="!p-0 overflow-hidden"><table className="w-full"><thead><tr className="border-b border-phantix-700/40"><th className="th">Code</th><th className="th">Org ID</th><th className="th">Redeemed</th><th className="th">Expires</th><th className="th">Status</th></tr></thead><tbody>{redemptions.map(r => <tr key={r.id} className="border-b border-phantix-800/40"><td className="td font-mono text-xs text-gold-300">{r.code_snapshot}</td><td className="td text-xs">#{r.organization_id}</td><td className="td text-xs text-slate-400">{timeAgo(r.redeemed_at)}</td><td className="td text-xs text-slate-400">{timeAgo(r.access_ends_at)}</td><td className="td"><span className={cx("chip text-[10px]", r.status === "active" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{r.status}</span></td></tr>)}</tbody></table></Card>
           )}
         </div>

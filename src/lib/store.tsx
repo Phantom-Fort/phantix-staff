@@ -117,6 +117,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const hydrateSession = useCallback(async () => {
     if (!tokens.staff) return;
+    if (DEMO_MODE) return;
     try {
       const me = await api.get<MeResponse>("/staff/me");
       const email = me.email || tokens.email || emailFromToken() || "";

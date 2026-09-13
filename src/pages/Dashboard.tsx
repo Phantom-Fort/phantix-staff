@@ -2,7 +2,7 @@ import React, { useRef } from "react";
 import { motion } from "framer-motion";
 import { Building2, MessageSquare, Server, Wrench, FileText, Activity, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
-import { PageHeader, StatCard, AnimatedNumber, Card, CardHeader, TableSkeleton } from "@/components/ui";
+import { PageHeader, StatCard, AnimatedNumber, Card, CardHeader, TableSkeleton, SkeletonCard } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useSmartPoll } from "@/lib/usePolling";
 import { useStore } from "@/lib/store";
@@ -44,7 +44,7 @@ export default function Dashboard() {
     <div>
       <PageHeader
         title="Staff Dashboard"
-        description={isAdmin ? "Platform operations overview --- clients, connections, support" : "Support operations overview"}
+        description={isAdmin ? "Platform operations overview — clients, connections, support" : "Support operations overview"}
       />
 
       {stats.loading ? (
@@ -99,7 +99,7 @@ export default function Dashboard() {
               )}
               {Object.entries(s.tickets_by_status ?? {}).length > 0 && (
                 <div className="pt-2">
-                  <p className="text-xs text-slate-500 mb-1.5">By Status</p>
+                  <p className="text-xs text-slate-400 mb-1.5">By Status</p>
                   {Object.entries(s.tickets_by_status ?? {}).map(([status, count]) => (
                     <div key={status} className="flex justify-between text-xs px-2 py-1">
                       <span className="text-slate-400 capitalize">{status.replace(/_/g, " ")}</span>
@@ -160,7 +160,10 @@ type AuditVerify = {
 
 function AuditChainCard() {
   const verify = useResource<AuditVerify>(
-    async () => api.get<AuditVerify>("/admin/audit/verify-chain") ?? {},
+    async () => {
+      if (DEMO_MODE) return { intact: true } as AuditVerify;
+      return api.get<AuditVerify>("/admin/audit/verify-chain") ?? {};
+    },
     {} as AuditVerify,
     "audit-verify-chain",
   );
@@ -171,6 +174,9 @@ function AuditChainCard() {
   }, { intervalMs: 60000, hiddenIntervalMs: 300000 });
 
   const d = verify.data;
+  if (verify.loading && (!d || Object.keys(d).length === 0)) {
+    return <SkeletonCard className="mt-6" />;
+  }
   // Role/permission gaps or transient failures must not alarm the whole staff.
   if (verify.error || !d || Object.keys(d).length === 0) return null;
 

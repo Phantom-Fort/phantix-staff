@@ -6,11 +6,14 @@ import Login from "@/pages/Login";
 import StaffPasswordResetRequest from "@/pages/StaffPasswordResetRequest";
 import StaffPasswordResetComplete from "@/pages/StaffPasswordResetComplete";
 import StaffChangePassword from "@/pages/StaffChangePassword";
+import Cookies from "@/pages/Cookies";
+import CookieConsent from "@/components/CookieConsent";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/admin/Clients";
 import SupportTickets from "@/pages/admin/Support";
 import ServerOps from "@/pages/admin/ServerOps";
 import AiAdmin from "@/pages/admin/AiAdmin";
+import AgentActivityAdmin from "@/pages/admin/AgentActivity";
 import ComplianceAdmin from "@/pages/admin/Compliance";
 import ToolingAdmin from "@/pages/admin/Tooling";
 import ExperienceAdmin from "@/pages/admin/Experience";
@@ -98,6 +101,7 @@ export default function App() {
           <Route path="/change-password" element={<RequireAuth><StaffChangePassword /></RequireAuth>} />
           <Route path="/password-reset" element={<StaffPasswordResetRequest />} />
           <Route path="/reset-password" element={<StaffPasswordResetComplete />} />
+          <Route path="/cookies" element={<Cookies />} />
           <Route element={<Layout />}>
             {/* All staff */}
             <Route path="/dashboard" element={<RequireStaff><Dashboard /></RequireStaff>} />
@@ -131,6 +135,7 @@ export default function App() {
             <Route path="/discovery" element={<RequireAdmin><DiscoveryAdmin /></RequireAdmin>} />
             <Route path="/experience" element={<RequireAdmin><ExperienceAdmin /></RequireAdmin>} />
             <Route path="/ai" element={<RequireAdmin><AiAdmin /></RequireAdmin>} />
+            <Route path="/agent-activity" element={<RequireAdmin><AgentActivityAdmin /></RequireAdmin>} />
             <Route path="/vapt-admin" element={<RequireAdmin><VaptAdmin /></RequireAdmin>} />
             {AGI_ENABLED && <Route path="/agi" element={<RequireAgiAdmin><AgiAdmin /></RequireAgiAdmin>} />}
 
@@ -147,6 +152,7 @@ export default function App() {
           </Route>
         </Routes>
         <ToastViewport />
+        <CookieConsent />
       </BrowserRouter>
     </StoreProvider>
   );
