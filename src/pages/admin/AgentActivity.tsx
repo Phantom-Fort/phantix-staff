@@ -81,7 +81,7 @@ export default function AgentActivityAdmin() {
   const deniedCount = items.filter(isDenied).length;
 
   return (
-    <div className="mx-auto max-w-[1400px]">
+    <div>
       <PageHeader
         title="Agent activity"
         description="Every action the agent took across organizations — run, domain, operator intent, authorization and outcome."
@@ -94,7 +94,7 @@ export default function AgentActivityAdmin() {
 
       <div className="mb-4 flex items-start gap-2.5 rounded-md border border-gold-400/25 bg-gold-400/[0.06] p-3">
         <KeyRound size={14} className="mt-0.5 shrink-0 text-gold-300" />
-        <p className="text-[11px] leading-5 text-gold-100/90">
+        <p className="text-[13px] leading-5 text-gold-100/90">
           The agent runs <span className="font-semibold">as the signed-in user</span> and can do only what that
           user's role allows. State-changing actions need a fresh, single-use authorization bound to one action on
           one run. A <span className="font-semibold">denied</span> row is a control holding — quote it in support
@@ -134,7 +134,7 @@ export default function AgentActivityAdmin() {
           placeholder="Tool (e.g. threat_model.generate)"
           className="w-64 rounded-lg border border-phantix-700/50 bg-phantix-950/70 px-3 py-1.5 text-xs text-slate-200 outline-none placeholder:text-slate-500 focus:border-gold-400/50"
         />
-        <span className="ml-auto text-[11px] text-slate-500">
+        <span className="ml-auto text-[13px] text-slate-500">
           {total.toLocaleString()} actions · {deniedCount} denied on this page
         </span>
       </div>
@@ -182,31 +182,31 @@ export default function AgentActivityAdmin() {
                           className="cursor-pointer border-b border-phantix-800/40 hover:bg-phantix-800/35"
                           onClick={() => setOpen(open === row.id ? null : row.id)}
                         >
-                          <td className="td whitespace-nowrap text-[11px] text-slate-400" title={row.created_at ? formatDateTime(row.created_at) : ""}>
+                          <td className="td whitespace-nowrap text-[13px] text-slate-400" title={row.created_at ? formatDateTime(row.created_at) : ""}>
                             {timeAgo(row.created_at ?? null)}
-                            {row.run_id && <p className="font-mono text-[9px] text-slate-600">run {String(row.run_id).slice(0, 8)}</p>}
+                            {row.run_id && <p className="font-mono text-[11px] text-slate-600">run {String(row.run_id).slice(0, 8)}</p>}
                           </td>
-                          <td className="td font-mono text-[11px] text-slate-300">#{row.organization_id}</td>
+                          <td className="td font-mono text-[13px] text-slate-300">#{row.organization_id}</td>
                           <td className="td"><span className="chip border-phantix-700 text-slate-300">{domainLabel(row.domain)}</span></td>
                           <td className="td">
-                            <p className="flex items-center gap-1.5 font-mono text-[11px] text-slate-200">
+                            <p className="flex items-center gap-1.5 font-mono text-[13px] text-slate-200">
                               <Bot size={11} className="text-gold-400" />
                               {row.tool ?? "—"}
                             </p>
                           </td>
-                          <td className="td max-w-[340px] text-[11px] leading-5 text-slate-400">
+                          <td className="td max-w-[340px] text-[13px] leading-5 text-slate-400">
                             {row.intent || <span className="text-slate-600">—</span>}
                           </td>
                           <td className="td">
                             {row.actor_name || row.actor_email || row.actor_user_id ? (
                               <div>
-                                <p className="text-[11px] text-slate-300">
+                                <p className="text-[13px] text-slate-300">
                                   {row.actor_name || row.actor_email || `user #${row.actor_user_id}`}
                                 </p>
-                                <p className="text-[9px] capitalize text-slate-600">{row.actor_role || "—"}</p>
+                                <p className="text-[11px] capitalize text-slate-600">{row.actor_role || "—"}</p>
                               </div>
                             ) : (
-                              <span className="text-[11px] text-slate-600" title="A company key or service call, with no named user">org-level</span>
+                              <span className="text-[13px] text-slate-600" title="A company key or service call, with no named user">org-level</span>
                             )}
                           </td>
                           <td className="td">
@@ -215,7 +215,7 @@ export default function AgentActivityAdmin() {
                             ) : row.authorized === false ? (
                               <span className="chip border-phantix-700 text-slate-500">not required / none</span>
                             ) : (
-                              <span className="text-[11px] text-slate-600">—</span>
+                              <span className="text-[13px] text-slate-600">—</span>
                             )}
                           </td>
                           <td className="td">
@@ -238,22 +238,22 @@ export default function AgentActivityAdmin() {
                             <td colSpan={8} className="px-4 py-3">
                               <div className="space-y-1.5">
                                 {row.params && (
-                                  <p className="text-[11px] text-slate-400">
+                                  <p className="text-[13px] text-slate-400">
                                     <span className="text-slate-600">params:</span>{" "}
                                     <span className="font-mono text-slate-300">{row.params}</span>
                                   </p>
                                 )}
                                 {row.error && (
-                                  <p className="text-[11px] text-severity-medium">
+                                  <p className="text-[13px] text-severity-medium">
                                     <span className="text-slate-600">reason:</span> {row.error}
                                   </p>
                                 )}
                                 {(row.context?.length ?? 0) > 0 && (
-                                  <p className="break-all font-mono text-[10px] leading-4 text-slate-600">
+                                  <p className="break-all font-mono text-[12px] leading-4 text-slate-600">
                                     {(row.context ?? []).join(" · ")}
                                   </p>
                                 )}
-                                <p className="font-mono text-[10px] text-slate-600">
+                                <p className="font-mono text-[12px] text-slate-600">
                                   evidence {row.evidence_hash?.slice(0, 16) ?? "—"} · response {row.response_hash?.slice(0, 16) ?? "—"}
                                 </p>
                               </div>

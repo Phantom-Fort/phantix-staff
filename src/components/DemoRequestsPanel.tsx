@@ -141,7 +141,7 @@ export function DemoRequestsPanel() {
               )}
             >
               {f === "all" ? "All" : titleCase(f)}
-              {f !== "all" && counts[f] ? <span className="ml-1 font-mono text-[10px] opacity-70">{counts[f]}</span> : null}
+              {f !== "all" && counts[f] ? <span className="ml-1 font-mono text-[12px] opacity-70">{counts[f]}</span> : null}
             </button>
           ))}
         </div>
@@ -192,10 +192,10 @@ export function DemoRequestsPanel() {
                     </td>
                     <td className="td">
                       <span className="block text-slate-300">{r.name || "—"}</span>
-                      <span className="block font-mono text-[11px] text-slate-500">{r.email}</span>
+                      <span className="block font-mono text-[13px] text-slate-500">{r.email}</span>
                     </td>
                     <td className="td text-xs text-slate-400">{r.team_size}</td>
-                    <td className="td"><span className="chip text-[10px]">{r.source}</span></td>
+                    <td className="td"><span className="chip text-[12px]">{r.source}</span></td>
                     <td className="td text-xs text-slate-400" title={formatDateTime(r.created_at)}>
                       {r.created_at ? timeAgo(r.created_at) : "—"}
                     </td>
@@ -324,7 +324,7 @@ function DemoRequestDetail({
 
         <div>
           <p className="label">Attribution</p>
-          <div className="mt-1 space-y-1.5 rounded-lg border border-phantix-700/40 bg-phantix-950/50 p-3 font-mono text-[11px] text-slate-400">
+          <div className="mt-1 space-y-1.5 rounded-lg border border-phantix-700/40 bg-phantix-950/50 p-3 font-mono text-[13px] text-slate-400">
             <p><span className="text-slate-500">source</span> {request.source}</p>
             <p><span className="text-slate-500">path</span> {request.path ?? "—"}</p>
             <p className="flex items-start gap-1.5">
@@ -362,7 +362,7 @@ function DemoRequestDetail({
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-phantix-700/40 bg-phantix-950/50 p-3">
-      <p className="text-[10px] uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[12px] uppercase tracking-wide text-slate-500">{label}</p>
       <div className="mt-1 text-sm text-slate-200">{value}</div>
     </div>
   );

@@ -38,9 +38,9 @@ export function CollapseCard({
       >
         <ChevronRight size={14} className={cx("shrink-0 text-slate-500 transition-transform duration-150", isOpen && "rotate-90")} />
         {icon}
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{title}</span>
+        <span className="text-[13px] font-semibold uppercase tracking-wider text-slate-400">{title}</span>
         {badge}
-        <span className="ml-auto text-[10px] text-slate-500">{isOpen ? "Hide" : "Show"}</span>
+        <span className="ml-auto text-[12px] text-slate-500">{isOpen ? "Hide" : "Show"}</span>
       </button>
       {isOpen && <div className="border-t border-phantix-700/30 px-3 py-2.5">{children}</div>}
     </div>
@@ -55,22 +55,22 @@ export function AgiSkillPlanBanner({ plan, open, onToggle }: { plan: AgiSkillPla
     <CollapseCard
       title="Skills for this objective"
       icon={<Brain size={13} className="text-gold-400" />}
-      badge={skills.length > 0 ? <span className="chip !text-[9px] text-gold-300">{skills.length} skill{skills.length === 1 ? "" : "s"}</span> : undefined}
+      badge={skills.length > 0 ? <span className="chip !text-[11px] text-gold-300">{skills.length} skill{skills.length === 1 ? "" : "s"}</span> : undefined}
       open={open}
       onToggle={onToggle}
     >
       {intents.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Intents</span>
-          {intents.map((i) => <span key={i} className="chip !px-1.5 !py-0 !text-[9px] text-gold-300">{i}</span>)}
+          <span className="text-[12px] font-semibold uppercase tracking-wider text-slate-500">Intents</span>
+          {intents.map((i) => <span key={i} className="chip !px-1.5 !py-0 !text-[11px] text-gold-300">{i}</span>)}
         </div>
       )}
-      {plan.objective && <p className="mt-1 text-[11px] leading-4 text-slate-400">{plan.objective}</p>}
-      {plan.stream_message && <p className="mt-1 text-[11px] leading-4 text-slate-400">{plan.stream_message}</p>}
+      {plan.objective && <p className="mt-1 text-[13px] leading-4 text-slate-400">{plan.objective}</p>}
+      {plan.stream_message && <p className="mt-1 text-[13px] leading-4 text-slate-400">{plan.stream_message}</p>}
       {skills.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {skills.map((s) => (
-            <span key={s.skill_id} title={`${s.match_reason ?? ""} · eff ${s.efficiency ?? "-"} · obj ${s.objective_score ?? "-"} · ${(s.tools ?? []).join(", ")}`} className="chip !text-[9px]">
+            <span key={s.skill_id} title={`${s.match_reason ?? ""} · eff ${s.efficiency ?? "-"} · obj ${s.objective_score ?? "-"} · ${(s.tools ?? []).join(", ")}`} className="chip !text-[11px]">
               {s.role === "primary" || s.rank === 1 ? <Star size={9} className="fill-gold-400 text-gold-400" /> : null}
               <span className={cx(s.role === "primary" && "text-gold-200")}>{s.skill_id}</span>
               {s.body_loaded ? <span className="text-emerald-400">· Full</span> : <span className="text-slate-500">· Card</span>}
@@ -78,7 +78,7 @@ export function AgiSkillPlanBanner({ plan, open, onToggle }: { plan: AgiSkillPla
           ))}
         </div>
       )}
-      {skills.length === 0 && <p className="text-[11px] text-slate-600">No skills auto-matched yet — AGI will general recon and skill_search.</p>}
+      {skills.length === 0 && <p className="text-[13px] text-slate-600">No skills auto-matched yet — AGI will general recon and skill_search.</p>}
     </CollapseCard>
   );
 }
@@ -100,20 +100,20 @@ export function AgiToolsToProvisionStrip({
     <CollapseCard
       title="Tools to provision"
       icon={<Wrench size={13} className="text-severity-medium" />}
-      badge={<span className="chip !text-[9px] text-severity-medium">{list.length}</span>}
+      badge={<span className="chip !text-[11px] text-severity-medium">{list.length}</span>}
       open={open}
       onToggle={onToggle}
     >
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] text-amber-200">Tools needed for matched skills:</span>
+        <span className="text-[13px] text-amber-200">Tools needed for matched skills:</span>
         {list.map((t) => (
-          <span key={t.tool} className={cx("chip !text-[9px]", t.required ? "border-severity-medium/40 text-severity-medium" : "border-phantix-600/40 text-slate-400")}>
+          <span key={t.tool} className={cx("chip !text-[11px]", t.required ? "border-severity-medium/40 text-severity-medium" : "border-phantix-600/40 text-slate-400")}>
             {t.tool} <span className="opacity-70">({t.package})</span>{t.required ? " · required" : ""}
           </span>
         ))}
       </div>
       {onOpenApprovals && (
-        <button onClick={onOpenApprovals} className="mt-2 btn-secondary !px-2.5 !py-1 !text-[10px]">Review approvals</button>
+        <button onClick={onOpenApprovals} className="mt-2 btn-secondary !px-2.5 !py-1 !text-[12px]">Review approvals</button>
       )}
     </CollapseCard>
   );
@@ -123,16 +123,16 @@ export function SkillPlanSidePanel({ plan, hideTitle = false }: { plan: AgiSkill
   if (!plan) return null;
   return (
     <div className="rounded-lg border border-phantix-700/30 bg-phantix-950/50 p-2">
-      {!hideTitle && <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-slate-500">Skill plan</p>}
+      {!hideTitle && <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Skill plan</p>}
       {(plan.skills ?? []).map((s) => (
-        <div key={s.skill_id} className="flex items-center gap-1.5 py-1 text-[10px] text-slate-300">
+        <div key={s.skill_id} className="flex items-center gap-1.5 py-1 text-[12px] text-slate-300">
           <span className="w-4 text-right text-slate-600">{s.rank}</span>
           <span className={cx("min-w-0 flex-1 truncate", s.role === "primary" && "text-gold-200")}>{s.skill_id}</span>
           {s.efficiency != null && <span className="font-mono text-emerald-400">{(s.efficiency * 100).toFixed(0)}%</span>}
           {s.body_loaded ? <span className="text-emerald-400">Full</span> : <span className="text-slate-600">Card</span>}
         </div>
       ))}
-      {(plan.skills ?? []).length === 0 && <p className="text-[10px] text-slate-600">No skills auto-matched — AGI will use general recon and skill_search.</p>}
+      {(plan.skills ?? []).length === 0 && <p className="text-[12px] text-slate-600">No skills auto-matched — AGI will use general recon and skill_search.</p>}
     </div>
   );
 }
@@ -186,13 +186,13 @@ export function EngineLearningPanel({ orgId }: { orgId?: number }) {
           <div className="space-y-3">
             {grouped.map(([engine, list]) => (
               <div key={engine}>
-                <p className="mb-1 font-mono text-[11px] font-semibold text-gold-300">{engine}</p>
+                <p className="mb-1 font-mono text-[13px] font-semibold text-gold-300">{engine}</p>
                 <div className="space-y-1">
                   {list.map((op) => (
                     <div key={`${op.engine_id}.${op.op}`} className="flex flex-wrap items-center gap-2 rounded-lg border border-phantix-700/30 px-2.5 py-1.5">
-                      <span className="font-mono text-[11px] text-slate-200">{op.op}</span>
-                      <span className={cx("chip !text-[9px]", op.action_class === "state_changing" ? "border-severity-medium/30 text-severity-medium" : "border-emerald-400/30 text-emerald-300")}>{op.action_class}</span>
-                      <span className="text-[11px] text-slate-500">{op.description}</span>
+                      <span className="font-mono text-[13px] text-slate-200">{op.op}</span>
+                      <span className={cx("chip !text-[11px]", op.action_class === "state_changing" ? "border-severity-medium/30 text-severity-medium" : "border-emerald-400/30 text-emerald-300")}>{op.action_class}</span>
+                      <span className="text-[13px] text-slate-500">{op.description}</span>
                     </div>
                   ))}
                 </div>
@@ -210,16 +210,16 @@ export function EngineLearningPanel({ orgId }: { orgId?: number }) {
             {ranks.map((c) => (
               <div key={`${c.engine_id}.${c.op}`} className="rounded-lg border border-phantix-700/30 px-3 py-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="break-all font-mono text-[11px] text-slate-200">{c.engine_id}.{c.op}</span>
-                    <span className={cx("text-[11px] font-semibold tabular-nums", scoreCls(c.score))}>{(c.score * 100).toFixed(0)}%</span>
-                    <span className="text-[10px] text-slate-500">{c.calls} calls</span>
+                    <span className="break-all font-mono text-[13px] text-slate-200">{c.engine_id}.{c.op}</span>
+                    <span className={cx("text-[13px] font-semibold tabular-nums", scoreCls(c.score))}>{(c.score * 100).toFixed(0)}%</span>
+                    <span className="text-[12px] text-slate-500">{c.calls} calls</span>
                   </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-phantix-800">
                   <div className={cx("h-full", c.score >= 0.7 ? "bg-emerald-400" : c.score >= 0.4 ? "bg-severity-medium" : "bg-severity-critical")} style={{ width: `${Math.min(100, c.score * 100)}%` }} />
                 </div>
                 {c.tools?.length > 0 && (
                   <div className="mt-1.5 flex flex-wrap gap-1">
-                    {c.tools.map((t) => <span key={t} className="chip !text-[9px] font-mono text-slate-400">{t}</span>)}
+                    {c.tools.map((t) => <span key={t} className="chip !text-[11px] font-mono text-slate-400">{t}</span>)}
                   </div>
                 )}
               </div>
@@ -247,21 +247,21 @@ export function EngineSnapshotCards({
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       <button onClick={onOpenQueue} className="rounded-md border border-phantix-700/40 bg-phantix-900/40 p-4 text-left hover:border-gold-400/30">
-        <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500"><Wrench size={12} /> Tool provision</p>
+        <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider text-slate-500"><Wrench size={12} /> Tool provision</p>
         <p className="mt-1 font-display text-2xl font-semibold text-white">{pendingTools}</p>
-        <p className="text-[11px] text-slate-500">need server-wide provision</p>
+        <p className="text-[13px] text-slate-500">need server-wide provision</p>
       </button>
       <button onClick={onOpenEngines} className="rounded-md border border-phantix-700/40 bg-phantix-900/40 p-4 text-left hover:border-gold-400/30">
-        <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500"><Cpu size={12} /> Live ops</p>
+        <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider text-slate-500"><Cpu size={12} /> Live ops</p>
         <p className="mt-1 font-display text-2xl font-semibold text-white">{catalogCount}</p>
-        <p className="text-[11px] text-slate-500">AGI-callable engine ops</p>
+        <p className="text-[13px] text-slate-500">AGI-callable engine ops</p>
       </button>
       <div className="rounded-md border border-phantix-700/40 bg-phantix-900/40 p-4">
-        <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500"><Activity size={12} /> Top engines</p>
-        {top.length === 0 ? <p className="mt-2 text-[11px] text-slate-500">No scores yet</p> : (
+        <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider text-slate-500"><Activity size={12} /> Top engines</p>
+        {top.length === 0 ? <p className="mt-2 text-[13px] text-slate-500">No scores yet</p> : (
           <div className="mt-2 space-y-1">
             {top.slice(0, 3).map((c) => (
-              <p key={`${c.engine_id}.${c.op}`} className="flex justify-between gap-2 font-mono text-[10px] text-slate-300">
+              <p key={`${c.engine_id}.${c.op}`} className="flex justify-between gap-2 font-mono text-[12px] text-slate-300">
                 <span className="min-w-0 truncate" title={`${c.engine_id}.${c.op}`}>{c.engine_id}</span>
                 <span className={cx("shrink-0", scoreCls(c.score))}>{(c.score * 100).toFixed(0)}</span>
               </p>
@@ -325,19 +325,19 @@ export function JobCoveragePanel({
       badge={
         <span className="flex items-center gap-1.5">
           <StatusBadge status={job.job_status} />
-          {objectives.length > 0 && <span className="chip !text-[9px] text-slate-400">{done}/{objectives.length}</span>}
+          {objectives.length > 0 && <span className="chip !text-[11px] text-slate-400">{done}/{objectives.length}</span>}
         </span>
       }
       open={open}
       onToggle={onToggle}
     >
       <div className="flex flex-wrap items-center gap-1.5">
-        {job.active_phase && <span className="chip !text-[9px] text-gold-300">{job.active_phase}</span>}
-        <span className="text-[10px] text-slate-500">{job.tools_run ?? 0} tools · {job.findings_count ?? 0} findings</span>
+        {job.active_phase && <span className="chip !text-[11px] text-gold-300">{job.active_phase}</span>}
+        <span className="text-[12px] text-slate-500">{job.tools_run ?? 0} tools · {job.findings_count ?? 0} findings</span>
       </div>
       <div className="mt-1.5 flex flex-wrap gap-1">
         {objectives.map((o) => (
-          <button key={o.id} type="button" onClick={() => o.status !== "done" && o.status !== "waived" ? void waive(o.id) : undefined} className="chip !text-[9px]" title={o.detail}>
+          <button key={o.id} type="button" onClick={() => o.status !== "done" && o.status !== "waived" ? void waive(o.id) : undefined} className="chip !text-[11px]" title={o.detail}>
             {o.status === "done" ? "[x]" : o.status === "waived" ? "[~]" : o.status === "blocked" ? "[!]" : o.status === "active" ? "[…]" : "[ ]"} {o.title}
             {o.kind === "asset_coverage" && o.total ? ` ${o.covered ?? 0}/${o.total}` : ""}
           </button>
@@ -345,9 +345,9 @@ export function JobCoveragePanel({
       </div>
       {pendingConfirm && (
         <div className="mt-2 flex flex-wrap gap-2 rounded-lg border border-gold-400/30 bg-gold-400/10 px-2.5 py-2">
-          <p className="flex-1 text-[11px] text-gold-200">Agent reports job complete — review checklist</p>
-          <button disabled={busy} onClick={() => void confirm(true)} className="btn-primary !px-2 !py-1 !text-[10px]"><CheckCircle2 size={11} className="mr-1 inline" /> Confirm & stop</button>
-          <button disabled={busy} onClick={() => void confirm(false)} className="btn-ghost !px-2 !py-1 !text-[10px]">Keep open</button>
+          <p className="flex-1 text-[13px] text-gold-200">Agent reports job complete — review checklist</p>
+          <button disabled={busy} onClick={() => void confirm(true)} className="btn-primary !px-2 !py-1 !text-[12px]"><CheckCircle2 size={11} className="mr-1 inline" /> Confirm & stop</button>
+          <button disabled={busy} onClick={() => void confirm(false)} className="btn-ghost !px-2 !py-1 !text-[12px]">Keep open</button>
         </div>
       )}
     </CollapseCard>
@@ -360,13 +360,13 @@ export function EngineCallList({ events, open, onToggle }: { events: EngineCallE
     <CollapseCard
       title="Engine calls"
       icon={<Cpu size={13} className="text-slate-400" />}
-      badge={<span className="chip !text-[9px] text-slate-400">{events.length}</span>}
+      badge={<span className="chip !text-[11px] text-slate-400">{events.length}</span>}
       open={open}
       onToggle={onToggle}
     >
       <div className="max-h-40 space-y-0.5 overflow-y-auto pr-1">
         {events.slice(-12).map((e, i) => (
-          <p key={i} className="flex items-center gap-1.5 font-mono text-[10px] text-slate-400">
+          <p key={i} className="flex items-center gap-1.5 font-mono text-[12px] text-slate-400">
             {e.ok ? <CheckCircle2 size={10} className="text-emerald-400" /> : <XCircle size={10} className="text-severity-critical" />}
             {e.engine_id}.{e.op}
             {e.latency_ms != null && <span className="text-slate-600">{e.latency_ms}ms</span>}

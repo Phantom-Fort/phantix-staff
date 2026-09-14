@@ -7,7 +7,7 @@ import { DemoRequestsPanel } from "@/components/DemoRequestsPanel";
 
 export default function DemoRequests() {
   return (
-    <div className="mx-auto max-w-[1400px]">
+    <div>
       <PageHeader
         title="Demo Requests"
         description="Lead queue from the marketing site — attribution source/path/UTM intact"

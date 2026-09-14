@@ -169,7 +169,7 @@ export default function EngineJobs() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-slate-100 capitalize">{engine.engineId.replace(/_/g, " ")}</p>
-                      <p className="text-[10px] text-slate-500">{engine.source}</p>
+                      <p className="text-[12px] text-slate-500">{engine.source}</p>
                     </div>
                     <span className="ml-auto font-display text-xl font-bold text-white">{engine.totalActive}</span>
                   </div>
@@ -197,7 +197,7 @@ export default function EngineJobs() {
 
                   {engine.byOrganization.length > 0 && (
                     <div className="mt-3 pt-2 border-t border-phantix-700/30">
-                      <p className="text-[10px] text-slate-500 mb-1">By Organization</p>
+                      <p className="text-[12px] text-slate-500 mb-1">By Organization</p>
                       {engine.byOrganization.slice(0, 3).map((org) => (
                         <div key={org.organizationId} className="flex justify-between text-xs py-0.5">
                           <span className="text-slate-400 truncate">#{org.organizationId} {org.organizationName}</span>

@@ -114,12 +114,12 @@ export default function ToolingAdmin() {
       {extraLoading && !stats && <div className="mb-4"><StatGridSkeleton count={6} /></div>}
       {stats && (
         <div className="mb-4 grid grid-cols-2 md:grid-cols-6 gap-3">
-          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-white">{stats.total_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Total tools</p></div>
-          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-emerald-400">{stats.active_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Active</p></div>
-          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-phantix-300">{stats.free_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Free</p></div>
-          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-gold-400">{stats.paid_tools ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Paid</p></div>
-          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-phantix-300">{stats.provisions ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Provisions</p></div>
-          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-emerald-400">{stats.active_subscriptions ?? 0}</p><p className="text-[10px] uppercase tracking-wider text-slate-600">Active subs</p></div>
+          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-white">{stats.total_tools ?? 0}</p><p className="text-[12px] uppercase tracking-wider text-slate-600">Total tools</p></div>
+          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-emerald-400">{stats.active_tools ?? 0}</p><p className="text-[12px] uppercase tracking-wider text-slate-600">Active</p></div>
+          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-phantix-300">{stats.free_tools ?? 0}</p><p className="text-[12px] uppercase tracking-wider text-slate-600">Free</p></div>
+          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-gold-400">{stats.paid_tools ?? 0}</p><p className="text-[12px] uppercase tracking-wider text-slate-600">Paid</p></div>
+          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-phantix-300">{stats.provisions ?? 0}</p><p className="text-[12px] uppercase tracking-wider text-slate-600">Provisions</p></div>
+          <div className="rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-center"><p className="font-display text-lg font-bold text-emerald-400">{stats.active_subscriptions ?? 0}</p><p className="text-[12px] uppercase tracking-wider text-slate-600">Active subs</p></div>
         </div>
       )}
 
@@ -129,20 +129,20 @@ export default function ToolingAdmin() {
             {data.sort((a, b) => a.sort_order - b.sort_order).map(t => (
               <Card key={t.id} className={cx("", !t.is_active && "opacity-60")}>
                 <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2"><Wrench size={16} className={t.is_active ? "text-phantix-400" : "text-slate-600"} /><h3 className="font-display text-sm font-semibold text-white">{t.name}</h3>{t.is_featured && <span className="chip text-[10px] text-gold-400 bg-gold-400/10 border-gold-400/20">Featured</span>}</div>
+                  <div className="flex items-center gap-2"><Wrench size={16} className={t.is_active ? "text-phantix-400" : "text-slate-600"} /><h3 className="font-display text-sm font-semibold text-white">{t.name}</h3>{t.is_featured && <span className="chip text-[12px] text-gold-400 bg-gold-400/10 border-gold-400/20">Featured</span>}</div>
                   <StatusBadge status={t.is_active ? "active" : "closed"} />
                 </div>
                 <p className="text-xs text-slate-400 mb-3">{t.description}</p>
                 <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                  <span className="chip text-[10px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{t.category}</span>
+                  <span className="chip text-[12px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{t.category}</span>
                   {(t.tier || t.pricing_model) && (
-                    <span className={cx("chip text-[10px] capitalize", (tierLabels[t.tier ?? ""] ?? tierLabels[t.pricing_model])?.color ?? "text-slate-400 bg-slate-400/10 border-slate-500/30")}>
+                    <span className={cx("chip text-[12px] capitalize", (tierLabels[t.tier ?? ""] ?? tierLabels[t.pricing_model])?.color ?? "text-slate-400 bg-slate-400/10 border-slate-500/30")}>
                       {(tierLabels[t.tier ?? ""] ?? tierLabels[t.pricing_model])?.label ?? t.pricing_model}
                     </span>
                   )}
-                  {t.monthly_price_ngn > 0 && <span className="text-[10px] font-mono text-slate-400 flex items-center gap-0.5"><DollarSign size={10} />{formatNaira(t.monthly_price_ngn)}/mo</span>}
+                  {t.monthly_price_ngn > 0 && <span className="text-[12px] font-mono text-slate-400 flex items-center gap-0.5"><DollarSign size={10} />{formatNaira(t.monthly_price_ngn)}/mo</span>}
                 </div>
-                <div className="flex flex-wrap gap-1 mb-2">{(t.features ?? []).map(f => <span key={f} className="text-[10px] text-slate-500 bg-phantix-800/60 rounded px-1.5 py-0.5">{f}</span>)}</div>
+                <div className="flex flex-wrap gap-1 mb-2">{(t.features ?? []).map(f => <span key={f} className="text-[12px] text-slate-500 bg-phantix-800/60 rounded px-1.5 py-0.5">{f}</span>)}</div>
                 <div className="flex gap-1.5">
                   <button onClick={() => openEdit(t)} className="btn-ghost text-xs px-2 py-1"><Edit3 size={11} /> Edit</button>
                   <button onClick={() => handleDelete(t.id)} className="btn-ghost text-xs px-2 py-1 text-severity-critical"><EyeOff size={11} /> {t.is_active ? "Deactivate" : "Delete"}</button>
@@ -156,7 +156,7 @@ export default function ToolingAdmin() {
 
       {tab === "provisions" && (
         extraLoading && provisions.length === 0 ? <TableSkeleton rows={4} /> : provisions.length === 0 ? <EmptyState icon={<Eye size={24} />} title="No provisions" body="Grant tools to organizations via the catalog." /> : (
-          <Card className="!p-0 overflow-hidden"><table className="w-full"><thead><tr className="border-b border-phantix-700/40"><th className="th">Tool Key</th><th className="th">Org ID</th><th className="th">Status</th><th className="th">Notes</th><th className="th w-12" /></tr></thead><tbody>{provisions.map(p => <tr key={p.id} className="border-b border-phantix-800/40"><td className="td font-mono text-xs text-gold-300">{p.tool_key}</td><td className="td text-xs">#{p.organization_id}</td><td className="td"><span className={cx("chip text-[10px]", p.status === "provisioned" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{p.status}</span></td><td className="td text-xs text-slate-400 max-w-[200px] truncate">{p.admin_notes || "-"}</td><td className="td"><button onClick={() => handleSuspendProvision(p)} className="btn-ghost text-xs px-2 py-1 text-severity-medium">{p.status === "provisioned" ? "Suspend" : "Re-enable"}</button></td></tr>)}</tbody></table></Card>
+          <Card className="!p-0 overflow-hidden"><table className="w-full"><thead><tr className="border-b border-phantix-700/40"><th className="th">Tool Key</th><th className="th">Org ID</th><th className="th">Status</th><th className="th">Notes</th><th className="th w-12" /></tr></thead><tbody>{provisions.map(p => <tr key={p.id} className="border-b border-phantix-800/40"><td className="td font-mono text-xs text-gold-300">{p.tool_key}</td><td className="td text-xs">#{p.organization_id}</td><td className="td"><span className={cx("chip text-[12px]", p.status === "provisioned" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{p.status}</span></td><td className="td text-xs text-slate-400 max-w-[200px] truncate">{p.admin_notes || "-"}</td><td className="td"><button onClick={() => handleSuspendProvision(p)} className="btn-ghost text-xs px-2 py-1 text-severity-medium">{p.status === "provisioned" ? "Suspend" : "Re-enable"}</button></td></tr>)}</tbody></table></Card>
         )
       )}
 

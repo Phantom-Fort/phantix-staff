@@ -246,7 +246,7 @@ export default function Clients() {
                         {client.flags?.length > 0 && (
                           <div className="flex items-center gap-1 mt-0.5">
                             {client.flags.map((f) => (
-                              <span key={f} className="chip text-[10px] text-severity-medium bg-severity-medium/10 border-severity-medium/20">{f}</span>
+                              <span key={f} className="chip text-[12px] text-severity-medium bg-severity-medium/10 border-severity-medium/20">{f}</span>
                             ))}
                           </div>
                         )}
@@ -342,7 +342,7 @@ export default function Clients() {
                         <span className="text-sm text-slate-300">{svc.label ?? svc.service_key}</span>
                         <div className="flex gap-1">
                           {(svc.modules ?? []).slice(0, 3).map((m: string) => (
-                            <span key={m} className="chip text-[10px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{m}</span>
+                            <span key={m} className="chip text-[12px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{m}</span>
                           ))}
                         </div>
                       </div>
@@ -396,7 +396,7 @@ export default function Clients() {
                     </button>
                   </div>
                 )}
-                <p className="mt-2 text-[11px] text-slate-500">
+                <p className="mt-2 text-[13px] text-slate-500">
                   Starter ≈ ₦7,500 · Growth ≈ ₦30,000 · Enterprise custom. Security AI uses DeepSeek with Z.AI GLM Flash fallback.
                 </p>
               </div>
@@ -416,7 +416,7 @@ export default function Clients() {
                         >
                           <div className="min-w-0">
                             <p className="text-sm text-white">{app.label}</p>
-                            <p className="truncate text-[11px] text-slate-500">
+                            <p className="truncate text-[13px] text-slate-500">
                               {app.key === "core"
                                 ? "Always on — the entry point"
                                 : app.entitled

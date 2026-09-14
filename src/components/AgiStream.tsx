@@ -136,7 +136,7 @@ function ToolCallCard({ t, dense = false }: { t: AgiTranscriptChunk; dense?: boo
         }}
         className={cx(
           "mt-0 border-phantix-700/40 bg-phantix-950/70",
-          dense ? "[&_pre]:!max-h-32 [&_*]:!text-[11px]" : "[&_pre]:!max-h-60",
+          dense ? "[&_pre]:!max-h-32 [&_*]:!text-[13px]" : "[&_pre]:!max-h-60",
         )}
       />
       <CopyBtn text={t.content} className="absolute right-2 top-2 z-10 !opacity-0 group-hover:!opacity-100" />
@@ -215,12 +215,12 @@ function PiHelperCard({ t, dense = false, observe = false }: { t: AgiTranscriptC
           <accent.Icon size={12} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className={cx("flex items-center gap-1.5", dense ? "text-[11px]" : "text-xs")}>
+          <span className={cx("flex items-center gap-1.5", dense ? "text-[13px]" : "text-xs")}>
             <span className="truncate font-semibold text-slate-200">{title}</span>
-            <span className="chip shrink-0 !px-1.5 !py-0 font-mono text-[9px] uppercase text-slate-400">{p.profile}</span>
-            {p.latencyMs != null && <span className="shrink-0 font-mono text-[9px] tabular-nums text-slate-500">{(p.latencyMs / 1000).toFixed(1)}s</span>}
+            <span className="chip shrink-0 !px-1.5 !py-0 font-mono text-[11px] uppercase text-slate-400">{p.profile}</span>
+            {p.latencyMs != null && <span className="shrink-0 font-mono text-[11px] tabular-nums text-slate-500">{(p.latencyMs / 1000).toFixed(1)}s</span>}
           </span>
-          <span className={cx("block truncate text-slate-400", dense ? "text-[10px]" : "wb-xs")}>
+          <span className={cx("block truncate text-slate-400", dense ? "text-[12px]" : "wb-xs")}>
             {p.failed && p.error
               ? `Helper unavailable (${p.error}) — the main agent continues.`
               : observe
@@ -234,17 +234,17 @@ function PiHelperCard({ t, dense = false, observe = false }: { t: AgiTranscriptC
       </button>
       {open && (
         <div className="space-y-2 border-t border-phantix-700/30 px-3 py-2.5">
-          {p.task && <p className={cx("leading-relaxed text-slate-300", dense ? "text-[10px]" : "wb-xs")}>{p.task}</p>}
+          {p.task && <p className={cx("leading-relaxed text-slate-300", dense ? "text-[12px]" : "wb-xs")}>{p.task}</p>}
           {p.failed && p.message && (
-            <p className={cx("leading-relaxed text-severity-medium", dense ? "text-[10px]" : "wb-xs")}>{p.message}</p>
+            <p className={cx("leading-relaxed text-severity-medium", dense ? "text-[12px]" : "wb-xs")}>{p.message}</p>
           )}
           {(p.result || p.resultLine) && (
-            <pre className={cx("wb-scroll overflow-x-auto whitespace-pre-wrap break-words rounded-lg border border-phantix-700/40 bg-phantix-950/70 p-2 font-mono leading-5 text-slate-300", dense ? "text-[10px]" : "text-[11px]")}>
+            <pre className={cx("wb-scroll overflow-x-auto whitespace-pre-wrap break-words rounded-lg border border-phantix-700/40 bg-phantix-950/70 p-2 font-mono leading-5 text-slate-300", dense ? "text-[12px]" : "text-[13px]")}>
               {p.resultLine ?? p.result}
             </pre>
           )}
           {p.tools && (
-            <p className="font-mono text-[10px] text-slate-500">tools: {p.tools}</p>
+            <p className="font-mono text-[12px] text-slate-500">tools: {p.tools}</p>
           )}
         </div>
       )}
@@ -283,8 +283,8 @@ export function ToolGroupCard({
         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-phantix-800/80 text-gold-400">
           <Terminal size={11} />
         </span>
-        <span className={cx("truncate font-mono font-semibold text-slate-200", dense ? "text-[11px]" : "text-xs")}>{tool}</span>
-        <span className="chip shrink-0 !px-1.5 !py-0 font-mono text-[10px] text-gold-300">× {count}</span>
+        <span className={cx("truncate font-mono font-semibold text-slate-200", dense ? "text-[13px]" : "text-xs")}>{tool}</span>
+        <span className="chip shrink-0 !px-1.5 !py-0 font-mono text-[12px] text-gold-300">× {count}</span>
         <span className={cx("ml-auto shrink-0 text-slate-500 transition-transform", open && "rotate-180")}>
           <ChevronDown size={12} />
         </span>
@@ -296,9 +296,9 @@ export function ToolGroupCard({
             const output = body || command;
             return (
               <div key={i} className="rounded-lg bg-phantix-900/50 px-2.5 py-1.5">
-                {command && <p className={cx("font-mono text-slate-500", dense ? "text-[10px]" : "text-[11px]")}>{linkify(command, "text-gold-300/90 break-all hover:text-gold-200")}</p>}
+                {command && <p className={cx("font-mono text-slate-500", dense ? "text-[12px]" : "text-[13px]")}>{linkify(command, "text-gold-300/90 break-all hover:text-gold-200")}</p>}
                 {output && (
-                  <p className={cx("whitespace-pre-wrap break-words font-mono leading-5 text-slate-300", dense ? "text-[10px]" : "text-[11px]")}>
+                  <p className={cx("whitespace-pre-wrap break-words font-mono leading-5 text-slate-300", dense ? "text-[12px]" : "text-[13px]")}>
                     {linkify(output)}
                   </p>
                 )}
@@ -395,10 +395,10 @@ export function IssuesStrip({
   return (
     <div className="rounded-md border border-phantix-700/40 bg-phantix-900/50 p-2.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+        <p className="text-[12px] font-semibold uppercase tracking-wider text-slate-400">
           Issues found ({findings.length})
         </p>
-        <a href={href} className="text-[10px] font-medium text-gold-300 underline decoration-gold-400/40 underline-offset-2 hover:text-gold-200">
+        <a href={href} className="text-[12px] font-medium text-gold-300 underline decoration-gold-400/40 underline-offset-2 hover:text-gold-200">
           Open tracker →
         </a>
       </div>
@@ -413,7 +413,7 @@ export function IssuesStrip({
             >
               <span className={cx("h-1.5 w-1.5 shrink-0 rounded-full", SEV_DOT[sev] ?? "bg-slate-500")} />
               <span className="min-w-0 flex-1 truncate text-slate-300">{f.title}</span>
-              {f.cve && <span className="shrink-0 font-mono text-[9px] text-gold-400">{f.cve}</span>}
+              {f.cve && <span className="shrink-0 font-mono text-[11px] text-gold-400">{f.cve}</span>}
             </a>
           );
         })}

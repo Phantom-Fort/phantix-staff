@@ -485,7 +485,7 @@ export function Tabs({ tabs, active, onChange }: { tabs: { id: string; label: Re
           <span className="relative flex items-center gap-1.5">
             {t.label}
             {t.count !== undefined && (
-              <span className={cx("rounded-full px-1.5 py-0.5 text-[10px] font-bold", active === t.id ? "bg-phantix-950/20 text-phantix-950" : "bg-phantix-700/60 text-slate-300")}>{t.count}</span>
+              <span className={cx("rounded-full px-1.5 py-0.5 text-[12px] font-bold", active === t.id ? "bg-phantix-950/20 text-phantix-950" : "bg-phantix-700/60 text-slate-300")}>{t.count}</span>
             )}
           </span>
         </button>
@@ -515,13 +515,13 @@ export function Pagination({
   const to = Math.min(total, current * pageSize);
   return (
     <div className={cx("mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-phantix-700/40 bg-phantix-900/40 px-3 py-2", className)}>
-      <p className="text-[11px] text-slate-500">
+      <p className="text-[13px] text-slate-500">
         {total === 0 ? `0 ${itemLabel}` : `Showing ${from}\u2013${to} of ${total.toLocaleString()} ${itemLabel}`}
       </p>
       <div className="flex items-center gap-1.5">
-        <button type="button" disabled={current <= 1} onClick={() => onPageChange(Math.max(1, current - 1))} className="btn-ghost !px-2.5 !py-1 !text-[11px] disabled:opacity-40">Prev</button>
-        <span className="tabular-nums text-[11px] text-slate-400">Page {current} / {totalPages}</span>
-        <button type="button" disabled={current >= totalPages} onClick={() => onPageChange(Math.min(totalPages, current + 1))} className="btn-ghost !px-2.5 !py-1 !text-[11px] disabled:opacity-40">Next</button>
+        <button type="button" disabled={current <= 1} onClick={() => onPageChange(Math.max(1, current - 1))} className="btn-ghost !px-2.5 !py-1 !text-[13px] disabled:opacity-40">Prev</button>
+        <span className="tabular-nums text-[13px] text-slate-400">Page {current} / {totalPages}</span>
+        <button type="button" disabled={current >= totalPages} onClick={() => onPageChange(Math.min(totalPages, current + 1))} className="btn-ghost !px-2.5 !py-1 !text-[13px] disabled:opacity-40">Next</button>
       </div>
     </div>
   );
@@ -576,9 +576,9 @@ export function CopyChip({ value, label }: { value: string; label?: string }) {
       className="group inline-flex items-center gap-2 rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-1.5 font-mono text-xs text-slate-300 transition-colors hover:border-gold-400/40 hover:text-gold-300"
       title="Copy"
     >
-      {label && <span className="font-sans text-[10px] uppercase tracking-wider text-slate-500">{label}</span>}
+      {label && <span className="font-sans text-[12px] uppercase tracking-wider text-slate-500">{label}</span>}
       {value}
-      <span className="text-[10px] text-slate-600 group-hover:text-gold-400">{copied ? "✓ copied" : "copy"}</span>
+      <span className="text-[12px] text-slate-600 group-hover:text-gold-400">{copied ? "✓ copied" : "copy"}</span>
     </button>
   );
 }

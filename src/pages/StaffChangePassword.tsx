@@ -128,7 +128,7 @@ export default function StaffChangePassword() {
               onChange={(e) => setNext(e.target.value)}
               autoComplete="new-password"
             />
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-[13px] text-slate-500">
               At least {MIN_LEN} characters, with upper and lower case, a number and a symbol.
             </p>
           </div>

@@ -85,7 +85,7 @@ export default function Architecture() {
   const isLoading = index.loading && engines.length === 0;
 
   return (
-    <div className="mx-auto max-w-[1400px]">
+    <div>
       <PageHeader
         title="Architecture"
         description="Engine registry + generated architecture documents"
@@ -119,7 +119,7 @@ export default function Architecture() {
             {atlas?.available === false && (
               <span className="chip border-gold-400/30 bg-gold-400/10 text-gold-300">Atlas not generated</span>
             )}
-            {data?.source && <span className="font-mono text-[11px] text-slate-600">source: {data.source}</span>}
+            {data?.source && <span className="font-mono text-[13px] text-slate-600">source: {data.source}</span>}
           </div>
 
           {docError && (
@@ -144,11 +144,11 @@ export default function Architecture() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-display text-sm font-semibold text-white">{engine.name}</p>
-                    <span className={cx("chip shrink-0 !px-2 !py-0.5 text-[10px] capitalize", statusClasses(engine.status))}>{engine.status}</span>
+                    <span className={cx("chip shrink-0 !px-2 !py-0.5 text-[12px] capitalize", statusClasses(engine.status))}>{engine.status}</span>
                   </div>
                   <p className="mt-1 font-mono text-xs text-slate-400">v{engine.version}</p>
                   {engine.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{engine.description}</p>}
-                  <p className="mt-3 flex items-center gap-1 text-[11px] text-gold-400">
+                  <p className="mt-3 flex items-center gap-1 text-[13px] text-gold-400">
                     {opening === engine.href ? <Loader2 size={11} className="animate-spin" /> : <FileCode2 size={11} />}
                     Open document
                   </p>

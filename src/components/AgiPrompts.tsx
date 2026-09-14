@@ -98,7 +98,7 @@ export default function AgiPrompts() {
             </div>
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {EXAMPLES.map((ex) => (
-                <button key={ex} onClick={() => { setInstruction(ex); void run(ex); }} className="rounded-full border border-phantix-700/40 bg-phantix-900/40 px-2.5 py-1 text-[11px] text-slate-400 transition-colors hover:border-gold-400/40 hover:text-slate-200">{ex}</button>
+                <button key={ex} onClick={() => { setInstruction(ex); void run(ex); }} className="rounded-full border border-phantix-700/40 bg-phantix-900/40 px-2.5 py-1 text-[13px] text-slate-400 transition-colors hover:border-gold-400/40 hover:text-slate-200">{ex}</button>
               ))}
             </div>
           </Card>
@@ -108,11 +108,11 @@ export default function AgiPrompts() {
               <Card>
                 <CardHeader title="Detected intent" subtitle="From objective tokens (mirrors skill_prioritization.detect_intents)." />
                 <div className="flex flex-wrap gap-1.5">
-                  {result.intents.map((i) => <span key={i} className="chip border-gold-400/30 bg-gold-400/10 text-[10px] text-gold-300">{i}</span>)}
-                  {result.matchedDef && <span className="chip border-emerald-400/30 bg-emerald-400/10 text-[10px] text-emerald-300">prompt: {result.matchedDef.key}</span>}
+                  {result.intents.map((i) => <span key={i} className="chip border-gold-400/30 bg-gold-400/10 text-[12px] text-gold-300">{i}</span>)}
+                  {result.matchedDef && <span className="chip border-emerald-400/30 bg-emerald-400/10 text-[12px] text-emerald-300">prompt: {result.matchedDef.key}</span>}
                 </div>
                 {result.matchedDef && (
-                  <p className="mt-2 break-words text-[11px] leading-4 text-slate-500">Matches prompt <span className="font-mono text-slate-300">{result.matchedDef.label}</span> → intents {result.matchedDef.intents.join(", ")} → skills {result.matchedDef.skill_ids.join(", ")}</p>
+                  <p className="mt-2 break-words text-[13px] leading-4 text-slate-500">Matches prompt <span className="font-mono text-slate-300">{result.matchedDef.label}</span> → intents {result.matchedDef.intents.join(", ")} → skills {result.matchedDef.skill_ids.join(", ")}</p>
                 )}
               </Card>
 
@@ -121,20 +121,20 @@ export default function AgiPrompts() {
                 <div className="space-y-1.5">
                   {result.plan.skills.map((s) => (
                     <div key={s.skill_id} className="flex flex-wrap items-center gap-2 rounded-lg border border-phantix-700/30 px-3 py-2">
-                      <span className="w-5 shrink-0 text-right font-mono text-[11px] text-slate-600">{s.rank}</span>
-                      <span className={cx("min-w-0 flex-1 truncate font-mono text-[11px]", s.role === "primary" ? "text-gold-200" : "text-slate-200")} title={s.skill_id}>{s.skill_id}</span>
-                      <span className="shrink-0 text-[10px] text-slate-500">{s.kind}</span>
-                      {s.efficiency != null && <span className="shrink-0 font-mono text-[10px] text-emerald-400">eff {(s.efficiency * 100).toFixed(0)}%</span>}
-                      {s.objective_score != null && <span className="shrink-0 font-mono text-[10px] text-slate-500">obj {(s.objective_score * 100).toFixed(0)}%</span>}
-                      <span className={cx("chip shrink-0 !text-[9px]", s.body_loaded ? "text-emerald-300" : "text-slate-500")}>{s.body_loaded ? "Full" : "Card"}</span>
-                      <span className="min-w-0 break-words text-[9px] text-slate-600">{s.match_reason}</span>
+                      <span className="w-5 shrink-0 text-right font-mono text-[13px] text-slate-600">{s.rank}</span>
+                      <span className={cx("min-w-0 flex-1 truncate font-mono text-[13px]", s.role === "primary" ? "text-gold-200" : "text-slate-200")} title={s.skill_id}>{s.skill_id}</span>
+                      <span className="shrink-0 text-[12px] text-slate-500">{s.kind}</span>
+                      {s.efficiency != null && <span className="shrink-0 font-mono text-[12px] text-emerald-400">eff {(s.efficiency * 100).toFixed(0)}%</span>}
+                      {s.objective_score != null && <span className="shrink-0 font-mono text-[12px] text-slate-500">obj {(s.objective_score * 100).toFixed(0)}%</span>}
+                      <span className={cx("chip shrink-0 !text-[11px]", s.body_loaded ? "text-emerald-300" : "text-slate-500")}>{s.body_loaded ? "Full" : "Card"}</span>
+                      <span className="min-w-0 break-words text-[11px] text-slate-600">{s.match_reason}</span>
                     </div>
                   ))}
                 </div>
                 {result.plan.tools && result.plan.tools.to_provision_count > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    <span className="text-[10px] text-amber-300">Tools to provision:</span>
-                    {result.plan.tools.to_provision.map((t) => <span key={t.tool} className="chip !text-[9px]">{t.tool} ({t.package}){t.required ? " · required" : ""}</span>)}
+                    <span className="text-[12px] text-amber-300">Tools to provision:</span>
+                    {result.plan.tools.to_provision.map((t) => <span key={t.tool} className="chip !text-[11px]">{t.tool} ({t.package}){t.required ? " · required" : ""}</span>)}
                   </div>
                 )}
               </Card>
@@ -143,7 +143,7 @@ export default function AgiPrompts() {
                 <div className="px-5 pt-5">
                   <CardHeader title="System prompt preview" subtitle="What the runner receives — staff only. Users never see this." />
                 </div>
-                <pre className="max-h-[360px] overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words bg-phantix-950/70 p-4 font-mono text-[11px] leading-5 text-slate-300">{result.prompt}</pre>
+                <pre className="max-h-[360px] overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words bg-phantix-950/70 p-4 font-mono text-[13px] leading-5 text-slate-300">{result.prompt}</pre>
               </Card>
             </>
           )}
@@ -155,23 +155,23 @@ export default function AgiPrompts() {
             <div className="space-y-1.5">
               {INTENT_SIGNALS.map((s) => (
                 <div key={s.intent} className="rounded-md border border-phantix-700/30 px-2.5 py-1.5">
-                  <p className="font-mono text-[10px] text-gold-300">{s.intent}</p>
-                  <p className="mt-0.5 text-[10px] text-slate-500">tokens: {s.tokens.join(", ")}</p>
-                  <p className="text-[10px] text-slate-600">kinds: {s.kinds.join(", ")}</p>
+                  <p className="font-mono text-[12px] text-gold-300">{s.intent}</p>
+                  <p className="mt-0.5 text-[12px] text-slate-500">tokens: {s.tokens.join(", ")}</p>
+                  <p className="text-[12px] text-slate-600">kinds: {s.kinds.join(", ")}</p>
                 </div>
               ))}
             </div>
           </Accordion>
 
           <Accordion id="appendix" title="Forbidden appendix" defaultOpen={false}>
-            <pre className="whitespace-pre-wrap break-words font-mono text-[10px] leading-4 text-slate-400">{FORBIDDEN_APPENDIX}</pre>
+            <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-4 text-slate-400">{FORBIDDEN_APPENDIX}</pre>
           </Accordion>
 
           <Accordion id="tools" title="Tool instructions" defaultOpen={false}>
-            <pre className="whitespace-pre-wrap break-words font-mono text-[10px] leading-4 text-slate-400">{TOOL_INSTRUCTIONS}</pre>
+            <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-4 text-slate-400">{TOOL_INSTRUCTIONS}</pre>
           </Accordion>
 
-          <p className="flex items-start gap-1.5 text-[10px] leading-4 text-slate-600">
+          <p className="flex items-start gap-1.5 text-[12px] leading-4 text-slate-600">
             <ShieldCheck size={11} className="mt-0.5 shrink-0 text-gold-400" />
             Users only ever see thinking → intent restated → skill resolved → execution. These blocks and the system prompt are staff-only and never surface in agent responses.
           </p>
@@ -180,7 +180,7 @@ export default function AgiPrompts() {
 
       {/* Prompt library — below resolve objective (full width) */}
       <Card>
-        <CardHeader title="Prompt library" subtitle="Prompts a user's objective can resolve to." action={<button onClick={() => { setDraft({ key: "", label: "", system_prompt: "", user_template: "", intents: [], skill_ids: [], is_active: true }); setEditing({ key: "", label: "", system_prompt: "", user_template: "", intents: [], skill_ids: [], is_active: true }); }} className="btn-primary !px-2.5 !py-1 !text-[11px]"><Plus size={12} className="mr-1 inline" /> Add</button>} />
+        <CardHeader title="Prompt library" subtitle="Prompts a user's objective can resolve to." action={<button onClick={() => { setDraft({ key: "", label: "", system_prompt: "", user_template: "", intents: [], skill_ids: [], is_active: true }); setEditing({ key: "", label: "", system_prompt: "", user_template: "", intents: [], skill_ids: [], is_active: true }); }} className="btn-primary !px-2.5 !py-1 !text-[13px]"><Plus size={12} className="mr-1 inline" /> Add</button>} />
         {editing && (
           <div className="mb-3 space-y-2 rounded-lg border border-phantix-700/40 bg-phantix-950/50 p-3">
             <input value={draft?.label ?? ""} onChange={(e) => setDraft({ ...draft!, label: e.target.value })} placeholder="Label (e.g. VAPT — web application)" className="w-full rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 text-xs text-slate-200 outline-none" />
@@ -196,14 +196,14 @@ export default function AgiPrompts() {
               }}
               rows={3}
               placeholder="System prompt — guides execution"
-              className="w-full resize-none rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 font-mono text-[11px] text-slate-200 outline-none overflow-hidden"
+              className="w-full resize-none rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 font-mono text-[13px] text-slate-200 outline-none overflow-hidden"
               style={{ minHeight: "60px", maxHeight: "120px" }}
             />
             <input value={draft?.intents.join(", ") ?? ""} onChange={(e) => setDraft({ ...draft!, intents: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} placeholder="Intents (comma) e.g. vapt, web" className="w-full rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 text-xs text-slate-200 outline-none" />
             <input value={draft?.skill_ids.join(", ") ?? ""} onChange={(e) => setDraft({ ...draft!, skill_ids: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} placeholder="Skill ids (comma) e.g. agi.web.idor-check" className="w-full rounded-md border border-phantix-700/50 bg-phantix-950/70 px-2 py-1.5 font-mono text-xs text-slate-200 outline-none" />
             <div className="flex gap-2">
-              <button onClick={saveDef} className="btn-primary flex-1 !px-2 !py-1 !text-[11px]"><Check size={11} className="mr-1 inline" /> Save</button>
-              <button onClick={() => { setEditing(null); setDraft(null); }} className="btn-ghost flex-1 !px-2 !py-1 !text-[11px]"><X size={11} className="mr-1 inline" /> Cancel</button>
+              <button onClick={saveDef} className="btn-primary flex-1 !px-2 !py-1 !text-[13px]"><Check size={11} className="mr-1 inline" /> Save</button>
+              <button onClick={() => { setEditing(null); setDraft(null); }} className="btn-ghost flex-1 !px-2 !py-1 !text-[13px]"><X size={11} className="mr-1 inline" /> Cancel</button>
             </div>
           </div>
         )}
@@ -211,14 +211,14 @@ export default function AgiPrompts() {
           {defs.map((d) => (
             <div key={d.key} className={cx("rounded-lg border px-3 py-2", d.is_active ? "border-phantix-700/40 bg-phantix-900/40" : "border-phantix-700/30 bg-phantix-950/40 opacity-60")}>
               <div className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate font-mono text-[11px] font-semibold text-slate-200">{d.label}</span>
-                <span className="chip !text-[9px]">{d.is_active ? "active" : "off"}</span>
+                <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-semibold text-slate-200">{d.label}</span>
+                <span className="chip !text-[11px]">{d.is_active ? "active" : "off"}</span>
                 <button onClick={() => { setEditing(d); setDraft({ ...d }); }} className="text-slate-500 hover:text-slate-200" title="Edit"><Pencil size={11} /></button>
                 <button onClick={() => toggleDef(d.key)} className="text-slate-500 hover:text-gold-300" title="Toggle">{d.is_active ? <X size={11} /> : <Check size={11} />}</button>
                 <button onClick={() => removeDef(d.key)} className="text-slate-500 hover:text-severity-critical" title="Delete"><Trash2 size={11} /></button>
               </div>
-              <p className="mt-1 line-clamp-2 break-words text-[10px] leading-4 text-slate-500">{d.system_prompt}</p>
-              <p className="mt-1 break-words font-mono text-[9px] text-slate-600">{d.intents.join(", ")} → {d.skill_ids.join(", ")}</p>
+              <p className="mt-1 line-clamp-2 break-words text-[12px] leading-4 text-slate-500">{d.system_prompt}</p>
+              <p className="mt-1 break-words font-mono text-[11px] text-slate-600">{d.intents.join(", ")} → {d.skill_ids.join(", ")}</p>
             </div>
           ))}
         </div>
@@ -233,7 +233,7 @@ function Accordion({ id, title, children, defaultOpen }: { id: string; title: st
     <Card className="!p-0 overflow-hidden">
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left">
         {open ? <ChevronDown size={13} className="text-slate-500" /> : <ChevronRight size={13} className="text-slate-500" />}
-        <span className="text-[11px] font-semibold text-slate-200">{title}</span>
+        <span className="text-[13px] font-semibold text-slate-200">{title}</span>
         <Brain size={11} className="ml-auto text-slate-600" />
       </button>
       {open && <div className="border-t border-phantix-700/30 px-3.5 py-2.5">{children}</div>}

@@ -105,7 +105,7 @@ function SummaryStrip({ summary }: { summary?: Record<string, unknown> }) {
   if (chips.length === 0) return null;
   const top = chips.sort((a, b) => b[2] - a[2]).slice(0, 12);
   return (
-    <div className="mb-3 flex flex-wrap gap-1.5 text-[10px]">
+    <div className="mb-3 flex flex-wrap gap-1.5 text-[12px]">
       <span className="text-slate-500 uppercase tracking-wider font-semibold self-center">Summary:</span>
       {top.map(([type, level, count], i) => (
         <span key={`${type}-${level}`} className={cx("chip", level === "error" || level === "critical" ? "border-severity-critical/40 bg-severity-critical/10 text-severity-critical" : level === "warning" ? "border-severity-medium/40 bg-severity-medium/10 text-severity-medium" : "border-phantix-600/50 bg-phantix-800/50 text-slate-300")}>
@@ -312,23 +312,23 @@ export default function DevLogs() {
                         </td>
                         <td className="td text-xs text-slate-500 whitespace-nowrap">{timeAgo(log.created_at ?? null)}</td>
                         <td className="td">
-                          <span className={cx("chip text-[10px]", logTypeBadge(log.log_type))} title={LOG_TYPE_LABELS[log.log_type] ?? log.log_type}>
+                          <span className={cx("chip text-[12px]", logTypeBadge(log.log_type))} title={LOG_TYPE_LABELS[log.log_type] ?? log.log_type}>
                             {log.log_type}
                           </span>
-                          {log.log_type === "access" && <span className="block text-[9px] text-slate-600">(hidden by default)</span>}
+                          {log.log_type === "access" && <span className="block text-[11px] text-slate-600">(hidden by default)</span>}
                         </td>
                         <td className="td">
-                          <span className={cx("chip text-[10px] capitalize", levelColor(log.level))}>
+                          <span className={cx("chip text-[12px] capitalize", levelColor(log.level))}>
                             <LevelIcon size={10} /> {log.level}
                           </span>
                         </td>
                         <td className="td">
                           <p className="text-sm text-slate-200">{log.message}</p>
-                          {log.category && <p className="text-[10px] text-slate-600">{log.category}</p>}
+                          {log.category && <p className="text-[12px] text-slate-600">{log.category}</p>}
                           {log.issue_id && (
                             <button
                               onClick={(e) => { e.stopPropagation(); void openIssue(log.issue_id!); }}
-                              className="text-[10px] font-mono text-gold-400/80 hover:text-gold-300"
+                              className="text-[12px] font-mono text-gold-400/80 hover:text-gold-300"
                               title="Open issue timeline"
                             >
                               {log.issue_id} → timeline
@@ -336,16 +336,16 @@ export default function DevLogs() {
                           )}
                           {expanded && hasContext && (
                             <div className="mt-2">
-                              <p className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-slate-500">
+                              <p className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-slate-500">
                                 <FileJson2 size={10} /> Context (structured payload)
                               </p>
-                              <pre className="mt-1 overflow-auto rounded-lg border border-phantix-700/40 bg-phantix-950/70 p-2.5 text-[10px] leading-relaxed text-slate-300 max-h-64">
+                              <pre className="mt-1 overflow-auto rounded-lg border border-phantix-700/40 bg-phantix-950/70 p-2.5 text-[12px] leading-relaxed text-slate-300 max-h-64">
                                 {JSON.stringify(log.context, null, 2)}
                               </pre>
                             </div>
                           )}
                         </td>
-                        <td className="td text-[10px] text-slate-500">{log.engine || "---"}</td>
+                        <td className="td text-[12px] text-slate-500">{log.engine || "---"}</td>
                         <td className="td">
                           {log.organization_id ? <span className="text-xs font-mono text-slate-400">#{log.organization_id}</span> : <span className="text-xs text-slate-600">---</span>}
                         </td>
@@ -374,15 +374,15 @@ export default function DevLogs() {
             {issueTimeline.map((e, i) => (
               <div key={i} className="rounded-lg bg-phantix-950/60 border border-phantix-700/40 p-3">
                 <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span className={cx("chip text-[10px] capitalize", levelColor(e.level))}>{e.level}</span>
-                  <span className={cx("chip text-[10px]", logTypeBadge(e.log_type))}>{e.log_type}</span>
+                  <span className={cx("chip text-[12px] capitalize", levelColor(e.level))}>{e.level}</span>
+                  <span className={cx("chip text-[12px]", logTypeBadge(e.log_type))}>{e.log_type}</span>
                   {e.organization_id != null && <span className="font-mono">#{e.organization_id}</span>}
                   <span className="ml-auto">{timeAgo(e.created_at ?? null)}</span>
                 </div>
                 <p className="mt-1.5 text-sm text-slate-200">{e.message}</p>
-                {e.category && <p className="mt-0.5 text-[10px] text-slate-600">{e.category}</p>}
+                {e.category && <p className="mt-0.5 text-[12px] text-slate-600">{e.category}</p>}
                 {e.context && Object.keys(e.context).length > 0 && (
-                  <pre className="mt-1.5 overflow-auto rounded-lg border border-phantix-700/40 bg-phantix-950/70 p-2 text-[10px] text-slate-300 max-h-48">
+                  <pre className="mt-1.5 overflow-auto rounded-lg border border-phantix-700/40 bg-phantix-950/70 p-2 text-[12px] text-slate-300 max-h-48">
                     {JSON.stringify(e.context, null, 2)}
                   </pre>
                 )}

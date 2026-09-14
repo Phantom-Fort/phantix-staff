@@ -47,7 +47,7 @@ export default function ContributeLearning() {
   };
 
   return (
-    <div className="mx-auto max-w-[1100px]">
+    <div>
       <PageHeader
         title="Learning inbox"
         description="Auto-minted skills and tool provisions waiting for a human. Anonymized — no customer security inventory here."
@@ -77,11 +77,11 @@ export default function ContributeLearning() {
                     <div key={s.id} className="flex items-center justify-between gap-2 rounded-md border border-phantix-700/40 px-3 py-2">
                       <div className="min-w-0">
                         <p className="truncate text-sm text-slate-200">{s.title || s.skill_id}</p>
-                        <p className="font-mono text-[10px] text-slate-500">{s.kind} · {s.source}</p>
+                        <p className="font-mono text-[12px] text-slate-500">{s.kind} · {s.source}</p>
                       </div>
                       <button
                         type="button"
-                        className="btn-primary !px-2 !py-1 !text-[11px]"
+                        className="btn-primary !px-2 !py-1 !text-[13px]"
                         disabled={promoting === s.id}
                         onClick={() => void promote(s.id)}
                       >
@@ -99,7 +99,7 @@ export default function ContributeLearning() {
                 {AGI_ENABLED && isAgiAdmin ? (
                   <Link to="/agi" className="text-xs text-gold-300 hover:text-gold-200">Open AGI tool queue →</Link>
                 ) : (
-                  <p className="text-[11px] text-slate-500">Requires agi_admin to provision tools.</p>
+                  <p className="text-[13px] text-slate-500">Requires agi_admin to provision tools.</p>
                 )}
               </div>
               {!data?.pending_tools?.length ? (
@@ -109,7 +109,7 @@ export default function ContributeLearning() {
                   {data.pending_tools.map((t, i) => (
                     <div key={t.id ?? i} className="rounded-md border border-phantix-700/40 px-3 py-2">
                       <p className="text-sm text-slate-200">{t.tool || `Request #${t.id}`}</p>
-                      <p className="text-[10px] text-slate-500">{t.engine_id || "—"} · {t.status}</p>
+                      <p className="text-[12px] text-slate-500">{t.engine_id || "—"} · {t.status}</p>
                     </div>
                   ))}
                 </div>

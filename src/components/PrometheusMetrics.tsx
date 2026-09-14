@@ -158,7 +158,7 @@ export function PrometheusMetrics() {
       )}
 
       {text && showRaw && (
-        <pre className="max-h-[420px] overflow-auto rounded-md border border-phantix-700/40 bg-phantix-950/60 p-3 font-mono text-[11px] leading-5 text-slate-400">
+        <pre className="max-h-[420px] overflow-auto rounded-md border border-phantix-700/40 bg-phantix-950/60 p-3 font-mono text-[13px] leading-5 text-slate-400">
           {text}
         </pre>
       )}
@@ -196,13 +196,13 @@ function FamilyRow({ family }: { family: Family }) {
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-start justify-between gap-3 text-left">
         <span className="min-w-0">
           <span className="block font-mono text-xs text-gold-300">{family.name}</span>
-          {family.help && <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">{family.help}</span>}
+          {family.help && <span className="mt-0.5 block text-[13px] leading-4 text-slate-500">{family.help}</span>}
         </span>
-        <span className="shrink-0 chip text-[10px] lowercase">{family.type}</span>
+        <span className="shrink-0 chip text-[12px] lowercase">{family.type}</span>
       </button>
       <div className="mt-2 space-y-1">
         {preview.map((s, i) => (
-          <div key={`${s.name}${s.labels}${i}`} className="flex items-baseline justify-between gap-3 font-mono text-[11px]">
+          <div key={`${s.name}${s.labels}${i}`} className="flex items-baseline justify-between gap-3 font-mono text-[13px]">
             <span className="min-w-0 truncate text-slate-400">{s.name}{s.labels}</span>
             <span className={cx("shrink-0 tabular-nums", Number.isFinite(s.value) ? "text-slate-200" : "text-slate-500")}>
               {Number.isFinite(s.value) ? s.value.toLocaleString(undefined, { maximumFractionDigits: 4 }) : "—"}
@@ -210,7 +210,7 @@ function FamilyRow({ family }: { family: Family }) {
           </div>
         ))}
         {!open && family.samples.length > preview.length && (
-          <button onClick={() => setOpen(true)} className="text-[11px] text-slate-500 hover:text-slate-300">
+          <button onClick={() => setOpen(true)} className="text-[13px] text-slate-500 hover:text-slate-300">
             +{family.samples.length - preview.length} more series
           </button>
         )}

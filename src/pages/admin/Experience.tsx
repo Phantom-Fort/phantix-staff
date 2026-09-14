@@ -131,17 +131,17 @@ export default function ExperienceAdmin() {
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-slate-100">{svc.label}</p>
                         {svc.is_active ? (
-                          <span className="chip text-[10px] text-emerald-400 bg-emerald-400/10 border-emerald-400/30"><Eye size={10} /> Active</span>
+                          <span className="chip text-[12px] text-emerald-400 bg-emerald-400/10 border-emerald-400/30"><Eye size={10} /> Active</span>
                         ) : (
-                          <span className="chip text-[10px] text-slate-400 bg-slate-400/10 border-slate-500/30"><EyeOff size={10} /> Inactive</span>
+                          <span className="chip text-[12px] text-slate-400 bg-slate-400/10 border-slate-500/30"><EyeOff size={10} /> Inactive</span>
                         )}
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">{svc.description}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0 ml-3">
-                    <span className="text-[10px] font-mono text-slate-500">{svc.service_key}</span>
-                    <span className="text-[10px] text-slate-600">#{svc.sort_order}</span>
+                    <span className="text-[12px] font-mono text-slate-500">{svc.service_key}</span>
+                    <span className="text-[12px] text-slate-600">#{svc.sort_order}</span>
                     {open ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
                   </div>
                 </button>
@@ -152,10 +152,10 @@ export default function ExperienceAdmin() {
                     {/* Modules */}
                     {svc.modules.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5"><Layers size={11} /> Modules</p>
+                        <p className="text-[12px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5"><Layers size={11} /> Modules</p>
                         <div className="flex flex-wrap gap-1">
                           {svc.modules.map((m) => (
-                            <span key={m} className="chip text-[10px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{m}</span>
+                            <span key={m} className="chip text-[12px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{m}</span>
                           ))}
                         </div>
                       </div>
@@ -164,7 +164,7 @@ export default function ExperienceAdmin() {
                     {/* Navigation */}
                     {svc.nav.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5"><Navigation size={11} /> Navigation</p>
+                        <p className="text-[12px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5"><Navigation size={11} /> Navigation</p>
                         <div className="space-y-1">
                           {svc.nav.map((n) => (
                             <div key={n.id} className="flex items-center gap-2 text-xs">
@@ -180,10 +180,10 @@ export default function ExperienceAdmin() {
                     {/* Dashboard widgets */}
                     {svc.dashboard_widgets.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Widgets</p>
+                        <p className="text-[12px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Widgets</p>
                         <div className="flex flex-wrap gap-1">
                           {svc.dashboard_widgets.map((w) => (
-                            <span key={w} className="text-[10px] text-slate-400 bg-phantix-800/60 rounded px-1.5 py-0.5">{w}</span>
+                            <span key={w} className="text-[12px] text-slate-400 bg-phantix-800/60 rounded px-1.5 py-0.5">{w}</span>
                           ))}
                         </div>
                       </div>
@@ -192,10 +192,10 @@ export default function ExperienceAdmin() {
                     {/* Connections */}
                     {svc.requires_connections.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5"><Link2 size={11} /> Required Connections</p>
+                        <p className="text-[12px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5"><Link2 size={11} /> Required Connections</p>
                         <div className="flex flex-wrap gap-1">
                           {svc.requires_connections.map((c) => (
-                            <span key={c} className="chip text-[10px] text-severity-medium bg-severity-medium/10 border-severity-medium/20">{c}</span>
+                            <span key={c} className="chip text-[12px] text-severity-medium bg-severity-medium/10 border-severity-medium/20">{c}</span>
                           ))}
                         </div>
                       </div>
@@ -204,7 +204,7 @@ export default function ExperienceAdmin() {
                     {/* Onboarding */}
                     {svc.onboarding.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5"><BookOpen size={11} /> Onboarding Steps</p>
+                        <p className="text-[12px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5"><BookOpen size={11} /> Onboarding Steps</p>
                         <div className="space-y-1.5">
                           {svc.onboarding.map((step, i) => (
                             <div key={step.id} className="flex items-start gap-2 text-xs">
@@ -224,7 +224,7 @@ export default function ExperienceAdmin() {
                     )}
 
                     {/* Meta */}
-                    <div className="flex items-center gap-3 text-[10px] text-slate-600 pt-1 border-t border-phantix-700/30">
+                    <div className="flex items-center gap-3 text-[12px] text-slate-600 pt-1 border-t border-phantix-700/30">
                       <span className="flex items-center gap-1"><Clock size={10} /> Updated {timeAgo(svc.updated_at)}</span>
                       <span>by {svc.updated_by}</span>
                       <span>Created {new Date(svc.created_at).toLocaleDateString()}</span>

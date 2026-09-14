@@ -83,7 +83,7 @@ export default function ContributeSkills() {
   };
 
   return (
-    <div className="mx-auto max-w-[1100px]">
+    <div>
       <PageHeader
         title="Skills"
         description="Import SKILL.md packs and promote auto-minted candidates after review."
@@ -122,16 +122,16 @@ export default function ContributeSkills() {
                     <Sparkles size={14} className="text-gold-400" />
                     {s.title || s.name || s.skill_id || `Skill #${s.id}`}
                   </p>
-                  <p className="font-mono text-[10px] text-slate-500">
+                  <p className="font-mono text-[12px] text-slate-500">
                     {s.skill_id}{s.version ? `@${s.version}` : ""} · {s.kind || "skill"} · {s.source || "—"}
                     {typeof s.score === "number" ? ` · score ${s.score.toFixed(2)}` : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="chip text-[10px] border-amber-400/30 bg-amber-400/10 text-amber-300">{s.status || "candidate"}</span>
+                  <span className="chip text-[12px] border-amber-400/30 bg-amber-400/10 text-amber-300">{s.status || "candidate"}</span>
                   <button
                     type="button"
-                    className="btn-primary !px-2.5 !py-1 !text-[11px]"
+                    className="btn-primary !px-2.5 !py-1 !text-[13px]"
                     disabled={promoting === s.id}
                     onClick={() => void promote(s.id, "active")}
                   >
@@ -139,7 +139,7 @@ export default function ContributeSkills() {
                   </button>
                   <button
                     type="button"
-                    className="btn-ghost !px-2 !py-1 !text-[11px] text-slate-400"
+                    className="btn-ghost !px-2 !py-1 !text-[13px] text-slate-400"
                     disabled={promoting === s.id}
                     onClick={() => void promote(s.id, "quarantined")}
                   >
@@ -155,14 +155,14 @@ export default function ContributeSkills() {
       <Modal open={showImport} onClose={() => setShowImport(false)} title="Import SKILL.md">
         <div className="space-y-3">
           <textarea
-            className="input min-h-[260px] font-mono text-[11px] leading-5"
+            className="input min-h-[260px] font-mono text-[13px] leading-5"
             value={markdown}
             onChange={(e) => setMarkdown(e.target.value)}
           />
           <button type="button" className="btn-primary w-full" disabled={busy || markdown.trim().length < 20} onClick={() => void importMd()}>
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Import as candidate
           </button>
-          <p className={cx("text-[11px] text-slate-500")}>Requires contribute_skills. Promote requires promote_candidates or agi_admin.</p>
+          <p className={cx("text-[13px] text-slate-500")}>Requires contribute_skills. Promote requires promote_candidates or agi_admin.</p>
         </div>
       </Modal>
     </div>

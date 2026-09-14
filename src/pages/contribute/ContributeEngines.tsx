@@ -58,7 +58,7 @@ export default function ContributeEngines() {
   const checklist = checklists.find((c) => c.engine_id === selected) || checklists.find((c) => c.engine_id === "_default");
 
   return (
-    <div className="mx-auto max-w-[1100px]">
+    <div>
       <PageHeader
         title="Engines"
         description="Atlas design pages, learning scores, and how-to-extend checklists."
@@ -88,7 +88,7 @@ export default function ContributeEngines() {
                     <Layers size={14} className="mt-0.5 text-gold-400" />
                     <div className="min-w-0">
                       <p className="text-sm text-slate-200">{e.name || e.id}</p>
-                      <p className="text-[10px] text-slate-500">{e.id}{e.version ? ` · v${e.version}` : ""} · {e.status || "—"}</p>
+                      <p className="text-[12px] text-slate-500">{e.id}{e.version ? ` · v${e.version}` : ""} · {e.status || "—"}</p>
                     </div>
                   </div>
                 ))}
@@ -123,7 +123,7 @@ export default function ContributeEngines() {
                   type="button"
                   onClick={() => setSelected(c.engine_id)}
                   className={cx(
-                    "rounded-full border px-3 py-1 text-[11px] font-semibold",
+                    "rounded-full border px-3 py-1 text-[13px] font-semibold",
                     selected === c.engine_id
                       ? "border-gold-400/40 bg-gold-400/10 text-gold-300"
                       : "border-phantix-700/40 text-slate-400",

@@ -100,7 +100,7 @@ export default function Analytics() {
   const creditsBurned = Math.abs(n(data?.ai_credits.credits_consumed));
 
   return (
-    <div className="mx-auto max-w-[1400px]">
+    <div>
       <PageHeader
         title="Analytics"
         description="Product usage across the Phantix Labs platform — tenants, users, lead flow, support load and AI credit burn — aggregated on demand from the platform database."
@@ -251,7 +251,7 @@ export default function Analytics() {
             </Card>
           </div>
 
-          <p className="flex items-center gap-2 text-[11px] text-slate-600">
+          <p className="flex items-center gap-2 text-[13px] text-slate-600">
             <Ticket size={11} />
             Aggregated live from the platform database — no warehouse, no third-party trackers, no PII beyond counts.
             {data?.generated_at && <span>· generated {formatDateTime(data.generated_at)}</span>}

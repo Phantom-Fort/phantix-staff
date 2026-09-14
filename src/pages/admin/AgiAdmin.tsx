@@ -89,7 +89,7 @@ function AllowlistEditor({
             value={line}
             onChange={(e) => setLine(i, e.target.value)}
             placeholder={i === 0 ? "https://app.example.com" : "https://…"}
-            className={cx(fieldClass, "font-mono text-[11px]")}
+            className={cx(fieldClass, "font-mono text-[13px]")}
           />
           {lines.length > 1 && (
             <button type="button" onClick={() => onChange(lines.filter((_, idx) => idx !== i).join("\n"))} className="rounded-lg p-2 text-slate-500 hover:bg-phantix-800/70 hover:text-slate-200" aria-label="Remove target">
@@ -98,7 +98,7 @@ function AllowlistEditor({
           )}
         </div>
       ))}
-      <button type="button" onClick={() => onChange([...lines, ""].join("\n"))} className="btn-ghost !px-2 !py-1 !text-[11px]">
+      <button type="button" onClick={() => onChange([...lines, ""].join("\n"))} className="btn-ghost !px-2 !py-1 !text-[13px]">
         <Plus size={12} className="mr-1 inline" /> Add target
       </button>
     </div>
@@ -113,14 +113,14 @@ function TxLine({ t, last }: { t: AgiTranscriptChunk; last: boolean }) {
   return (
     <div className={cx("flex", isOperator ? "justify-end" : "justify-start")}>
       <div className={cx(
-        "max-w-[92%] rounded-md px-3 py-2 text-[12.5px] leading-5",
+        "max-w-[92%] rounded-md px-3 py-2 text-[13px] leading-5",
         isOperator && "bg-gold-400/15 border border-gold-400/20 text-gold-100",
-        !isOperator && isTool && "border border-phantix-700/40 bg-phantix-950/70 font-mono text-[11px] text-slate-300",
-        !isOperator && isSystem && "font-mono text-[11px] text-slate-500",
+        !isOperator && isTool && "border border-phantix-700/40 bg-phantix-950/70 font-mono text-[13px] text-slate-300",
+        !isOperator && isSystem && "font-mono text-[13px] text-slate-500",
         !isOperator && !isTool && !isSystem && "border border-phantix-700/40 bg-phantix-800/60 text-slate-200",
       )}>
-        {isTool && <span className="mb-1 flex items-center gap-1.5 text-[10px] text-gold-400"><Terminal size={10} /> {String((t.meta as any)?.tool ?? "tool")}</span>}
-        {isSystem && <span className="mr-1 text-[10px] text-slate-600">engine</span>}
+        {isTool && <span className="mb-1 flex items-center gap-1.5 text-[12px] text-gold-400"><Terminal size={10} /> {String((t.meta as any)?.tool ?? "tool")}</span>}
+        {isSystem && <span className="mr-1 text-[12px] text-slate-600">engine</span>}
         <span className="whitespace-pre-wrap break-words">{t.content}</span>
         {last && !isOperator && <span className="ml-0.5 inline-block h-3 w-[6px] animate-pulse rounded-sm bg-gold-400/70 align-middle" />}
       </div>
@@ -466,11 +466,11 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex shrink-0 items-center gap-2 border-b border-phantix-700/40 bg-phantix-950/80 px-3 py-2">
-        <button onClick={() => setShowControls((v) => !v)} className={cx("btn-ghost !px-2.5 !py-1.5 !text-[11px]", showControls && "text-gold-300")}><SlidersHorizontal size={12} className="mr-1 inline" /> Controls</button>
-        <button onClick={() => void poll()} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><RefreshCw size={12} /> Refresh</button>
-        <button onClick={() => void trainAgiSession(session.id).then(() => toast("success", "Train queued"))} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]">Train now</button>
-        <button onClick={() => onStopped?.()} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]" title="Back to session selection"><CornerUpLeft size={12} className="mr-1 inline" /> Sessions</button>
-        <span className="ml-auto min-w-0 truncate font-mono text-[10px] text-slate-500" title={`engagement #${session.engagement_id}${session.container_id ? ` · ${session.container_id}` : ""}`}>engagement #{session.engagement_id}{session.container_id ? ` · ${session.container_id}` : ""}</span>
+        <button onClick={() => setShowControls((v) => !v)} className={cx("btn-ghost !px-2.5 !py-1.5 !text-[13px]", showControls && "text-gold-300")}><SlidersHorizontal size={12} className="mr-1 inline" /> Controls</button>
+        <button onClick={() => void poll()} className="btn-ghost !px-2.5 !py-1.5 !text-[13px]"><RefreshCw size={12} /> Refresh</button>
+        <button onClick={() => void trainAgiSession(session.id).then(() => toast("success", "Train queued"))} className="btn-ghost !px-2.5 !py-1.5 !text-[13px]">Train now</button>
+        <button onClick={() => onStopped?.()} className="btn-ghost !px-2.5 !py-1.5 !text-[13px]" title="Back to session selection"><CornerUpLeft size={12} className="mr-1 inline" /> Sessions</button>
+        <span className="ml-auto min-w-0 truncate font-mono text-[12px] text-slate-500" title={`engagement #${session.engagement_id}${session.container_id ? ` · ${session.container_id}` : ""}`}>engagement #{session.engagement_id}{session.container_id ? ` · ${session.container_id}` : ""}</span>
       </div>
       <div className="min-h-0 flex-1">
         <AgiConsole
@@ -519,10 +519,10 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
         <div className="flex max-h-[46%] min-h-0 shrink-0 flex-col border-t border-phantix-700/40 bg-phantix-950/85">
           <div className="flex shrink-0 items-center gap-2 border-b border-phantix-700/40 px-3 py-2">
             <SlidersHorizontal size={13} className="text-gold-400" />
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">Controls</p>
+            <p className="text-[13px] font-semibold uppercase tracking-wider text-slate-300">Controls</p>
             <span className="ml-auto flex items-center gap-1.5">
-              <button onClick={expandAll} className="btn-ghost !px-2 !py-1 !text-[10px]">Expand all</button>
-              <button onClick={collapseAll} className="btn-ghost !px-2 !py-1 !text-[10px]">Collapse all</button>
+              <button onClick={expandAll} className="btn-ghost !px-2 !py-1 !text-[12px]">Expand all</button>
+              <button onClick={collapseAll} className="btn-ghost !px-2 !py-1 !text-[12px]">Collapse all</button>
             </span>
           </div>
           <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
@@ -668,7 +668,7 @@ function SessionControls({ session, running }: { session: AgiSession; running: b
     <div className="border-t border-phantix-700/40 bg-phantix-950/70 p-3">
       <div className="mb-2 flex flex-wrap items-center gap-1">
         {(["preflight", "auth", "otp", "shell"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={cx("rounded-lg px-2.5 py-1.5 text-[11px] transition-colors", tab === t ? "bg-phantix-800/80 text-white" : "text-slate-500 hover:text-slate-300")}>
+          <button key={t} onClick={() => setTab(t)} className={cx("rounded-lg px-2.5 py-1.5 text-[13px] transition-colors", tab === t ? "bg-phantix-800/80 text-white" : "text-slate-500 hover:text-slate-300")}>
             {t === "preflight" ? "Preflight" : t === "auth" ? "Auth (login / register)" : t === "otp" ? "OTP" : "Shell & jobs"}
           </button>
         ))}
@@ -677,23 +677,23 @@ function SessionControls({ session, running }: { session: AgiSession; running: b
       {/* Preflight */}
       {tab === "preflight" && (
         <div className="space-y-2">
-          {preflightLoading ? <p className="py-2 text-center text-[11px] text-slate-500">Checking skill readiness…</p> : ready ? (
-            <p className="flex items-center gap-1.5 text-[11px] text-emerald-300"><CheckCircle2 size={12} /> {preflight?.message ?? "Preflight ready — no additional info required."}</p>
+          {preflightLoading ? <p className="py-2 text-center text-[13px] text-slate-500">Checking skill readiness…</p> : ready ? (
+            <p className="flex items-center gap-1.5 text-[13px] text-emerald-300"><CheckCircle2 size={12} /> {preflight?.message ?? "Preflight ready — no additional info required."}</p>
           ) : (
             <>
               <div className="flex items-center gap-2 rounded-lg border border-severity-medium/30 bg-severity-medium/5 px-3 py-2">
                 <ShieldCheck size={13} className="text-severity-medium" />
-                <p className="text-[11px] text-amber-200">Additional information required to proceed with {preflight?.missing?.length ?? requests.length} field(s).</p>
-                <button onClick={() => void loadPreflight()} className="ml-auto btn-ghost !px-2 !py-1 !text-[10px]"><RefreshCw size={11} /> Re-check</button>
+                <p className="text-[13px] text-amber-200">Additional information required to proceed with {preflight?.missing?.length ?? requests.length} field(s).</p>
+                <button onClick={() => void loadPreflight()} className="ml-auto btn-ghost !px-2 !py-1 !text-[12px]"><RefreshCw size={11} /> Re-check</button>
               </div>
               {requests.map((r) => (
                 <div key={r.key}>
-                  <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">{r.label}</label>
+                  <label className="mb-0.5 block text-[12px] font-semibold uppercase tracking-wider text-slate-400">{r.label}</label>
                   <input value={infoFields[r.key] ?? ""} onChange={(e) => setInfoFields((prev) => ({ ...prev, [r.key]: e.target.value }))} placeholder={r.hint ?? r.key} className={field} />
                 </div>
               ))}
               <input value={infoNote} onChange={(e) => setInfoNote(e.target.value)} placeholder="Note (optional)" className={field} />
-              <button onClick={() => void submitInfo()} disabled={infoSaving} className="btn-primary w-full !py-2 !text-[11px]">{infoSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Send size={12} className="mr-1 inline" />} Provide info & re-check</button>
+              <button onClick={() => void submitInfo()} disabled={infoSaving} className="btn-primary w-full !py-2 !text-[13px]">{infoSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Send size={12} className="mr-1 inline" />} Provide info & re-check</button>
             </>
           )}
         </div>
@@ -703,21 +703,21 @@ function SessionControls({ session, running }: { session: AgiSession; running: b
       {tab === "auth" && (
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2 rounded-md border border-phantix-700/40 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Login (authenticated testing)</p>
+            <p className="text-[13px] font-semibold uppercase tracking-wider text-slate-400">Login (authenticated testing)</p>
             <input value={creds.login_url} onChange={(e) => setCreds({ ...creds, login_url: e.target.value })} placeholder="Login URL" className={field} />
             <input value={creds.username} onChange={(e) => setCreds({ ...creds, username: e.target.value })} placeholder="Username" className={field} />
             <input type="password" value={creds.password} onChange={(e) => setCreds({ ...creds, password: e.target.value })} placeholder="Password" className={field} />
-            <button onClick={() => void saveCreds()} disabled={credsSaving} className="btn-secondary w-full !py-2 !text-[11px]">{credsSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <ShieldCheck size={12} className="mr-1 inline" />} Set credentials</button>
-            <p className="text-[10px] text-slate-500">Password is never returned by the API or written to transcripts.</p>
+            <button onClick={() => void saveCreds()} disabled={credsSaving} className="btn-secondary w-full !py-2 !text-[13px]">{credsSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <ShieldCheck size={12} className="mr-1 inline" />} Set credentials</button>
+            <p className="text-[12px] text-slate-500">Password is never returned by the API or written to transcripts.</p>
           </div>
           <div className="space-y-2 rounded-md border border-phantix-700/40 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Test-user registration</p>
+            <p className="text-[13px] font-semibold uppercase tracking-wider text-slate-400">Test-user registration</p>
             <input value={reg.register_url} onChange={(e) => setReg({ ...reg, register_url: e.target.value })} placeholder="Register URL" className={field} />
             <input value={reg.email} onChange={(e) => setReg({ ...reg, email: e.target.value })} placeholder="Email (optional)" className={field} />
             <input value={reg.username} onChange={(e) => setReg({ ...reg, username: e.target.value })} placeholder="Username (optional)" className={field} />
             <input type="password" value={reg.password} onChange={(e) => setReg({ ...reg, password: e.target.value })} placeholder="Password" className={field} />
-            <button onClick={() => void saveReg()} disabled={regSaving} className="btn-secondary w-full !py-2 !text-[11px]">{regSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Users size={12} className="mr-1 inline" />} Configure registration</button>
-            <p className="text-[10px] text-slate-500">Then approve the pending <span className="font-mono text-gold-300">auth_register</span> action above.</p>
+            <button onClick={() => void saveReg()} disabled={regSaving} className="btn-secondary w-full !py-2 !text-[13px]">{regSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Users size={12} className="mr-1 inline" />} Configure registration</button>
+            <p className="text-[12px] text-slate-500">Then approve the pending <span className="font-mono text-gold-300">auth_register</span> action above.</p>
           </div>
         </div>
       )}
@@ -725,21 +725,21 @@ function SessionControls({ session, running }: { session: AgiSession; running: b
       {/* OTP */}
       {tab === "otp" && (
         <div className="space-y-2">
-          <p className="text-[11px] text-slate-400">Deliver an MFA / OTP code to a waiting background job in the container.</p>
+          <p className="text-[13px] text-slate-400">Deliver an MFA / OTP code to a waiting background job in the container.</p>
           <div className="flex flex-wrap items-end gap-2">
             <div className="flex-1">
-              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">OTP / MFA code</label>
+              <label className="mb-0.5 block text-[12px] font-semibold uppercase tracking-wider text-slate-400">OTP / MFA code</label>
               <input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="e.g. 123456" className={field} />
             </div>
             <div className="flex-1">
-              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Job id (optional)</label>
+              <label className="mb-0.5 block text-[12px] font-semibold uppercase tracking-wider text-slate-400">Job id (optional)</label>
               <input value={otpJob} onChange={(e) => setOtpJob(e.target.value)} placeholder="job id for the waiting wait_otp job" className={field} />
             </div>
-            <button onClick={() => void sendOtp()} disabled={otpSaving} className="btn-primary !px-4 !py-2 !text-[11px]">{otpSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Send size={12} className="mr-1 inline" />} Deliver OTP</button>
+            <button onClick={() => void sendOtp()} disabled={otpSaving} className="btn-primary !px-4 !py-2 !text-[13px]">{otpSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Send size={12} className="mr-1 inline" />} Deliver OTP</button>
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-[10px] text-slate-500">The code is delivered to the container job; it is not written to the transcript.</p>
-            <button onClick={() => void loadJobs()} className="btn-ghost !px-2 !py-1 !text-[10px]"><RefreshCw size={11} /> Jobs</button>
+            <p className="text-[12px] text-slate-500">The code is delivered to the container job; it is not written to the transcript.</p>
+            <button onClick={() => void loadJobs()} className="btn-ghost !px-2 !py-1 !text-[12px]"><RefreshCw size={11} /> Jobs</button>
           </div>
         </div>
       )}
@@ -749,26 +749,26 @@ function SessionControls({ session, running }: { session: AgiSession; running: b
         <div className="space-y-2">
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-[220px] flex-1">
-              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Command (inside container)</label>
+              <label className="mb-0.5 block text-[12px] font-semibold uppercase tracking-wider text-slate-400">Command (inside container)</label>
               <input value={shellCmd} onChange={(e) => setShellCmd(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void runShell(); }} placeholder="e.g. nmap -Pn target.example" className={field} />
             </div>
-            <label className="flex items-center gap-1.5 text-[11px] text-slate-400"><input type="checkbox" checked={shellBg} onChange={(e) => setShellBg(e.target.checked)} className="accent-[rgb(var(--gold-400))]" /> Background</label>
-            <label className="flex items-center gap-1.5 text-[11px] text-slate-400"><input type="checkbox" checked={shellWaitOtp} onChange={(e) => setShellWaitOtp(e.target.checked)} className="accent-[rgb(var(--gold-400))]" /> Wait for OTP</label>
-            <button onClick={() => void runShell()} disabled={shellSaving || !running} className="btn-primary !px-4 !py-2 !text-[11px]">{shellSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Terminal size={12} className="mr-1 inline" />} Run</button>
+            <label className="flex items-center gap-1.5 text-[13px] text-slate-400"><input type="checkbox" checked={shellBg} onChange={(e) => setShellBg(e.target.checked)} className="accent-[rgb(var(--gold-400))]" /> Background</label>
+            <label className="flex items-center gap-1.5 text-[13px] text-slate-400"><input type="checkbox" checked={shellWaitOtp} onChange={(e) => setShellWaitOtp(e.target.checked)} className="accent-[rgb(var(--gold-400))]" /> Wait for OTP</label>
+            <button onClick={() => void runShell()} disabled={shellSaving || !running} className="btn-primary !px-4 !py-2 !text-[13px]">{shellSaving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Terminal size={12} className="mr-1 inline" />} Run</button>
           </div>
-          {shellOut && <pre className="max-h-40 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all rounded-lg bg-phantix-950/80 border border-phantix-700/40 p-2.5 font-mono text-[11px] text-slate-300">{shellOut}</pre>}
+          {shellOut && <pre className="max-h-40 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all rounded-lg bg-phantix-950/80 border border-phantix-700/40 p-2.5 font-mono text-[13px] text-slate-300">{shellOut}</pre>}
           <div>
             <div className="mb-1.5 flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Background jobs</p>
-              <button onClick={() => void loadJobs()} className="btn-ghost !px-2 !py-1 !text-[10px]"><RefreshCw size={11} /> Refresh</button>
+              <p className="text-[12px] font-semibold uppercase tracking-wider text-slate-400">Background jobs</p>
+              <button onClick={() => void loadJobs()} className="btn-ghost !px-2 !py-1 !text-[12px]"><RefreshCw size={11} /> Refresh</button>
             </div>
-            {jobsLoading ? <p className="text-[11px] text-slate-500">Loading jobs…</p> : jobs.length === 0 ? <p className="text-[11px] text-slate-600">No background jobs.</p> : (
+            {jobsLoading ? <p className="text-[13px] text-slate-500">Loading jobs…</p> : jobs.length === 0 ? <p className="text-[13px] text-slate-600">No background jobs.</p> : (
               <div className="space-y-1.5">
                 {jobs.map((j, i) => (
-                  <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg bg-phantix-950/60 px-2.5 py-2 text-[11px]">
+                  <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg bg-phantix-950/60 px-2.5 py-2 text-[13px]">
                     <span className="min-w-0 break-all font-mono text-slate-300">{String(j.command ?? j.job_id ?? "job")}</span>
-                    {j.waiting_otp && <span className="chip !text-[9px] border-severity-medium/30 bg-severity-medium/10 text-severity-medium">waiting OTP</span>}
-                    <span className="ml-auto text-[10px] capitalize text-slate-500">{String(j.status ?? "running")}</span>
+                    {j.waiting_otp && <span className="chip !text-[11px] border-severity-medium/30 bg-severity-medium/10 text-severity-medium">waiting OTP</span>}
+                    <span className="ml-auto text-[12px] capitalize text-slate-500">{String(j.status ?? "running")}</span>
                   </div>
                 ))}
               </div>
@@ -836,7 +836,7 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
   return (
     <div className="space-y-3">
       <div>
-        <label className="mb-1 block text-[11px] font-semibold text-slate-400">Organization</label>
+        <label className="mb-1 block text-[13px] font-semibold text-slate-400">Organization</label>
         <select value={form.organization_id} onChange={(e) => setForm({ ...form, organization_id: Number(e.target.value) })} className={field}>
           <option value={0}>Select organization…</option>
           {orgs.map((o) => <option key={o.id} value={o.id}>{o.name} (#{o.id})</option>)}
@@ -845,7 +845,7 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
       <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Name (e.g. Acme Q3 external web)" className={field} />
       <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description / ROE reference" className={field} />
       <div>
-        <label className="mb-1 block text-[11px] font-semibold text-slate-400">Target environment</label>
+        <label className="mb-1 block text-[13px] font-semibold text-slate-400">Target environment</label>
         <div className="flex gap-2">
           {(["staging", "production"] as const).map((env) => (
             <label key={env} className={cx("flex flex-1 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors", form.environment === env ? "border-gold-400/50 bg-gold-400/10 text-gold-200" : "border-phantix-700/50 bg-phantix-950/60 text-slate-300")}>
@@ -855,35 +855,35 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
           ))}
         </div>
         <div className="mt-2">
-          <label className="mb-1 block text-[11px] font-semibold text-slate-400">Mobile APK (optional — only for mobile pentests)</label>
+          <label className="mb-1 block text-[13px] font-semibold text-slate-400">Mobile APK (optional — only for mobile pentests)</label>
           <select value={form.mobile_apk_asset_id} onChange={(e) => setForm({ ...form, mobile_apk_asset_id: Number(e.target.value) })} className={field}>
             <option value={0}>None — web / network only</option>
             {apks.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.value})</option>)}
           </select>
         </div>
         {form.environment === "production" && (
-          <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-lg border border-severity-medium/40 bg-severity-medium/10 px-3 py-2.5 text-[11px] text-slate-300">
+          <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-lg border border-severity-medium/40 bg-severity-medium/10 px-3 py-2.5 text-[13px] text-slate-300">
             <input type="checkbox" checked={form.production_ack} onChange={(e) => setForm({ ...form, production_ack: e.target.checked })} className="mt-0.5 accent-[rgb(var(--severity-medium))]" />
             <span>I confirm the targets above are <strong>production</strong> and that I am authorized to test them.</span>
           </label>
         )}
       </div>
       <div>
-        <label className="mb-1 block text-[11px] font-semibold text-slate-400">Target allowlist (immutable after create)</label>
+        <label className="mb-1 block text-[13px] font-semibold text-slate-400">Target allowlist (immutable after create)</label>
         <AllowlistEditor value={form.allowlist} onChange={(allowlist) => setForm({ ...form, allowlist })} fieldClass={field} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1 block text-[11px] font-semibold text-slate-400">Forbidden actions</label>
-          <AutoGrow value={form.forbidden} onChange={(e) => setForm({ ...form, forbidden: e.target.value })} minRows={3} className={cx(field, "font-mono text-[11px]")} />
+          <label className="mb-1 block text-[13px] font-semibold text-slate-400">Forbidden actions</label>
+          <AutoGrow value={form.forbidden} onChange={(e) => setForm({ ...form, forbidden: e.target.value })} minRows={3} className={cx(field, "font-mono text-[13px]")} />
         </div>
         <div>
-          <label className="mb-1 block text-[11px] font-semibold text-slate-400">Max session minutes</label>
+          <label className="mb-1 block text-[13px] font-semibold text-slate-400">Max session minutes</label>
           <input type="number" min={15} max={1440} value={form.max_minutes} onChange={(e) => setForm({ ...form, max_minutes: Number(e.target.value) })} className={field} />
         </div>
       </div>
       <div>
-        <label className="mb-1 block text-[11px] font-semibold text-slate-400">Rules of engagement</label>
+        <label className="mb-1 block text-[13px] font-semibold text-slate-400">Rules of engagement</label>
         <AutoGrow value={form.roe} onChange={(e) => setForm({ ...form, roe: e.target.value })} minRows={3} placeholder="Business hours only. Stop on PII. No production DB writes." className={field} />
       </div>
       <button onClick={() => void create()} disabled={creating} className="btn-primary w-full !py-2.5 !text-xs">
@@ -931,26 +931,26 @@ function FindingsPanel({ sessionId }: { sessionId: number }) {
           <div className="flex flex-wrap items-center gap-2">
             <SeverityBadge severity={f.severity} />
             {(f.impact_level || f.impact_analysis?.impact_level) && (
-              <span className="chip border-gold-400/30 bg-gold-400/10 text-[10px] text-gold-300">{f.impact_level || f.impact_analysis?.impact_level}</span>
+              <span className="chip border-gold-400/30 bg-gold-400/10 text-[12px] text-gold-300">{f.impact_level || f.impact_analysis?.impact_level}</span>
             )}
             {(f.highlight || f.report_highlight) && (
-              <span className="chip border-severity-critical/30 bg-severity-critical/10 text-[10px] text-severity-critical">highlight</span>
+              <span className="chip border-severity-critical/30 bg-severity-critical/10 text-[12px] text-severity-critical">highlight</span>
             )}
             <span className="min-w-0 flex-1 break-words text-sm font-semibold text-slate-100">{f.title}</span>
-            <span className="chip text-[10px] text-slate-500">{f.tool ?? f.source}</span>
-            {f.risk_id && <span className="chip border-emerald-400/30 bg-emerald-400/10 text-[10px] text-emerald-300">risk #{f.risk_id}</span>}
+            <span className="chip text-[12px] text-slate-500">{f.tool ?? f.source}</span>
+            {f.risk_id && <span className="chip border-emerald-400/30 bg-emerald-400/10 text-[12px] text-emerald-300">risk #{f.risk_id}</span>}
           </div>
           {(f.business_impact || f.impact_analysis?.business_impact) && (
             <p className="mt-1.5 break-words text-xs leading-5 text-slate-300">{f.business_impact || f.impact_analysis?.business_impact}</p>
           )}
-          {f.target && <p className="mt-1 break-all font-mono text-[11px] text-slate-500">{f.target}</p>}
+          {f.target && <p className="mt-1 break-all font-mono text-[13px] text-slate-500">{f.target}</p>}
           <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-slate-400">{evidenceText(f)}</p>
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             {!f.risk_id && (
-              <button onClick={() => void act(f, "promote")} className="btn-secondary !px-2.5 !py-1.5 !text-[11px]"><GitBranch size={12} className="mr-1 inline" /> Promote to risk</button>
+              <button onClick={() => void act(f, "promote")} className="btn-secondary !px-2.5 !py-1.5 !text-[13px]"><GitBranch size={12} className="mr-1 inline" /> Promote to risk</button>
             )}
-            <button onClick={() => void act(f, "verified")} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><CheckCircle2 size={12} className="mr-1 inline" /> Verify</button>
-            <button onClick={() => void act(f, "dismissed")} className="btn-ghost !px-2.5 !py-1.5 !text-[11px] text-slate-500"><XCircle size={12} className="mr-1 inline" /> Dismiss</button>
+            <button onClick={() => void act(f, "verified")} className="btn-ghost !px-2.5 !py-1.5 !text-[13px]"><CheckCircle2 size={12} className="mr-1 inline" /> Verify</button>
+            <button onClick={() => void act(f, "dismissed")} className="btn-ghost !px-2.5 !py-1.5 !text-[13px] text-slate-500"><XCircle size={12} className="mr-1 inline" /> Dismiss</button>
           </div>
         </div>
       ))}
@@ -997,27 +997,27 @@ function EngagementConfigEditor({
 
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Config</p>
+      <p className="text-[13px] font-semibold uppercase tracking-wider text-slate-500">Config</p>
       <div className="mt-1.5 space-y-2 rounded-lg border border-phantix-700/40 bg-phantix-950/60 p-3">
         <div>
-          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Tools</label>
+          <label className="mb-1 block text-[12px] font-semibold uppercase tracking-wider text-slate-500">Tools</label>
           <input
             value={tools}
             onChange={(e) => setTools(e.target.value)}
             placeholder="httpx, nmap_safe, nuclei_safe"
-            className="w-full rounded-lg border border-phantix-700/50 bg-phantix-900/60 px-3 py-2 font-mono text-[11px] text-slate-200 outline-none focus:border-gold-400/40"
+            className="w-full rounded-lg border border-phantix-700/50 bg-phantix-900/60 px-3 py-2 font-mono text-[13px] text-slate-200 outline-none focus:border-gold-400/40"
           />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
+          <label className="flex items-center gap-1.5 text-[13px] text-slate-400">
             <input type="checkbox" checked={autoSelect} onChange={(e) => setAutoSelect(e.target.checked)} className="accent-[rgb(var(--gold-400))]" />
             Auto-select skills
           </label>
-          <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
+          <label className="flex items-center gap-1.5 text-[13px] text-slate-400">
             Limit
-            <input type="number" min={1} max={20} value={limit} onChange={(e) => setLimit(Number(e.target.value) || 6)} className="w-16 rounded-lg border border-phantix-700/50 bg-phantix-900/60 px-2 py-1 font-mono text-[11px] text-slate-200 outline-none" />
+            <input type="number" min={1} max={20} value={limit} onChange={(e) => setLimit(Number(e.target.value) || 6)} className="w-16 rounded-lg border border-phantix-700/50 bg-phantix-900/60 px-2 py-1 font-mono text-[13px] text-slate-200 outline-none" />
           </label>
-          <button type="button" onClick={() => void save()} disabled={saving} className="ml-auto btn-secondary !px-2.5 !py-1 !text-[11px]">
+          <button type="button" onClick={() => void save()} disabled={saving} className="ml-auto btn-secondary !px-2.5 !py-1 !text-[13px]">
             {saving ? <Loader2 size={11} className="mr-1 inline animate-spin" /> : <SlidersHorizontal size={11} className="mr-1 inline" />} Save config
           </button>
         </div>
@@ -1030,22 +1030,22 @@ function SkillCard({ s, onEdit }: { s: AgiSkill; onEdit: () => void }) {
   return (
     <div className="flex flex-col rounded-md border border-phantix-700/40 bg-phantix-900/40 p-3">
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="min-w-0 truncate font-mono text-[11px] font-semibold text-white" title={s.skill_id}>{s.skill_id}</span>
-        <span className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[9px] text-slate-400">v{s.version}</span>
+        <span className="min-w-0 truncate font-mono text-[13px] font-semibold text-white" title={s.skill_id}>{s.skill_id}</span>
+        <span className="chip border-phantix-600/40 bg-phantix-800/50 font-mono text-[11px] text-slate-400">v{s.version}</span>
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
         <StatusBadge status={s.status} />
-        <span className="chip border-phantix-600/40 bg-phantix-800/50 text-[9px] text-slate-400">{s.kind}</span>
+        <span className="chip border-phantix-600/40 bg-phantix-800/50 text-[11px] text-slate-400">{s.kind}</span>
       </div>
-      <p className="mt-2 line-clamp-2 min-h-[2em] text-[11px] leading-4 text-slate-400" title={s.title}>{s.title}</p>
-      <div className="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-2 text-[10px] text-slate-500">
+      <p className="mt-2 line-clamp-2 min-h-[2em] text-[13px] leading-4 text-slate-400" title={s.title}>{s.title}</p>
+      <div className="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-2 text-[12px] text-slate-500">
         <span className="flex items-center gap-1"><Brain size={10} className="text-gold-400" /> {(s.score * 100).toFixed(0)}%</span>
         <span className="flex items-center gap-1"><Activity size={10} /> {s.uses}</span>
         <span className="flex items-center gap-1"><CheckCircle2 size={10} className="text-emerald-400" /> {s.successes}</span>
         <span className="flex items-center gap-1"><XCircle size={10} className="text-severity-critical" /> {s.failures}</span>
       </div>
       <div className="mt-2.5 flex items-center gap-1.5 border-t border-phantix-700/30 pt-2">
-        <button onClick={onEdit} className="btn-ghost w-full !px-2 !py-1 !text-[10px]"><Pencil size={11} className="mr-1 inline" /> Edit</button>
+        <button onClick={onEdit} className="btn-ghost w-full !px-2 !py-1 !text-[12px]"><Pencil size={11} className="mr-1 inline" /> Edit</button>
       </div>
     </div>
   );
@@ -1235,10 +1235,10 @@ export default function AgiAdmin() {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-gold-400 to-gold-600 text-phantix-950"><Radar size={15} /></span>
           <div className="min-w-0">
             <p className="truncate font-display text-sm font-semibold text-white">Autonomous Pentest Agent</p>
-            <p className="truncate text-[10px] text-slate-500">session #{activeSession.id} · engagement #{activeSession.engagement_id}{activeSession.container_id ? ` · ${activeSession.container_id}` : ""}</p>
+            <p className="truncate text-[12px] text-slate-500">session #{activeSession.id} · engagement #{activeSession.engagement_id}{activeSession.container_id ? ` · ${activeSession.container_id}` : ""}</p>
           </div>
           <StatusBadge status={activeSession.status} />
-          <span className="ml-auto min-w-0 max-w-[220px] truncate font-mono text-[10px] text-slate-500" title={selectedForSession?.name ?? ""}>{selectedForSession?.name ?? ""}</span>
+          <span className="ml-auto min-w-0 max-w-[220px] truncate font-mono text-[12px] text-slate-500" title={selectedForSession?.name ?? ""}>{selectedForSession?.name ?? ""}</span>
         </div>
         <div className="min-h-0 flex-1">
           <SessionTerminal session={activeSession} engagement={selectedForSession} onStopped={() => { setActiveSession(null); setSessionView(false); }} />
@@ -1306,7 +1306,7 @@ export default function AgiAdmin() {
                   />
                   <Card>
                     <CardHeader title="Runner" subtitle={status.runner_url} action={<StatusBadge status={status.runner_reachable ? "ready" : "failed"} />} />
-                    <p className="break-all rounded-lg bg-phantix-950/60 p-2.5 font-mono text-[11px] leading-5 text-slate-400">{status.runner_detail || "No detail from runner."}</p>
+                    <p className="break-all rounded-lg bg-phantix-950/60 p-2.5 font-mono text-[13px] leading-5 text-slate-400">{status.runner_detail || "No detail from runner."}</p>
                   </Card>
                 </>
               ) : null}
@@ -1328,18 +1328,18 @@ export default function AgiAdmin() {
                         <Globe2 size={15} className="text-gold-400" />
                         <span className="text-sm font-semibold text-slate-100">{e.name}</span>
                         <StatusBadge status={e.status} />
-                        <span className="chip text-[10px] text-slate-500">org #{e.organization_id}</span>
+                        <span className="chip text-[12px] text-slate-500">org #{e.organization_id}</span>
                       </div>
                       {e.description && <p className="mt-1 text-xs text-slate-400">{e.description}</p>}
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {(e.scope_definition?.target_allowlist ?? []).map((t) => (
-                          <span key={t} className="chip max-w-full break-all border-phantix-600/40 bg-phantix-800/50 font-mono text-[10px] text-slate-400">{repairTarget(t)}</span>
+                          <span key={t} className="chip max-w-full break-all border-phantix-600/40 bg-phantix-800/50 font-mono text-[12px] text-slate-400">{repairTarget(t)}</span>
                         ))}
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <button onClick={() => { setSelectedEng(e); setDetailOpen(true); }} className="btn-ghost !px-2.5 !py-1.5 !text-[11px]"><Eye size={12} className="mr-1 inline" /> Detail</button>
-                        <button onClick={() => { setSelectedEng(e); setDetailOpen(false); setTab("sessions"); }} className="btn-secondary !px-2.5 !py-1.5 !text-[11px]"><Play size={12} className="mr-1 inline" /> Run session</button>
-                        {e.scope_definition.max_session_minutes && <span className="ml-auto flex items-center gap-1 text-[10px] text-slate-500"><Clock size={10} /> {e.scope_definition.max_session_minutes} min max</span>}
+                        <button onClick={() => { setSelectedEng(e); setDetailOpen(true); }} className="btn-ghost !px-2.5 !py-1.5 !text-[13px]"><Eye size={12} className="mr-1 inline" /> Detail</button>
+                        <button onClick={() => { setSelectedEng(e); setDetailOpen(false); setTab("sessions"); }} className="btn-secondary !px-2.5 !py-1.5 !text-[13px]"><Play size={12} className="mr-1 inline" /> Run session</button>
+                        {e.scope_definition.max_session_minutes && <span className="ml-auto flex items-center gap-1 text-[12px] text-slate-500"><Clock size={10} /> {e.scope_definition.max_session_minutes} min max</span>}
                       </div>
                     </motion.div>
                   ))}
@@ -1354,7 +1354,7 @@ export default function AgiAdmin() {
                 <CardHeader title="Start a session" subtitle="An explicit instruction is required — the agent only starts after you tell it what to do." />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-[11px] font-semibold text-slate-400">Engagement</label>
+                    <label className="mb-1 block text-[13px] font-semibold text-slate-400">Engagement</label>
                     <select
                       value={selectedEng?.id ?? ""}
                       onChange={(e) => setSelectedEng(engagements.data.find((x) => x.id === Number(e.target.value)) ?? null)}
@@ -1371,7 +1371,7 @@ export default function AgiAdmin() {
                   </div>
                 </div>
                 <div className="mt-3">
-                  <label className="mb-1 block text-[11px] font-semibold text-slate-400">Instruction</label>
+                  <label className="mb-1 block text-[13px] font-semibold text-slate-400">Instruction</label>
                   <AutoGrow
                     value={instruction}
                     onChange={(e) => setInstruction(e.target.value)}
@@ -1383,26 +1383,26 @@ export default function AgiAdmin() {
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <div>
-                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Autonomy</label>
-                    <select value={autonomy} onChange={(e) => setAutonomy(e.target.value as "low" | "medium" | "high")} className="input !w-auto !py-1.5 text-[11px]">
+                    <label className="mb-1 block text-[12px] font-semibold uppercase tracking-wider text-slate-500">Autonomy</label>
+                    <select value={autonomy} onChange={(e) => setAutonomy(e.target.value as "low" | "medium" | "high")} className="input !w-auto !py-1.5 text-[13px]">
                       <option value="low">low — operator-driven</option>
                       <option value="medium">medium — auto recon, gate auth</option>
                       <option value="high">high — reserved</option>
                     </select>
                   </div>
-                  <label className="flex items-center gap-1.5 pt-4 text-[11px] text-slate-400" title="Turns off lab auto-login if any non-lab host is in scope">
+                  <label className="flex items-center gap-1.5 pt-4 text-[13px] text-slate-400" title="Turns off lab auto-login if any non-lab host is in scope">
                     <input type="checkbox" checked={includeOrgAssets} onChange={(e) => setIncludeOrgAssets(e.target.checked)} className="accent-[rgb(var(--gold-400))]" />
                     Include all organization assets
                   </label>
-                  <label className="flex items-center gap-1.5 pt-4 text-[11px] text-slate-400" title="Only honored when every allowlisted host is *.phantixvulnserver.online">
+                  <label className="flex items-center gap-1.5 pt-4 text-[13px] text-slate-400" title="Only honored when every allowlisted host is *.phantixvulnserver.online">
                     <input type="checkbox" checked={preapproveLabAuth} onChange={(e) => setPreapproveLabAuth(e.target.checked)} className="accent-[rgb(var(--gold-400))]" />
                     Pre-approve lab auth
                   </label>
-                  <button onClick={() => setCredsOpen((v) => !v)} className={cx("pt-4 btn-ghost !px-2.5 !py-1.5 !text-[11px]", credsOpen && "text-gold-300")}>
+                  <button onClick={() => setCredsOpen((v) => !v)} className={cx("pt-4 btn-ghost !px-2.5 !py-1.5 !text-[13px]", credsOpen && "text-gold-300")}>
                     <ShieldCheck size={12} className="mr-1 inline" /> Login credentials
                   </button>
                 </div>
-                <p className="mt-1.5 text-[10px] leading-4 text-slate-600">Lab-only engagements: leave org assets off so the lab account pack can auto-provision. Mixed allowlists keep auth gated.</p>
+                <p className="mt-1.5 text-[12px] leading-4 text-slate-600">Lab-only engagements: leave org assets off so the lab account pack can auto-provision. Mixed allowlists keep auth gated.</p>
                 {credsOpen && (
                   <div className="mt-2 grid gap-2 sm:grid-cols-3">
                     <input value={startCreds.login_url} onChange={(e) => setStartCreds({ ...startCreds, login_url: e.target.value })} placeholder="Login URL" className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
@@ -1412,8 +1412,8 @@ export default function AgiAdmin() {
                 )}
                 {resolved.length > 0 && (
                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] text-slate-500">Ranked skills:</span>
-                    {resolved.slice(0, 6).map((s) => <span key={s.skill_id} className="chip max-w-full break-all border-gold-400/20 bg-gold-400/5 font-mono text-[10px] text-gold-300">{s.skill_id}</span>)}
+                    <span className="text-[12px] text-slate-500">Ranked skills:</span>
+                    {resolved.slice(0, 6).map((s) => <span key={s.skill_id} className="chip max-w-full break-all border-gold-400/20 bg-gold-400/5 font-mono text-[12px] text-gold-300">{s.skill_id}</span>)}
                   </div>
                 )}
               </Card>
@@ -1443,16 +1443,16 @@ export default function AgiAdmin() {
                       <Wrench size={14} className="text-gold-400" />
                       <span className="break-all font-mono text-sm font-semibold text-white">{req.tool_name}</span>
                       <StatusBadge status={req.status} />
-                      <span className="chip text-[10px] text-slate-500">org #{req.organization_id}</span>
-                      <span className="chip max-w-full break-all font-mono text-[10px] text-gold-300">{req.engine_id ?? "scanner_engine"}</span>
-                      {(req.skill_id_minted || req.skill_id) && <span className="chip max-w-full break-all font-mono text-[10px] text-slate-400">{req.skill_id_minted || req.skill_id}</span>}
+                      <span className="chip text-[12px] text-slate-500">org #{req.organization_id}</span>
+                      <span className="chip max-w-full break-all font-mono text-[12px] text-gold-300">{req.engine_id ?? "scanner_engine"}</span>
+                      {(req.skill_id_minted || req.skill_id) && <span className="chip max-w-full break-all font-mono text-[12px] text-slate-400">{req.skill_id_minted || req.skill_id}</span>}
                     </div>
                     <p className="mt-1.5 text-xs text-slate-400">{req.rationale}</p>
-                    {req.install_command && <p className="mt-1.5 break-all rounded-lg bg-phantix-950/70 px-2.5 py-1.5 font-mono text-[11px] text-slate-300">{req.install_command}</p>}
-                    <p className="mt-1.5 text-[10px] text-slate-600">Session approve ≠ server provision. Confirm only after the package is in phantix-agi-sandbox.</p>
+                    {req.install_command && <p className="mt-1.5 break-all rounded-lg bg-phantix-950/70 px-2.5 py-1.5 font-mono text-[13px] text-slate-300">{req.install_command}</p>}
+                    <p className="mt-1.5 text-[12px] text-slate-600">Session approve ≠ server provision. Confirm only after the package is in phantix-agi-sandbox.</p>
                     <div className="mt-3 flex items-center gap-2">
-                      <button onClick={() => void decideInstall(req, true)} className="btn-primary !px-3 !py-1.5 !text-[11px]"><CheckCircle2 size={12} className="mr-1 inline" /> Provision server-wide</button>
-                      <button onClick={() => void decideInstall(req, false)} className="btn-ghost !px-3 !py-1.5 !text-[11px] text-severity-critical hover:text-severity-critical"><XCircle size={12} className="mr-1 inline" /> Reject</button>
+                      <button onClick={() => void decideInstall(req, true)} className="btn-primary !px-3 !py-1.5 !text-[13px]"><CheckCircle2 size={12} className="mr-1 inline" /> Provision server-wide</button>
+                      <button onClick={() => void decideInstall(req, false)} className="btn-ghost !px-3 !py-1.5 !text-[13px] text-severity-critical hover:text-severity-critical"><XCircle size={12} className="mr-1 inline" /> Reject</button>
                     </div>
                   </div>
                 ))
@@ -1490,20 +1490,20 @@ export default function AgiAdmin() {
                   <option value={25}>25 / page</option>
                   <option value={50}>50 / page</option>
                 </select>
-                <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-slate-400">
+                <label className="flex cursor-pointer items-center gap-1.5 text-[13px] text-slate-400">
                   <input type="checkbox" checked={skillGroup} onChange={(e) => { setSkillGroup(e.target.checked); setSkillPage(1); }} className="accent-[rgb(var(--gold-400))]" />
                   Group by kind
                 </label>
                 <div className="flex gap-1">
                   {(["all", "candidate", "active"] as const).map((f) => (
-                    <button key={f} onClick={() => { setSkillFilter(f); setSkillPage(1); }} className={cx("rounded-md px-2.5 py-1 text-[11px] capitalize", skillFilter === f ? "bg-phantix-800 text-gold-200" : "text-slate-500")}>{f}</button>
+                    <button key={f} onClick={() => { setSkillFilter(f); setSkillPage(1); }} className={cx("rounded-md px-2.5 py-1 text-[13px] capitalize", skillFilter === f ? "bg-phantix-800 text-gold-200" : "text-slate-500")}>{f}</button>
                   ))}
                 </div>
                 <button onClick={() => { setEditingSkill(null); setSkillOpen(true); }} className="btn-primary !px-3 !py-1.5 !text-xs"><Plus size={13} className="mr-1 inline" /> New skill</button>
               </div>
 
               {/* Results meta */}
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[13px] text-slate-500">
                 {filteredSkills.length} skill{filteredSkills.length === 1 ? "" : "s"}
                 {skillKind !== "all" ? ` · kind: ${skillKind}` : ""}
                 {skillFilter !== "all" ? ` · status: ${skillFilter}` : ""}
@@ -1516,7 +1516,7 @@ export default function AgiAdmin() {
                 <div className="space-y-4">
                   {groupedSkills.map(([kind, list]) => (
                     <div key={kind}>
-                      <p className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-gold-300">
+                      <p className="mb-2 flex items-center gap-2 text-[13px] font-semibold uppercase tracking-wider text-gold-300">
                         {kind} <span className="text-slate-500">({list.length})</span>
                       </p>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
@@ -1534,10 +1534,10 @@ export default function AgiAdmin() {
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-phantix-700/40 bg-phantix-900/40 px-3 py-2">
-                  <p className="text-[11px] text-slate-500">Page {skillPage} of {totalPages}</p>
+                  <p className="text-[13px] text-slate-500">Page {skillPage} of {totalPages}</p>
                   <div className="flex items-center gap-1.5">
-                    <button disabled={skillPage <= 1} onClick={() => setSkillPage((p) => Math.max(1, p - 1))} className="btn-ghost !px-2.5 !py-1 !text-[11px] disabled:opacity-40">Prev</button>
-                    <button disabled={skillPage >= totalPages} onClick={() => setSkillPage((p) => Math.min(totalPages, p + 1))} className="btn-ghost !px-2.5 !py-1 !text-[11px] disabled:opacity-40">Next</button>
+                    <button disabled={skillPage <= 1} onClick={() => setSkillPage((p) => Math.max(1, p - 1))} className="btn-ghost !px-2.5 !py-1 !text-[13px] disabled:opacity-40">Prev</button>
+                    <button disabled={skillPage >= totalPages} onClick={() => setSkillPage((p) => Math.min(totalPages, p + 1))} className="btn-ghost !px-2.5 !py-1 !text-[13px] disabled:opacity-40">Next</button>
                   </div>
                 </div>
               )}
@@ -1571,9 +1571,9 @@ export default function AgiAdmin() {
                     </div>
                     <StatusBadge status={granted ? "active" : "rejected"} />
                     {isSuper ? (
-                      <span className="chip border-gold-400/30 bg-gold-400/10 text-[10px] text-gold-300">always</span>
+                      <span className="chip border-gold-400/30 bg-gold-400/10 text-[12px] text-gold-300">always</span>
                     ) : (
-                      <button onClick={() => void toggleGrant(s)} disabled={!s.is_active} className={cx("!px-3 !py-1.5 !text-[11px]", s.agi_admin ? "btn-ghost" : "btn-primary")}>{s.agi_admin ? "Revoke agent admin" : "Grant agent admin"}</button>
+                      <button onClick={() => void toggleGrant(s)} disabled={!s.is_active} className={cx("!px-3 !py-1.5 !text-[13px]", s.agi_admin ? "btn-ghost" : "btn-primary")}>{s.agi_admin ? "Revoke agent admin" : "Grant agent admin"}</button>
                     )}
                   </div>
                 );
@@ -1588,10 +1588,10 @@ export default function AgiAdmin() {
                   <span className="flex h-9 w-9 items-center justify-center rounded-md bg-phantix-800/70 text-gold-400"><BookOpen size={17} /></span>
                   <div>
                     <p className="font-display text-sm font-semibold text-white">Autonomous Agent Contributor Guide</p>
-                    <p className="text-[11px] text-slate-500">Internal engineering reference — visible to agent admins only. Architecture, security model, APIs, deploy, and how to extend.</p>
+                    <p className="text-[13px] text-slate-500">Internal engineering reference — visible to agent admins only. Architecture, security model, APIs, deploy, and how to extend.</p>
                   </div>
                 </div>
-                <span className="chip border-gold-400/30 bg-gold-400/10 text-[10px] text-gold-300">agent admin gated</span>
+                <span className="chip border-gold-400/30 bg-gold-400/10 text-[12px] text-gold-300">agent admin gated</span>
               </div>
               <div className="max-h-[70vh] overflow-y-auto p-5">
                 <ContributorGuideView source={AGI_CONTRIBUTOR_GUIDE_MD} />
@@ -1613,24 +1613,24 @@ export default function AgiAdmin() {
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-display text-base font-semibold text-white">{selectedEng.name}</h3>
               <StatusBadge status={selectedEng.status} />
-              <span className="chip text-[10px] text-slate-500">org #{selectedEng.organization_id}</span>
+              <span className="chip text-[12px] text-slate-500">org #{selectedEng.organization_id}</span>
             </div>
             {selectedEng.description && <p className="text-sm text-slate-300">{selectedEng.description}</p>}
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Target allowlist</p>
+              <p className="text-[13px] font-semibold uppercase tracking-wider text-slate-500">Target allowlist</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {(selectedEng.scope_definition?.target_allowlist ?? []).map((t) => <span key={t} className="chip max-w-full break-all border-phantix-600/40 bg-phantix-800/50 font-mono text-[11px] text-slate-300">{repairTarget(t)}</span>)}
+                {(selectedEng.scope_definition?.target_allowlist ?? []).map((t) => <span key={t} className="chip max-w-full break-all border-phantix-600/40 bg-phantix-800/50 font-mono text-[13px] text-slate-300">{repairTarget(t)}</span>)}
               </div>
             </div>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Forbidden actions</p>
+              <p className="text-[13px] font-semibold uppercase tracking-wider text-slate-500">Forbidden actions</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {(selectedEng.scope_definition?.forbidden_actions ?? []).map((t) => <span key={t} className="chip border-severity-critical/30 bg-severity-critical/10 font-mono text-[11px] text-severity-critical">{t}</span>)}
+                {(selectedEng.scope_definition?.forbidden_actions ?? []).map((t) => <span key={t} className="chip border-severity-critical/30 bg-severity-critical/10 font-mono text-[13px] text-severity-critical">{t}</span>)}
               </div>
             </div>
             {selectedEng.scope_definition?.rules_of_engagement && (
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Rules of engagement</p>
+                <p className="text-[13px] font-semibold uppercase tracking-wider text-slate-500">Rules of engagement</p>
                 <p className="mt-1.5 rounded-lg bg-phantix-950/60 p-3 text-xs leading-5 text-slate-300">{selectedEng.scope_definition.rules_of_engagement}</p>
               </div>
             )}
@@ -1639,8 +1639,8 @@ export default function AgiAdmin() {
               onSaved={(eng) => { setSelectedEng(eng); engagements.refresh(); }}
             />
             <div className="flex items-center justify-between border-t border-phantix-700/40 pt-3">
-              <p className="text-[11px] text-slate-500">Created {formatDateTime(selectedEng.created_at)}</p>
-              <button onClick={() => { setDetailOpen(false); setTab("sessions"); }} className="btn-primary !px-3 !py-1.5 !text-[11px]"><Play size={12} className="mr-1 inline" /> Run session</button>
+              <p className="text-[13px] text-slate-500">Created {formatDateTime(selectedEng.created_at)}</p>
+              <button onClick={() => { setDetailOpen(false); setTab("sessions"); }} className="btn-primary !px-3 !py-1.5 !text-[13px]"><Play size={12} className="mr-1 inline" /> Run session</button>
             </div>
           </div>
         )}
@@ -1749,30 +1749,30 @@ function SkillFormModal({
     }
   };
 
-  const field = "input !px-3 !py-2 font-mono text-[11px]";
+  const field = "input !px-3 !py-2 font-mono text-[13px]";
 
   return (
     <Modal open={open} onClose={onClose} title={skill ? `Edit skill — ${skill.skill_id}` : "Create skill"} wide>
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">
           <div>
-            <label className="mb-1 block text-[11px] font-semibold text-slate-400">Status</label>
+            <label className="mb-1 block text-[13px] font-semibold text-slate-400">Status</label>
             <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none focus:border-gold-400/40">
               {SKILL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-[11px] font-semibold text-slate-400">Scope</label>
+            <label className="mb-1 block text-[13px] font-semibold text-slate-400">Scope</label>
             <select value={orgScope} onChange={(e) => setOrgScope(e.target.value)} className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none focus:border-gold-400/40">
               <option value="platform">Platform template</option>
               <option value="org">Org-private{skill?.organization_id ? ` (#${skill.organization_id})` : ""}</option>
             </select>
           </div>
-          <p className="ml-auto text-[10px] text-slate-500">Schema: <span className="font-mono text-gold-300">GET /admin/agi/skills/schema</span></p>
+          <p className="ml-auto text-[12px] text-slate-500">Schema: <span className="font-mono text-gold-300">GET /admin/agi/skills/schema</span></p>
         </div>
 
         <div>
-          <label className="mb-1 block text-[11px] font-semibold text-slate-400">Skill document (JSON — AgiSkillDocument)</label>
+          <label className="mb-1 block text-[13px] font-semibold text-slate-400">Skill document (JSON — AgiSkillDocument)</label>
           <textarea
             value={raw}
             onChange={(e) => { setRaw(e.target.value); setParsed(null); setParseError(null); }}
@@ -1780,11 +1780,11 @@ function SkillFormModal({
             spellCheck={false}
             className={cx(field, "resize-y", parseError && "border-severity-critical/50")}
           />
-          {parseError && <p className="mt-1 text-[11px] text-severity-critical">{parseError}</p>}
-          {parsed && <p className="mt-1 text-[11px] text-emerald-400">Valid JSON ✓ — will be validated against the skill schema on save.</p>}
+          {parseError && <p className="mt-1 text-[13px] text-severity-critical">{parseError}</p>}
+          {parsed && <p className="mt-1 text-[13px] text-emerald-400">Valid JSON ✓ — will be validated against the skill schema on save.</p>}
         </div>
 
-        <p className="text-[10px] leading-4 text-slate-500">
+        <p className="text-[12px] leading-4 text-slate-500">
           Required: <span className="font-mono">skill_id</span> (lowercase, <span className="font-mono">agi.&lt;kind&gt;.&lt;slug&gt;</span>), <span className="font-mono">title</span>, <span className="font-mono">body_md</span> (≥20 chars). Optional: <span className="font-mono">kind</span> (recon/web/api/network/mobile/cloud/exploit_verify/reporting/general), <span className="font-mono">action_class</span>, <span className="font-mono">tools[]</span>, <span className="font-mono">scope_affinity</span>, <span className="font-mono">requires_approval</span>, <span className="font-mono">tags</span>. Auto-mined skills use <span className="font-mono">source: "auto_mint"</span>.
         </p>
 
@@ -1847,13 +1847,13 @@ function PolicyPanel({ toast, policies }: { toast: (k: "success" | "error" | "in
             <div key={p.id} className="flex flex-wrap items-center gap-3 rounded-lg bg-phantix-800/40 px-3 py-2.5">
               <FileText size={14} className="text-gold-400" />
               <span className="text-sm font-semibold text-slate-100">{p.title}</span>
-              <span className="chip font-mono text-[10px] text-slate-400">v{p.version}</span>
+              <span className="chip font-mono text-[12px] text-slate-400">v{p.version}</span>
               {p.is_active && <StatusBadge status="active" />}
-              <span className="ml-auto text-[11px] text-slate-500">{p.published_at ? formatDateTime(p.published_at) : "draft"}</span>
+              <span className="ml-auto text-[13px] text-slate-500">{p.published_at ? formatDateTime(p.published_at) : "draft"}</span>
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[11px] text-slate-500">When a new active version is published, customers must accept again before using the Autonomous Agent.</p>
+        <p className="mt-3 text-[13px] text-slate-500">When a new active version is published, customers must accept again before using the Autonomous Agent.</p>
       </Card>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Publish agent usage agreement" wide>
@@ -1862,7 +1862,7 @@ function PolicyPanel({ toast, policies }: { toast: (k: "success" | "error" | "in
             <input value={form.version} onChange={(e) => setForm({ ...form, version: e.target.value })} placeholder="Version (e.g. 1.1.0)" className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Title" className="rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
           </div>
-          <AutoGrow value={form.body_md} onChange={(e) => setForm({ ...form, body_md: e.target.value })} minRows={10} placeholder={"# Title\n\nMarkdown body shown in the customer accept modal…"} className="w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 font-mono text-[11px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
+          <AutoGrow value={form.body_md} onChange={(e) => setForm({ ...form, body_md: e.target.value })} minRows={10} placeholder={"# Title\n\nMarkdown body shown in the customer accept modal…"} className="w-full rounded-lg border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 font-mono text-[13px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-gold-400/40" />
           <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
             <input type="checkbox" checked={form.activate} onChange={(e) => setForm({ ...form, activate: e.target.checked })} className="accent-[rgb(var(--gold-400))]" />
             Activate immediately (customers must re-accept)
