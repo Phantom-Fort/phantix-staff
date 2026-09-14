@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Building2, Search, Eye, Mail, Globe, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Shield, ExternalLink, Settings } from "lucide-react";
@@ -24,6 +24,19 @@ const demoClients: ClientOrg[] = [
   { id: 5, name: "Suspended LLC", slug: "suspended-llc", email: "admin@suspended.com", country: "US", industry: "ecommerce", plan: "Scale", setup_complete: true, company_verified: true, identity_verified: true, is_active: false, created_at: "2026-04-01T00:00:00Z", last_active_at: "2026-07-01T00:00:00Z", notes: "Payment overdue", flags: ["suspended"] },
 ];
 
+interface ClientApplicationCard {
+  key: string;
+  label: string;
+  entitled: boolean;
+  reason: string | null;
+  open_url: string;
+}
+
+interface ClientApplications {
+  applications: ClientApplicationCard[];
+  enabled: string[];
+}
+
 export default function Clients() {
   const { toast, isAdmin, isSuperadmin } = useStore();
   const [search, setSearch] = useState("");
@@ -34,6 +47,10 @@ export default function Clients() {
   const [aiAllowance, setAiAllowance] = useState<EnterpriseAiAllowance | null>(null);
   const [aiNgnInput, setAiNgnInput] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
+  // Which applications this client has (plan ∩ admin enable). Staff may turn one
+  // on ahead of the plan for a trial — that is recorded as a plan override.
+  const [clientApps, setClientApps] = useState<ClientApplications | null>(null);
+  const [appBusy, setAppBusy] = useState("");
 
   const clients = useResource<ClientOrg[]>(
     async (signal) => {
@@ -128,6 +145,42 @@ export default function Clients() {
       setAiBusy(false);
     }
   };
+
+  useEffect(() => {
+    if (DEMO_MODE || !selectedClient) {
+      setClientApps(null);
+      return;
+    }
+    let alive = true;
+    void api
+      .get<ClientApplications>(`/admin/clients/${selectedClient}/applications`)
+      .then((v) => alive && setClientApps(v))
+      .catch(() => alive && setClientApps(null));
+    return () => {
+      alive = false;
+    };
+  }, [selectedClient]);
+
+  async function toggleClientApp(clientId: number, key: string, overridePlan: boolean) {
+    if (!clientApps) return;
+    const next = new Set(clientApps.enabled || []);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    next.add("core");
+    setAppBusy(key);
+    try {
+      const updated = await api.put<ClientApplications>(
+        `/admin/clients/${clientId}/applications`,
+        { enabled: Array.from(next), override_plan: overridePlan },
+      );
+      setClientApps(updated);
+      toast("success", next.has(key) ? `${key} enabled` : `${key} disabled`, `Client ${clientId}`);
+    } catch (e) {
+      toast("error", "Change not saved", e instanceof Error ? e.message : "");
+    } finally {
+      setAppBusy("");
+    }
+  }
 
   const data = clients.data;
 
@@ -346,6 +399,55 @@ export default function Clients() {
                 <p className="mt-2 text-[11px] text-slate-500">
                   Starter ≈ ₦7,500 · Growth ≈ ₦30,000 · Enterprise custom. Security AI uses DeepSeek with Z.AI GLM Flash fallback.
                 </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Applications</p>
+                {!clientApps ? (
+                  <p className="text-xs text-slate-500">Application entitlement unavailable.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {clientApps.applications.map((app) => {
+                      const on = app.key === "core" || (clientApps.enabled || []).includes(app.key);
+                      return (
+                        <div
+                          key={app.key}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-phantix-700/40 bg-phantix-950/60 px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm text-white">{app.label}</p>
+                            <p className="truncate text-[11px] text-slate-500">
+                              {app.key === "core"
+                                ? "Always on — the entry point"
+                                : app.entitled
+                                  ? on
+                                    ? "Enabled"
+                                    : "Disabled for this client"
+                                  : app.reason || "Not in plan"}
+                            </p>
+                          </div>
+                          {app.key !== "core" && isAdmin && (
+                            <button
+                              type="button"
+                              disabled={appBusy === app.key}
+                              onClick={() => void toggleClientApp(c.id, app.key, !app.entitled)}
+                              className="btn-secondary shrink-0 px-3 py-1 text-xs"
+                              title={
+                                app.entitled
+                                  ? on
+                                    ? "Disable for this client"
+                                    : "Enable for this client"
+                                  : "Enable ahead of the plan (trial / support)"
+                              }
+                            >
+                              {appBusy === app.key ? "…" : on ? "Disable" : app.entitled ? "Enable" : "Enable (trial)"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {isAdmin && !c.company_verified && (c.flags?.includes("pending_verification") || !c.setup_complete) && (

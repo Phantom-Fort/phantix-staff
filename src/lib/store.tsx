@@ -28,6 +28,8 @@ type Toast = { id: number; kind: ToastKind; title: string; body?: string };
 
 type Store = {
   session: StaffSession;
+  /** True while a stored staff token is being verified against /staff/me. */
+  sessionLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   hydrateSession: () => void;
@@ -58,6 +60,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return { authenticated: true, email, fullName: "", role: role || "support" };
   });
   const [toasts, setToasts] = useState<Toast[]>([]);
+  // A stored token must be verified before any staff screen renders.
+  const [sessionLoading, setSessionLoading] = useState<boolean>(!!(tokens.staff && !DEMO_MODE));
   const toastId = useRef(0);
 
   const toast = useCallback((kind: ToastKind, title: string, body?: string) => {
@@ -116,8 +120,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const hydrateSession = useCallback(async () => {
-    if (!tokens.staff) return;
-    if (DEMO_MODE) return;
+    if (!tokens.staff) {
+      setSessionLoading(false);
+      return;
+    }
+    if (DEMO_MODE) {
+      setSessionLoading(false);
+      return;
+    }
     try {
       const me = await api.get<MeResponse>("/staff/me");
       const email = me.email || tokens.email || emailFromToken() || "";
@@ -132,7 +142,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       });
     } catch {
       const email = tokens.email || emailFromToken() || "";
-      if (email) setSession({ authenticated: true, email, fullName: "", role: "support" });
+      // Only keep an optimistic session while the token still exists (e.g. a
+      // transient network error). An expired/revoked token is gone — the api
+      // client clears it — and must not keep a staff screen authenticated.
+      if (email && tokens.staff) {
+        setSession({ authenticated: true, email, fullName: "", role: "support" });
+      } else {
+        setSession(null);
+      }
+    } finally {
+      setSessionLoading(false);
     }
   }, []);
 
@@ -173,7 +192,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   return (
-    <Ctx.Provider value={{ session, login, logout, hydrateSession, clearMustChangePassword, isAdmin, isContributor, isSuperadmin, isAgiAdmin, toasts, toast, dismissToast }}>
+    <Ctx.Provider value={{ session, sessionLoading, login, logout, hydrateSession, clearMustChangePassword, isAdmin, isContributor, isSuperadmin, isAgiAdmin, toasts, toast, dismissToast }}>
       {children}
     </Ctx.Provider>
   );
