@@ -43,17 +43,32 @@ import ContributeEngines from "@/pages/contribute/ContributeEngines";
 import ContributeLearning from "@/pages/contribute/ContributeLearning";
 import { AGI_ENABLED } from "@/lib/api";
 
+/** Full-screen gate shown while a stored session is verified — nothing renders
+ *  until authentication + authorization are decided. */
+function GateLoader() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-phantix-950">
+      <div className="text-center">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-phantix-600 border-t-gold-400" />
+        <p className="mt-3 text-sm text-slate-400">Verifying access...</p>
+      </div>
+    </div>
+  );
+}
+
 function RequireStaff({ children }: { children: React.ReactNode }) {
-  const { session } = useStore();
+  const { session, sessionLoading } = useStore();
   const location = useLocation();
+  if (sessionLoading) return <GateLoader />;
   if (!session?.authenticated) return <Navigate to="/login" state={{ from: location }} replace />;
   if (session.mustChangePassword) return <Navigate to="/change-password" replace />;
   return <>{children}</>;
 }
 
 function RequireContributor({ children }: { children: React.ReactNode }) {
-  const { session, isContributor } = useStore();
+  const { session, sessionLoading, isContributor } = useStore();
   const location = useLocation();
+  if (sessionLoading) return <GateLoader />;
   if (!session?.authenticated) return <Navigate to="/login" state={{ from: location }} replace />;
   if (session.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (!isContributor) return <Navigate to="/dashboard" replace />;
@@ -61,8 +76,9 @@ function RequireContributor({ children }: { children: React.ReactNode }) {
 }
 
 function RequireAdmin({ children }: { children: React.ReactNode }) {
-  const { session, isAdmin } = useStore();
+  const { session, sessionLoading, isAdmin } = useStore();
   const location = useLocation();
+  if (sessionLoading) return <GateLoader />;
   if (!session?.authenticated) return <Navigate to="/login" state={{ from: location }} replace />;
   if (session.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
@@ -70,7 +86,8 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 }
 
 function RequireSuperadmin({ children }: { children: React.ReactNode }) {
-  const { session, isSuperadmin } = useStore();
+  const { session, sessionLoading, isSuperadmin } = useStore();
+  if (sessionLoading) return <GateLoader />;
   if (!session?.authenticated) return <Navigate to="/login" replace />;
   if (session.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (!isSuperadmin) return <Navigate to="/dashboard" replace />;
@@ -78,8 +95,9 @@ function RequireSuperadmin({ children }: { children: React.ReactNode }) {
 }
 
 function RequireAgiAdmin({ children }: { children: React.ReactNode }) {
-  const { session, isAgiAdmin } = useStore();
+  const { session, sessionLoading, isAgiAdmin } = useStore();
   const location = useLocation();
+  if (sessionLoading) return <GateLoader />;
   if (!session?.authenticated) return <Navigate to="/login" state={{ from: location }} replace />;
   if (session.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (!isAgiAdmin) return <Navigate to="/dashboard" replace />;
@@ -87,7 +105,8 @@ function RequireAgiAdmin({ children }: { children: React.ReactNode }) {
 }
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { session } = useStore();
+  const { session, sessionLoading } = useStore();
+  if (sessionLoading) return <GateLoader />;
   if (!session?.authenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
