@@ -211,7 +211,7 @@ export default function ContributeKnowledge() {
   );
 
   return (
-    <div className="mx-auto max-w-[1100px]">
+    <div>
       <PageHeader
         title="Knowledge"
         description="Handbook, project documentation, the engine YAML the platform runs, plus research and blogs."
@@ -272,7 +272,7 @@ export default function ContributeKnowledge() {
                   <BookOpen size={15} className="mt-0.5 text-gold-400" />
                   <span className="min-w-0">
                     <span className="block text-sm text-slate-200">{h.title}</span>
-                    <span className="block truncate font-mono text-[10px] text-slate-500">{h.path}</span>
+                    <span className="block truncate font-mono text-[12px] text-slate-500">{h.path}</span>
                   </span>
                 </button>
               ))}
@@ -290,9 +290,9 @@ export default function ContributeKnowledge() {
                   <FileText size={15} className="mt-0.5 text-phantix-300" />
                   <span className="min-w-0">
                     <span className="block text-sm text-slate-200">{d.title}</span>
-                    <span className="block truncate font-mono text-[10px] text-slate-500">{d.path}</span>
+                    <span className="block truncate font-mono text-[12px] text-slate-500">{d.path}</span>
                   </span>
-                  <span className="ml-auto chip shrink-0 text-[10px] border-phantix-600/50 text-slate-400">{d.category}</span>
+                  <span className="ml-auto chip shrink-0 text-[12px] border-phantix-600/50 text-slate-400">{d.category}</span>
                 </button>
               ))}
               {tab === "docs" && !filteredDocs.length && <p className="text-xs text-slate-500">No documents match.</p>}
@@ -307,15 +307,15 @@ export default function ContributeKnowledge() {
                   <FileCode2 size={15} className="text-gold-400" />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm text-slate-200">{s.slug}</span>
-                    <span className="block truncate font-mono text-[10px] text-slate-500">{s.engine} · {s.path_hint}</span>
+                    <span className="block truncate font-mono text-[12px] text-slate-500">{s.engine} · {s.path_hint}</span>
                   </span>
-                  <span className="chip shrink-0 text-[10px] border-phantix-600/50 text-slate-400">{s.category}</span>
+                  <span className="chip shrink-0 text-[12px] border-phantix-600/50 text-slate-400">{s.category}</span>
                 </button>
               ))}
               {tab === "yaml" && !filteredSeeded.length && <p className="text-xs text-slate-500">No YAML packs match.</p>}
             </div>
             {tab === "yaml" && (
-              <p className="mt-3 text-[11px] text-slate-500">
+              <p className="mt-3 text-[13px] text-slate-500">
                 Read-only view. To edit, fork a pack under <span className="font-mono">Contribute → Capabilities</span>.
               </p>
             )}
@@ -361,9 +361,9 @@ export default function ContributeKnowledge() {
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm text-slate-200">{it.title}</p>
-                      <p className="font-mono text-[10px] text-slate-500">{it.slug}</p>
+                      <p className="font-mono text-[12px] text-slate-500">{it.slug}</p>
                     </div>
-                    <span className="chip text-[10px] border-phantix-600/50 text-slate-400">{it.status}</span>
+                    <span className="chip text-[12px] border-phantix-600/50 text-slate-400">{it.status}</span>
                   </button>
                 ))}
               </div>

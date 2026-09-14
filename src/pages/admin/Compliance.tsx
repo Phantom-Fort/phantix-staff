@@ -454,13 +454,13 @@ export default function ComplianceAdmin() {
                     <tr key={q.id} className="border-b border-phantix-700/20 hover:bg-phantix-800/40 transition-colors">
                       <td className="td max-w-[380px]">
                         <p className="text-sm text-slate-200">{q.prompt}</p>
-                        <p className="mt-0.5 font-mono text-[10px] text-slate-500">{q.question_key}</p>
-                        {q.help_text && <p className="mt-1 text-[11px] text-slate-500">{q.help_text}</p>}
+                        <p className="mt-0.5 font-mono text-[12px] text-slate-500">{q.question_key}</p>
+                        {q.help_text && <p className="mt-1 text-[13px] text-slate-500">{q.help_text}</p>}
                       </td>
                       <td className="td">
                         <div className="flex flex-wrap gap-1">
                           {(q.framework_ids ?? []).map((f) => (
-                            <span key={f} className="chip border-phantix-600/40 bg-phantix-800/50 text-[10px] text-slate-300" title={frameworkName(f)}>
+                            <span key={f} className="chip border-phantix-600/40 bg-phantix-800/50 text-[12px] text-slate-300" title={frameworkName(f)}>
                               {f}
                             </span>
                           ))}
@@ -470,7 +470,7 @@ export default function ComplianceAdmin() {
                         {q.source_controls?.length ? (
                           <div className="flex flex-wrap gap-1">
                             {q.source_controls.map((c, i) => (
-                              <span key={`${c.framework_id}-${c.control_id}-${i}`} className="chip border-gold-400/25 bg-gold-400/5 text-[10px] text-gold-200" title={c.title ?? ""}>
+                              <span key={`${c.framework_id}-${c.control_id}-${i}`} className="chip border-gold-400/25 bg-gold-400/5 text-[12px] text-gold-200" title={c.title ?? ""}>
                                 <Link2 size={9} className="mr-0.5 inline" />{controlLabel(c)}
                               </span>
                             ))}
@@ -524,7 +524,7 @@ export default function ComplianceAdmin() {
                     type="button"
                     onClick={() => toggleFormFramework(fw.id)}
                     className={cx(
-                      "chip text-[11px] transition-colors",
+                      "chip text-[13px] transition-colors",
                       on ? "border-gold-400/40 bg-gold-400/15 text-gold-200" : "border-phantix-600/40 text-slate-400 hover:text-slate-200",
                     )}
                     title={fw.name}
@@ -535,7 +535,7 @@ export default function ComplianceAdmin() {
               })}
               {!data.length && <span className="text-xs text-slate-500">No frameworks loaded.</span>}
             </div>
-            <p className="mt-1 text-[11px] text-slate-500">Select one or more — this is preserved on save.</p>
+            <p className="mt-1 text-[13px] text-slate-500">Select one or more — this is preserved on save.</p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -567,7 +567,7 @@ export default function ComplianceAdmin() {
               </button>
             </div>
             {formControls.length === 0 ? (
-              <p className="rounded-md border border-phantix-700/40 bg-phantix-950/40 p-2 text-[11px] text-slate-500">
+              <p className="rounded-md border border-phantix-700/40 bg-phantix-950/40 p-2 text-[13px] text-slate-500">
                 No mapped controls. Add the framework/control this question evidences.
               </p>
             ) : (
@@ -616,7 +616,7 @@ export default function ComplianceAdmin() {
             Active
           </label>
           <div className="flex items-center justify-between gap-3">
-            <p className="flex items-center gap-1 text-[11px] text-slate-500">
+            <p className="flex items-center gap-1 text-[13px] text-slate-500">
               <ShieldCheck size={12} /> {formFrameworks.length} framework(s) · {formControls.filter((c) => c.framework_id && c.control_id).length} control(s)
             </p>
             <div className="flex justify-end gap-3">

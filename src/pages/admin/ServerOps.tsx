@@ -382,7 +382,7 @@ export default function ServerOps() {
                   return <polyline key={key} points={pts.join(" ")} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" opacity="0.9" />;
                 })}
               </svg>
-              <div className="mt-1 flex gap-4 text-[11px] text-slate-500">
+              <div className="mt-1 flex gap-4 text-[13px] text-slate-500">
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky-400" /> CPU</span>
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Memory</span>
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-gold-400" /> DB pool</span>
@@ -410,9 +410,9 @@ export default function ServerOps() {
                     {d.related_processes.map((p) => (
                       <tr key={p.pid} className="border-b border-phantix-800/40 hover:bg-phantix-800/35">
                         <td className="td font-mono text-xs text-gold-300">{p.pid}</td>
-                        <td className="td"><span className="chip text-[10px] capitalize">{p.role.replace(/_/g, " ")}</span></td>
+                        <td className="td"><span className="chip text-[12px] capitalize">{p.role.replace(/_/g, " ")}</span></td>
                         <td className="td font-mono text-xs text-slate-300">{p.rss_mb} MB</td>
-                        <td className="td font-mono text-[11px] text-slate-400 truncate max-w-[420px]">{p.cmdline}</td>
+                        <td className="td font-mono text-[13px] text-slate-400 truncate max-w-[420px]">{p.cmdline}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -458,7 +458,7 @@ export default function ServerOps() {
               <div className="space-y-2">
                 {d.recommendations.map((r, i) => (
                   <div key={i} className="flex items-start gap-3 rounded-md border border-phantix-700/40 bg-phantix-950/50 p-3 text-sm">
-                    <span className={cx("chip shrink-0 text-[10px] capitalize", sevClass[r.severity] ?? sevClass.info)}>{r.severity}</span>
+                    <span className={cx("chip shrink-0 text-[12px] capitalize", sevClass[r.severity] ?? sevClass.info)}>{r.severity}</span>
                     <div className="min-w-0">
                       <p className="font-medium text-slate-200">{r.title}</p>
                       {r.detail && <p className="mt-0.5 text-xs text-slate-400">{r.detail}</p>}

@@ -164,7 +164,7 @@ export default function LegalDocuments() {
                           {EDITABLE_KEYS.includes(doc.doc_key) ? (
                             <button className="btn-ghost !px-2 !py-1 !text-xs" onClick={() => openEdit(doc)}><Pencil size={12} /> Edit</button>
                           ) : (
-                            <span className="text-[10px] text-slate-600">read-only</span>
+                            <span className="text-[12px] text-slate-600">read-only</span>
                           )}
                           <button className="btn-ghost !px-2 !py-1 !text-xs" onClick={() => void restore(doc)} title="Restore factory defaults"><RotateCcw size={12} /></button>
                         </div>

@@ -357,7 +357,7 @@ export default function AiAdmin() {
                   Dry-run consensus test
                 </button>
                 {testResult && (
-                  <pre className="max-h-48 overflow-auto rounded-lg bg-phantix-950/70 border border-phantix-700/40 p-3 text-[10px] font-mono text-emerald-300 whitespace-pre-wrap">{testResult}</pre>
+                  <pre className="max-h-48 overflow-auto rounded-lg bg-phantix-950/70 border border-phantix-700/40 p-3 text-[12px] font-mono text-emerald-300 whitespace-pre-wrap">{testResult}</pre>
                 )}
               </div>
             </Card>
@@ -379,10 +379,10 @@ export default function AiAdmin() {
                   <button onClick={() => openDetail(p.prompt_key)} className="flex items-center gap-2 text-left hover:text-gold-300 transition-colors">
                     <FileText size={14} className="text-gold-400" />
                     <span className="text-sm font-mono text-slate-200">{p.prompt_key}</span>
-                    <span className="chip text-[10px] text-slate-400 bg-slate-400/10 border-slate-500/30">v{p.version}</span>
+                    <span className="chip text-[12px] text-slate-400 bg-slate-400/10 border-slate-500/30">v{p.version}</span>
                   </button>
                   <div className="flex items-center gap-2">
-                    {p.is_active ? <StatusBadge status="active" /> : <span className="chip text-[10px] text-slate-500 bg-slate-400/10 border-slate-500/30">Inactive</span>}
+                    {p.is_active ? <StatusBadge status="active" /> : <span className="chip text-[12px] text-slate-500 bg-slate-400/10 border-slate-500/30">Inactive</span>}
                     {!p.is_active && <button onClick={() => handleActivatePrompt(p.prompt_key, p.version)} className="btn-ghost text-xs px-2 py-1">Activate</button>}
                     <button onClick={() => openDetail(p.prompt_key)} className="btn-ghost text-xs px-2 py-1"><Eye size={12} /> View</button>
                   </div>
@@ -409,7 +409,7 @@ export default function AiAdmin() {
                     <button onClick={() => { setEditScopeKey(d.prompt_key); setScopeForm(d.allowed_evidence_keys.join(", ")); }} className="btn-ghost text-xs px-2 py-1"><Pencil size={12} /> Edit</button>
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {d.allowed_evidence_keys.map((k) => <span key={k} className="chip text-[10px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{k}</span>)}
+                    {d.allowed_evidence_keys.map((k) => <span key={k} className="chip text-[12px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{k}</span>)}
                   </div>
                 </div>
               ))}
@@ -478,7 +478,7 @@ export default function AiAdmin() {
                       <tr key={a.id ?? i} className="border-b border-phantix-800/40">
                         <td className="td font-mono text-xs text-gold-300">#{a.organization_id}</td>
                         <td className="td text-xs text-slate-200">{a.agent_name}</td>
-                        <td className="td font-mono text-[11px] text-slate-400">{a.prompt_key}</td>
+                        <td className="td font-mono text-[13px] text-slate-400">{a.prompt_key}</td>
                         <td className="td text-xs text-slate-300">{a.model_provider}</td>
                         <td className="td font-mono text-xs text-slate-300">{Number(a.tokens_used ?? 0).toLocaleString()}</td>
                         <td className="td font-mono text-xs text-emerald-400">${Number(a.cost_usd ?? 0).toFixed(2)}</td>
@@ -512,7 +512,7 @@ export default function AiAdmin() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <StatusBadge status={detail.is_active ? "active" : "inactive"} />
-              <span className="chip text-[10px] text-slate-400 bg-slate-400/10 border-slate-500/30">v{detail.version}</span>
+              <span className="chip text-[12px] text-slate-400 bg-slate-400/10 border-slate-500/30">v{detail.version}</span>
               <div className="ml-auto flex gap-2">
                 {detailTab === "view" ? (
                   <button onClick={() => setDetailTab("edit")} className="btn-secondary text-xs px-3 py-1.5"><Pencil size={12} /> Edit</button>
@@ -540,7 +540,7 @@ export default function AiAdmin() {
                 {detail.allowed_evidence_keys.length > 0 && (
                   <div>
                     <p className="label">Allowed evidence keys</p>
-                    <div className="flex flex-wrap gap-1">{detail.allowed_evidence_keys.map((k) => <span key={k} className="chip text-[10px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{k}</span>)}</div>
+                    <div className="flex flex-wrap gap-1">{detail.allowed_evidence_keys.map((k) => <span key={k} className="chip text-[12px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{k}</span>)}</div>
                   </div>
                 )}
                 {detail.output_schema && (
@@ -582,7 +582,7 @@ export default function AiAdmin() {
           <div>
             <p className="label">Allowed evidence keys (comma-separated)</p>
             <input className="input font-mono" value={scopeForm} onChange={(e) => setScopeForm(e.target.value)} placeholder="finding_id, severity, cvss, description" />
-            <p className="mt-1 text-[11px] text-slate-500">These are the max evidence fields this prompt may receive — cannot exceed the platform catalog.</p>
+            <p className="mt-1 text-[13px] text-slate-500">These are the max evidence fields this prompt may receive — cannot exceed the platform catalog.</p>
           </div>
           <button onClick={() => editScopeKey && saveScope(editScopeKey)} className="btn-primary w-full">Save data scope</button>
         </div>

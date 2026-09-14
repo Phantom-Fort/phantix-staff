@@ -65,7 +65,7 @@ export default function BusDiagnostics() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    {evt.category && <span className="chip text-[10px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{evt.category}</span>}
+                    {evt.category && <span className="chip text-[12px] text-phantix-300 bg-phantix-500/10 border-phantix-500/20">{evt.category}</span>}
                     <span className="text-xs font-mono text-slate-400">{evt.subscribers} subs</span>
                   </div>
                 </div>

@@ -132,7 +132,7 @@ export default function SocProvisioning() {
                   >
                     <span className="min-w-0 flex-1 truncate">
                       <span className="block truncate font-medium">{c.name}</span>
-                      <span className="block text-[10px] font-mono text-slate-500">#{c.id} · {c.slug}</span>
+                      <span className="block text-[12px] font-mono text-slate-500">#{c.id} · {c.slug}</span>
                     </span>
                     {c.setup_complete ? <StatusBadge status="ready" /> : <span className="chip text-slate-500">setup…</span>}
                   </button>

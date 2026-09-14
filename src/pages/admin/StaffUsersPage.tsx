@@ -99,7 +99,7 @@ export default function StaffUsers() {
                         <p className="text-sm font-medium text-slate-100">{s.full_name}</p>
                         <p className="text-xs text-slate-500">{s.email}</p>
                         {s.must_change_password && (
-                          <span className="chip mt-1 text-[10px] text-severity-medium bg-severity-medium/10 border-severity-medium/30">
+                          <span className="chip mt-1 text-[12px] text-severity-medium bg-severity-medium/10 border-severity-medium/30">
                             password change pending
                           </span>
                         )}

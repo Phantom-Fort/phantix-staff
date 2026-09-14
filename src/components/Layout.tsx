@@ -385,12 +385,14 @@ export default function Layout() {
 
         {/* Page content */}
         <main className="min-w-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
-          <div className="mx-auto max-w-7xl">
+          {/* The one content measure for this app: 7xl left wide staff tables
+              cramped while their rows scrolled off the bottom. */}
+          <div className="mx-auto w-full max-w-[1600px]">
             <Outlet />
           </div>
         </main>
 
-        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-phantix-700/60 bg-phantix-950/60 px-4 py-3 text-[11px] text-slate-400 lg:px-6">
+        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-phantix-700/60 bg-phantix-950/60 px-4 py-3 text-[13px] text-slate-400 lg:px-6">
           <span>SecureGraph Staff Portal · internal admin &amp; support console · every action is audited</span>
           <span className="font-mono">API v1 · staff-only</span>
         </footer>

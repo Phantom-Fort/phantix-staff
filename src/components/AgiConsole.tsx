@@ -942,7 +942,7 @@ export default function AgiConsole({
                 {visibleFindings.map((f) => (
                   <button key={f.id} onClick={() => setFindingId(f.id)} className={cx("wb-pad-x flex w-full flex-col items-start gap-1 border-b border-phantix-700/20 py-1.5 text-left transition-colors hover:bg-phantix-800/40", findingId === f.id && "bg-phantix-800/50")}>
                     <div className="flex w-full min-w-0 items-start gap-1.5">
-                      <SeverityBadge severity={f.severity} className="mt-0.5 !px-1 !py-0 !text-[8px]" />
+                      <SeverityBadge severity={f.severity} className="mt-0.5 !px-1 !py-0 !text-[11px]" />
                       {f.impact_level && <span className="wb-2xs mt-0.5 shrink-0 rounded border border-gold-400/30 bg-gold-400/10 px-1 text-gold-300">{f.impact_level}</span>}
                       {(f.highlight || f.report_highlight) && <span className="wb-2xs mt-0.5 shrink-0 rounded border border-severity-critical/30 bg-severity-critical/10 px-1 text-severity-critical">pin</span>}
                       <span className="wb-xs min-w-0 flex-1 truncate text-slate-200">{f.title}</span>
@@ -958,7 +958,7 @@ export default function AgiConsole({
                     </div>
                     {f.verification && (
                       <span className="w-full pl-0">
-                        <VerificationBadge verification={f.verification} className="!px-1 !py-0 !text-[8px]" />
+                        <VerificationBadge verification={f.verification} className="!px-1 !py-0 !text-[11px]" />
                       </span>
                     )}
                     {f.verification?.reason && (
@@ -1072,7 +1072,7 @@ export default function AgiConsole({
                 <p className="font-display text-sm font-semibold">Destructive action gate</p>
               </div>
               <p className="mt-2 text-xs leading-5 text-slate-400">This command matches a high-risk pattern (exploit, DoS, or privilege escalation). Confirm you intend to run it against the allowlisted scope only.</p>
-              <pre className="mt-3 whitespace-pre-wrap rounded-lg bg-phantix-950/80 p-2.5 font-mono text-[11px] text-slate-200">{overrideDrafts[gate.id] ?? gate.proposed_command}</pre>
+              <pre className="mt-3 whitespace-pre-wrap rounded-lg bg-phantix-950/80 p-2.5 font-mono text-[13px] text-slate-200">{overrideDrafts[gate.id] ?? gate.proposed_command}</pre>
               <div className="mt-4 flex gap-2">
                 <button
                   onClick={() => { const a = gate; setGate(null); onDecide(a, true, overrideDrafts[a.id] ?? a.proposed_command); }}

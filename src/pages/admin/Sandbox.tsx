@@ -402,23 +402,23 @@ export default function SandboxAdmin() {
         <>
           <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Card className="!p-4">
-              <p className="text-[11px] uppercase tracking-wider text-slate-500">Seats</p>
+              <p className="text-[13px] uppercase tracking-wider text-slate-500">Seats</p>
               <p className="mt-1 font-display text-xl font-bold text-white">
                 {seats?.used ?? members.length}/{maxSeats}
               </p>
             </Card>
             <Card className="!p-4">
-              <p className="text-[11px] uppercase tracking-wider text-slate-500">Failing orgs</p>
+              <p className="text-[13px] uppercase tracking-wider text-slate-500">Failing orgs</p>
               <p className="mt-1 font-display text-xl font-bold text-severity-critical">{board.failingOrgs ?? 0}</p>
             </Card>
             <Card className="!p-4">
-              <p className="text-[11px] uppercase tracking-wider text-slate-500">Avg score</p>
+              <p className="text-[13px] uppercase tracking-wider text-slate-500">Avg score</p>
               <p className="mt-1 font-display text-xl font-bold text-gold-300">
                 {board.averageScore != null && !Number.isNaN(board.averageScore) ? board.averageScore.toFixed(1) : "—"}
               </p>
             </Card>
             <Card className="!p-4">
-              <p className="text-[11px] uppercase tracking-wider text-slate-500">Ratings</p>
+              <p className="text-[13px] uppercase tracking-wider text-slate-500">Ratings</p>
               <p className="mt-1 font-display text-xl font-bold text-white">{board.ratingCount ?? ratings.length}</p>
             </Card>
           </div>
@@ -431,7 +431,7 @@ export default function SandboxAdmin() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-phantix-800/50 text-[11px] uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-phantix-800/50 text-[13px] uppercase tracking-wider text-slate-500">
                     <th className="px-4 py-2">Org</th>
                     <th className="px-4 py-2">Status</th>
                     <th className="px-4 py-2">Health</th>
@@ -465,7 +465,7 @@ export default function SandboxAdmin() {
                             >
                               {m.org?.name ?? `Org #${m.organizationId}`}
                             </Link>
-                            <p className="font-mono text-[11px] text-slate-500">{m.org?.slug}</p>
+                            <p className="font-mono text-[13px] text-slate-500">{m.org?.slug}</p>
                           </td>
                           <td className="px-4 py-3">
                             <StatusBadge status={m.status} />
@@ -521,10 +521,10 @@ export default function SandboxAdmin() {
                 {updates.map((u) => (
                   <div key={u.id} className="rounded-md border border-phantix-700/40 bg-phantix-950/40 p-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="chip capitalize text-[10px]">{u.severity}</span>
+                      <span className="chip capitalize text-[12px]">{u.severity}</span>
                       <span className="text-sm font-medium text-slate-200">{u.title}</span>
                     </div>
-                    <p className="mt-1 text-[11px] text-slate-500">
+                    <p className="mt-1 text-[13px] text-slate-500">
                       {u.version_label ?? u.versionLabel ?? "—"} ·{" "}
                       {timeAgo(String(u.published_at ?? u.publishedAt ?? ""))}
                     </p>

@@ -225,22 +225,22 @@ export default function SuperLogs() {
                             : null}
                         </td>
                         <td className="td">
-                          <span className={cx("chip text-[10px] capitalize", levelColor)}>
+                          <span className={cx("chip text-[12px] capitalize", levelColor)}>
                             <LevelIcon size={10} /> {log.level}
                           </span>
                         </td>
                         <td className="td">
-                          <span className={cx("chip text-[10px]", logTypeBadge(log.logType))}>{log.logType}</span>
+                          <span className={cx("chip text-[12px]", logTypeBadge(log.logType))}>{log.logType}</span>
                         </td>
                         <td className="td">
                           <p className="text-sm text-slate-200">{log.message}</p>
-                          {log.issueId && <p className="text-[10px] font-mono text-slate-600 mt-0.5">{log.issueId}</p>}
+                          {log.issueId && <p className="text-[12px] font-mono text-slate-600 mt-0.5">{log.issueId}</p>}
                           {expanded && hasContext && (
                             <div className="mt-2">
-                              <p className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-slate-500">
+                              <p className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-slate-500">
                                 <FileJson2 size={10} /> Context (structured payload)
                               </p>
-                              <pre className="mt-1 overflow-auto rounded-lg border border-phantix-700/40 bg-phantix-950/70 p-2.5 text-[10px] leading-relaxed text-slate-300 max-h-64">
+                              <pre className="mt-1 overflow-auto rounded-lg border border-phantix-700/40 bg-phantix-950/70 p-2.5 text-[12px] leading-relaxed text-slate-300 max-h-64">
                                 {JSON.stringify(log.context, null, 2)}
                               </pre>
                             </div>
@@ -249,7 +249,7 @@ export default function SuperLogs() {
                         <td className="td">
                           {log.organizationId ? <span className="text-xs font-mono text-slate-400">#{log.organizationId}</span> : <span className="text-xs text-slate-600">---</span>}
                         </td>
-                        <td className="td"><span className="text-[10px] text-slate-500">{log.engine || "---"}</span></td>
+                        <td className="td"><span className="text-[12px] text-slate-500">{log.engine || "---"}</span></td>
                         <td className="td text-xs text-slate-500 whitespace-nowrap">{timeAgo(log.createdAt)}</td>
                       </tr>
                     </React.Fragment>

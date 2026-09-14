@@ -67,9 +67,9 @@ export function ContributorGuideView({ source }: { source: string }) {
         "[&_table]:block [&_table]:overflow-x-auto [&_table]:rounded-md [&_table]:border [&_table]:border-phantix-700/40",
         // Code + architecture diagrams (box-drawing preserved via pre + monospace)
         "[&_.guide-pre]:mt-3 [&_.guide-pre]:mb-4 [&_.guide-pre]:max-w-full [&_.guide-pre]:overflow-x-auto [&_.guide-pre]:rounded-md [&_.guide-pre]:border [&_.guide-pre]:border-phantix-700/40 [&_.guide-pre]:bg-phantix-950/90 [&_.guide-pre]:p-4",
-        "[&_.guide-pre]:font-mono [&_.guide-pre]:text-[11px] [&_.guide-pre]:leading-[1.45] [&_.guide-pre]:text-slate-300 [&_.guide-pre]:whitespace-pre",
+        "[&_.guide-pre]:font-mono [&_.guide-pre]:text-[13px] [&_.guide-pre]:leading-[1.45] [&_.guide-pre]:text-slate-300 [&_.guide-pre]:whitespace-pre",
         "[&_.guide-pre_code]:bg-transparent [&_.guide-pre_code]:p-0 [&_.guide-pre_code]:text-inherit",
-        "[&_.guide-code]:rounded [&_.guide-code]:bg-phantix-950/80 [&_.guide-code]:px-1 [&_.guide-code]:py-0.5 [&_.guide-code]:font-mono [&_.guide-code]:text-[11px] [&_.guide-code]:text-gold-200/90",
+        "[&_.guide-code]:rounded [&_.guide-code]:bg-phantix-950/80 [&_.guide-code]:px-1 [&_.guide-code]:py-0.5 [&_.guide-code]:font-mono [&_.guide-code]:text-[13px] [&_.guide-code]:text-gold-200/90",
         // Quote / hr
         "[&_blockquote]:mt-3 [&_blockquote]:border-l-2 [&_blockquote]:border-gold-400/40 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-slate-400",
         "[&_hr]:my-6 [&_hr]:border-phantix-700/40",

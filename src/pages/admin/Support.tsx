@@ -203,8 +203,8 @@ export default function SupportTickets() {
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-medium text-slate-300">{msg.from}</span>
-                    <span className="text-[10px] text-slate-500">{msg.from_type}</span>
-                    <span className="text-[10px] text-slate-500 ml-auto">{timeAgo(msg.at)}</span>
+                    <span className="text-[12px] text-slate-500">{msg.from_type}</span>
+                    <span className="text-[12px] text-slate-500 ml-auto">{timeAgo(msg.at)}</span>
                   </div>
                   <p className="text-sm text-slate-300">{msg.body}</p>
                 </div>

@@ -256,7 +256,7 @@ export default function BillingAdmin() {
               </div>
               <div className="mt-3 flex items-center gap-2">
                 <span className="text-xs text-slate-400">Webhook:</span>
-                <code className="text-[11px] bg-phantix-950/70 px-2 py-1 rounded font-mono text-slate-300">{gateway.callback_url || `${API_BASE}/billing/webhooks/paystack`}</code>
+                <code className="text-[13px] bg-phantix-950/70 px-2 py-1 rounded font-mono text-slate-300">{gateway.callback_url || `${API_BASE}/billing/webhooks/paystack`}</code>
                 <button onClick={() => { navigator.clipboard.writeText(gateway.callback_url || ""); toast("info", "Copied"); }} className="text-gold-400 text-xs"><Copy size={12} /></button>
               </div>
             </Card>
@@ -297,7 +297,7 @@ export default function BillingAdmin() {
       {tab === "redemptions" && (
         <div className="space-y-2">
           {extraLoading && redemptions.length === 0 ? <TableSkeleton rows={3} /> : redemptions.length === 0 ? <EmptyState icon={<CheckCircle2 size={24} />} title="No redemptions" body="No organizations have redeemed coupons yet." /> : (
-            <Card className="!p-0 overflow-hidden"><table className="w-full"><thead><tr className="border-b border-phantix-700/40"><th className="th">Code</th><th className="th">Org ID</th><th className="th">Redeemed</th><th className="th">Expires</th><th className="th">Status</th></tr></thead><tbody>{redemptions.map(r => <tr key={r.id} className="border-b border-phantix-800/40"><td className="td font-mono text-xs text-gold-300">{r.code_snapshot}</td><td className="td text-xs">#{r.organization_id}</td><td className="td text-xs text-slate-400">{timeAgo(r.redeemed_at)}</td><td className="td text-xs text-slate-400">{timeAgo(r.access_ends_at)}</td><td className="td"><span className={cx("chip text-[10px]", r.status === "active" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{r.status}</span></td></tr>)}</tbody></table></Card>
+            <Card className="!p-0 overflow-hidden"><table className="w-full"><thead><tr className="border-b border-phantix-700/40"><th className="th">Code</th><th className="th">Org ID</th><th className="th">Redeemed</th><th className="th">Expires</th><th className="th">Status</th></tr></thead><tbody>{redemptions.map(r => <tr key={r.id} className="border-b border-phantix-800/40"><td className="td font-mono text-xs text-gold-300">{r.code_snapshot}</td><td className="td text-xs">#{r.organization_id}</td><td className="td text-xs text-slate-400">{timeAgo(r.redeemed_at)}</td><td className="td text-xs text-slate-400">{timeAgo(r.access_ends_at)}</td><td className="td"><span className={cx("chip text-[12px]", r.status === "active" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-500")}>{r.status}</span></td></tr>)}</tbody></table></Card>
           )}
         </div>
       )}

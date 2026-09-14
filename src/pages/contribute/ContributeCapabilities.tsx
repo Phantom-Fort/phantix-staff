@@ -195,7 +195,7 @@ export default function ContributeCapabilities() {
   };
 
   return (
-    <div className="mx-auto max-w-[1100px]">
+    <div>
       <PageHeader
         title="Finding capabilities"
         description="The engine YAML that ships today, plus drafts: validate → submit → approve. Approved packs land in the scanner YAML overlay without a redeploy."
@@ -256,9 +256,9 @@ export default function ContributeCapabilities() {
                     <span className="flex items-center gap-2 text-sm text-slate-200">
                       <FileCode2 size={14} className="text-phantix-300" /> {s.slug}
                     </span>
-                    <span className="block truncate text-[10px] text-slate-500">{s.engine} · {s.path_hint}</span>
+                    <span className="block truncate text-[12px] text-slate-500">{s.engine} · {s.path_hint}</span>
                   </span>
-                  <span className="chip text-[10px] border-phantix-600/50 text-slate-400">{s.category}</span>
+                  <span className="chip text-[12px] border-phantix-600/50 text-slate-400">{s.category}</span>
                 </button>
               ))}
             </div>
@@ -287,9 +287,9 @@ export default function ContributeCapabilities() {
                     <span className="flex items-center gap-2 text-sm text-slate-200">
                       <FileCode2 size={14} className="text-gold-400" /> {p.slug}
                     </span>
-                    <span className="block truncate text-[10px] text-slate-500">{p.engine}{p.path_hint ? ` · ${p.path_hint}` : ""}</span>
+                    <span className="block truncate text-[12px] text-slate-500">{p.engine}{p.path_hint ? ` · ${p.path_hint}` : ""}</span>
                   </span>
-                  <span className="chip text-[10px] border-phantix-600/50 text-slate-400">{p.status}</span>
+                  <span className="chip text-[12px] border-phantix-600/50 text-slate-400">{p.status}</span>
                 </button>
               ))}
             </div>
@@ -313,7 +313,7 @@ export default function ContributeCapabilities() {
         ) : (
           <div className="space-y-3">
             <textarea
-              className="input min-h-[320px] font-mono text-[11px] leading-5"
+              className="input min-h-[320px] font-mono text-[13px] leading-5"
               value={bodyYaml}
               onChange={(e) => setBodyYaml(e.target.value)}
               readOnly={!active && !seedView}
@@ -324,7 +324,7 @@ export default function ContributeCapabilities() {
                   <button type="button" className="btn-primary text-xs !py-1.5" disabled={busy} onClick={() => void forkSeed()}>
                     {busy ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Save as draft & edit
                   </button>
-                  <span className="self-center text-[11px] text-slate-500">Forking creates an editable draft; the shipped YAML is untouched until approved.</span>
+                  <span className="self-center text-[13px] text-slate-500">Forking creates an editable draft; the shipped YAML is untouched until approved.</span>
                 </>
               )}
               {active && (
@@ -348,7 +348,7 @@ export default function ContributeCapabilities() {
               )}
             </div>
             {active?.validation_errors && (
-              <p className="rounded-md border border-severity-critical/30 bg-severity-critical/10 p-2 text-[11px] text-severity-critical">
+              <p className="rounded-md border border-severity-critical/30 bg-severity-critical/10 p-2 text-[13px] text-severity-critical">
                 {active.validation_errors}
               </p>
             )}
@@ -365,7 +365,7 @@ export default function ContributeCapabilities() {
             onChange={(e) => setSlug(e.target.value)}
           />
           <textarea
-            className="input min-h-[200px] font-mono text-[11px] leading-5"
+            className="input min-h-[200px] font-mono text-[13px] leading-5"
             value={bodyYaml}
             onChange={(e) => setBodyYaml(e.target.value)}
           />

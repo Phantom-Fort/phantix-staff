@@ -52,7 +52,7 @@ export default function ContributeHome() {
 
   if (loading && !data) {
     return (
-      <div className="mx-auto max-w-[1100px]">
+      <div>
         <PageHeader title="Contribute" description="Security research, skills, findings, and engine learning" />
         <div className="flex justify-center py-16"><Spinner className="h-6 w-6" /></div>
       </div>
@@ -67,7 +67,7 @@ export default function ContributeHome() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1100px]">
+    <div>
       <PageHeader
         title="Contribute"
         description="Start here — Atlas, handbook, skills, finding YAMLs, and engine learning without hunting admin menus."
@@ -85,7 +85,7 @@ export default function ContributeHome() {
             to={s.to}
             className="rounded-2xl border border-phantix-700/40 bg-phantix-900/50 px-4 py-3 transition-colors hover:border-gold-400/30"
           >
-            <p className="text-[11px] uppercase tracking-wider text-slate-500">{s.label}</p>
+            <p className="text-[13px] uppercase tracking-wider text-slate-500">{s.label}</p>
             <p className="mt-1 font-display text-2xl font-bold text-white">{s.value}</p>
           </Link>
         ))}
@@ -107,7 +107,7 @@ export default function ContributeHome() {
                   <span className="mt-0.5 text-gold-400">{iconFor[l.id] ?? <BookOpen size={16} />}</span>
                   <span className="min-w-0">
                     <span className="block text-sm font-medium text-slate-200">{l.label}</span>
-                    <span className="block text-[11px] text-slate-500">{l.description}</span>
+                    <span className="block text-[13px] text-slate-500">{l.description}</span>
                   </span>
                 </div>
               );
