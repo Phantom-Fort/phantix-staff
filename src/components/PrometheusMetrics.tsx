@@ -115,7 +115,7 @@ export function PrometheusMetrics() {
         subtitle={
           text
             ? `${families.length} metric families · scraped ${fetchedAt}`
-            : "Staff-gated exposition at GET /api/v1/metrics"
+            : "Staff-gated metrics exposition"
         }
         action={
           <div className="flex items-center gap-2">
