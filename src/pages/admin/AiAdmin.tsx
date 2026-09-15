@@ -399,7 +399,7 @@ export default function AiAdmin() {
           {scopes.loading && !(scopes.data ?? []).length ? (
             <div className="p-4"><TableSkeleton rows={3} /></div>
           ) : (scopes.data ?? []).length === 0 ? (
-            <EmptyState icon={<ShieldAlert size={24} />} title="No data scopes" body="Configure allowed evidence keys per prompt via PUT /admin/ai/data-scopes/{prompt_key}" />
+            <EmptyState icon={<ShieldAlert size={24} />} title="No data scopes" body="Configure the allowed evidence keys per prompt in the scope editor." />
           ) : (
             <div className="space-y-1.5">
               {(scopes.data ?? []).map((d) => (
@@ -425,7 +425,7 @@ export default function AiAdmin() {
             {costs.loading && !(costs.data ?? []).length ? (
               <div className="p-4"><TableSkeleton rows={3} /></div>
             ) : (costs.data ?? []).length === 0 ? (
-              <EmptyState icon={<DollarSign size={22} />} title="No cost data" body="Tracked via GET /admin/ai/costs" />
+              <EmptyState icon={<DollarSign size={22} />} title="No cost data" body="Model spend appears here as calls are metered." />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -458,7 +458,7 @@ export default function AiAdmin() {
             {audit.loading && !(audit.data ?? []).length ? (
               <div className="p-4"><TableSkeleton rows={3} /></div>
             ) : (audit.data ?? []).length === 0 ? (
-              <EmptyState icon={<Activity size={22} />} title="No audit logs" body="Tracked via GET /admin/ai/audit-logs" />
+              <EmptyState icon={<Activity size={22} />} title="No audit logs" body="AI audit activity appears here once prompts are served." />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">

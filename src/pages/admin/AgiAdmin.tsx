@@ -1768,7 +1768,7 @@ function SkillFormModal({
               <option value="org">Org-private{skill?.organization_id ? ` (#${skill.organization_id})` : ""}</option>
             </select>
           </div>
-          <p className="ml-auto text-[12px] text-slate-500">Schema: <span className="font-mono text-gold-300">GET /admin/agi/skills/schema</span></p>
+          <p className="ml-auto text-[12px] text-slate-500">Skill schema loaded for reference</p>
         </div>
 
         <div>

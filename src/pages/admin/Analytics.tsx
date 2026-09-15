@@ -163,7 +163,7 @@ export default function Analytics() {
       ) : error && !data ? (
         <ErrorState
           title="Analytics unavailable"
-          body={`${error} The summary is served by GET /api/v1/admin/analytics/summary and requires a staff admin account.`}
+          body={`${error} Analytics requires a staff admin account.`}
           onRetry={() => void load(days)}
         />
       ) : (

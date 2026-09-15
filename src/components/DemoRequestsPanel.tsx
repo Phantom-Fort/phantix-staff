@@ -151,7 +151,7 @@ export function DemoRequestsPanel() {
         ) : error ? (
           <ErrorState
             title="Demo requests unavailable"
-            body={`${error} The queue reads GET /api/v1/admin/demo-requests — capture is unaffected, leads are still being stored.`}
+            body={`${error} The demo-request queue could not be loaded — capture is unaffected, new leads are still being stored.`}
             onRetry={() => void load(filter, search)}
           />
         ) : !rows.length ? (
