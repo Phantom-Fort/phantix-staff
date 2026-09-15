@@ -5,7 +5,7 @@ import {
   Globe2, Crosshair, Boxes, FileText, Wrench, Users, Terminal, CheckCircle2, XCircle,
   Brain, GitBranch, ShieldAlert, Eye, X, Clock, Pencil, SlidersHorizontal, BookOpen, Search, ArrowLeft, Radar, CornerUpLeft,
 } from "lucide-react";
-import { PageHeader, Card, CardHeader, StatCard, StatusBadge, SeverityBadge, TableSkeleton, EmptyState, Tabs, Modal } from "@/components/ui";
+import { PageHeader, Card, CardHeader, CollapsibleCard, StatCard, StatusBadge, SeverityBadge, TableSkeleton, EmptyState, Tabs, Modal } from "@/components/ui";
 import { AGI_CONTRIBUTOR_GUIDE_MD } from "@/lib/agiContributorGuide";
 import { ContributorGuideView } from "@/components/ContributorGuideView";
 import { useResource } from "@/lib/useResource";
@@ -1840,8 +1840,7 @@ function PolicyPanel({ toast, policies }: { toast: (k: "success" | "error" | "in
       <div className="flex justify-end">
         <button onClick={() => setOpen(true)} className="btn-primary !px-3.5 !py-2 !text-xs"><Plus size={13} className="mr-1 inline" /> Publish new version</button>
       </div>
-      <Card>
-        <CardHeader title="Version history" />
+      <CollapsibleCard defaultOpen={false} title="Version history">
         <div className="space-y-2">
           {policies.loading ? <TableSkeleton rows={2} /> : (policies.data ?? []).map((p) => (
             <div key={p.id} className="flex flex-wrap items-center gap-3 rounded-lg bg-phantix-800/40 px-3 py-2.5">
@@ -1854,7 +1853,7 @@ function PolicyPanel({ toast, policies }: { toast: (k: "success" | "error" | "in
           ))}
         </div>
         <p className="mt-3 text-[13px] text-slate-500">When a new active version is published, customers must accept again before using the Autonomous Agent.</p>
-      </Card>
+      </CollapsibleCard>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Publish agent usage agreement" wide>
         <div className="space-y-3">

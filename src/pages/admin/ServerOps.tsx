@@ -4,7 +4,7 @@ import {
   Cpu, HardDrive, Database, Activity, RefreshCw, Play, Loader2, Server,
   Gauge, Boxes, Layers, Clock, Wifi, WifiOff, AlertTriangle, CheckCircle2,
 } from "lucide-react";
-import { PageHeader, Card, CardHeader, StatCard, TableSkeleton, StatusBadge, ProgressBar } from "@/components/ui";
+import { PageHeader, Card, CardHeader, CollapsibleCard, StatCard, TableSkeleton, StatusBadge, ProgressBar } from "@/components/ui";
 import { PrometheusMetrics } from "@/components/PrometheusMetrics";
 import { useResource } from "@/lib/useResource";
 import { useSmartPoll } from "@/lib/usePolling";
@@ -366,8 +366,12 @@ export default function ServerOps() {
 
           {/* History sparkline */}
           {history.length >= 2 && (
-            <Card>
-              <CardHeader title="Activity history" subtitle="CPU · Memory · DB pool over the last ~8 minutes" action={<Gauge size={15} className="text-slate-500" />} />
+            <CollapsibleCard
+              defaultOpen={false}
+              title="Activity history"
+              subtitle="CPU · Memory · DB pool over the last ~8 minutes"
+              action={<Gauge size={15} className="text-slate-500" />}
+            >
               <svg viewBox="0 0 600 120" className="w-full h-28">
                 {[cpuPct, memPct, poolPct].map((_, series) => {
                   const key = series === 0 ? "cpu" : series === 1 ? "mem" : "pool";
@@ -387,12 +391,16 @@ export default function ServerOps() {
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Memory</span>
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-gold-400" /> DB pool</span>
               </div>
-            </Card>
+            </CollapsibleCard>
           )}
 
           {/* Processes */}
-          <Card>
-            <CardHeader title="Processes" subtitle={`${d.related_processes.length} platform processes · ${formatUptime(d.process.uptime_seconds)} uptime`} action={<Server size={15} className="text-phantix-300" />} />
+          <CollapsibleCard
+            defaultOpen={false}
+            title="Processes"
+            subtitle={`${d.related_processes.length} platform processes · ${formatUptime(d.process.uptime_seconds)} uptime`}
+            action={<Server size={15} className="text-phantix-300" />}
+          >
             {d.related_processes.length === 0 ? (
               <p className="text-xs text-slate-500">No process data returned.</p>
             ) : (
@@ -419,7 +427,7 @@ export default function ServerOps() {
                 </table>
               </div>
             )}
-          </Card>
+          </CollapsibleCard>
 
           {/* Runtime panels */}
           <div className="grid lg:grid-cols-3 gap-4">
@@ -450,8 +458,12 @@ export default function ServerOps() {
           </div>
 
           {/* Recommendations */}
-          <Card>
-            <CardHeader title="Recommendations" subtitle="Health scoring from runtime signals" action={<Gauge size={15} className="text-gold-400" />} />
+          <CollapsibleCard
+            defaultOpen={false}
+            title="Recommendations"
+            subtitle="Health scoring from runtime signals"
+            action={<Gauge size={15} className="text-gold-400" />}
+          >
             {d.recommendations.length === 0 ? (
               <p className="text-xs text-slate-500">No recommendations.</p>
             ) : (
@@ -467,7 +479,7 @@ export default function ServerOps() {
                 ))}
               </div>
             )}
-          </Card>
+          </CollapsibleCard>
 
           {/* Optimize actions */}
           <Card>

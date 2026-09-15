@@ -71,6 +71,59 @@ export function CardHeader({ title, subtitle, action }: { title: React.ReactNode
   );
 }
 
+/** Card whose body collapses away — for informational/reference content
+ *  (static lists, ID lookups, delivery logs) that otherwise pushes the page's
+ *  interactive work below the fold. */
+export function CollapsibleCard({
+  title,
+  subtitle,
+  action,
+  defaultOpen = false,
+  className,
+  children,
+}: {
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  action?: React.ReactNode;
+  defaultOpen?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={cx("card p-5", className)}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-start justify-between gap-4 text-left"
+      >
+        <div className="min-w-0 flex-1">
+          <h3 className="font-display text-[15px] font-semibold text-slate-100 break-words">{title}</h3>
+          {subtitle && <p className="mt-0.5 text-xs text-slate-400 break-words">{subtitle}</p>}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {action}
+          <ChevronDown size={16} className={cx("text-slate-500 transition-transform", open && "rotate-180")} />
+        </div>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="pt-4">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: React.ReactNode }) {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }} className="mb-6 flex flex-wrap items-end justify-between gap-4">

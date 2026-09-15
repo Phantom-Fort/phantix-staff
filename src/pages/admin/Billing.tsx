@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { BarChart3, DollarSign, RefreshCw, AlertTriangle, CreditCard, Ticket, Copy, XCircle, CheckCircle2, ToggleLeft, ToggleRight } from "lucide-react";
-import { PageHeader, Card, CardHeader, StatCard, TableSkeleton, Modal, Tabs, EmptyState } from "@/components/ui";
+import { PageHeader, Card, CardHeader, CollapsibleCard, StatCard, TableSkeleton, Modal, Tabs, EmptyState } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
 import { api, DEMO_MODE, API_BASE } from "@/lib/api";
@@ -209,8 +209,7 @@ export default function BillingAdmin() {
               </div>
               {extraLoading && !metering && <TableSkeleton rows={3} />}
               {metering && (
-                <Card>
-                  <CardHeader title="AI credit metering" subtitle={`FX ₦${metering.fx?.ngn_per_usd ?? FX_NGN_PER_USD}/USD · ${formatCredits(metering.plan_credits_mo?.starter)} / ${formatCredits(metering.plan_credits_mo?.growth)} credits`} />
+                <CollapsibleCard defaultOpen={false} title="AI credit metering" subtitle={`FX ₦${metering.fx?.ngn_per_usd ?? FX_NGN_PER_USD}/USD · ${formatCredits(metering.plan_credits_mo?.starter)} / ${formatCredits(metering.plan_credits_mo?.growth)} credits`}>
                   <p className="text-xs text-slate-400 mb-3">{metering.metering_note}</p>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div><span className="text-slate-400">Security primary:</span> <span className="font-mono text-xs text-slate-200">{metering.security_providers?.primary_model}</span></div>
@@ -220,7 +219,7 @@ export default function BillingAdmin() {
                     <div><span className="text-slate-400">GLM Flash ×1M:</span> <span className="font-mono text-xs text-slate-300">{formatAiNgn(metering.ngn_per_1m_tokens?.["glm-4-flash"])}</span></div>
                     <div><span className="text-slate-400">GPT-4o ×1M:</span> <span className="font-mono text-xs text-slate-300">{formatAiNgn(metering.ngn_per_1m_tokens?.["gpt-4o"])}</span></div>
                   </div>
-                </Card>
+                </CollapsibleCard>
               )}
             </>
           )}
