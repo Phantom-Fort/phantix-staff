@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { FlaskConical, Plus, Megaphone, RefreshCw, ExternalLink } from "lucide-react";
-import { PageHeader, Card, CardHeader, Modal, StatusBadge, EmptyState, Spinner, PageHeaderSkeleton, CardListSkeleton } from "@/components/ui";
+import { PageHeader, Card, CardHeader, CollapsibleCard, Modal, StatusBadge, EmptyState, Spinner, PageHeaderSkeleton, CardListSkeleton } from "@/components/ui";
 import { api, DEMO_MODE } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { timeAgo, cx } from "@/lib/utils";
@@ -515,9 +515,8 @@ export default function SandboxAdmin() {
           </Card>
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            <Card>
-              <CardHeader title="Published updates" subtitle="Shown to enrolled orgs on Platform + Command Centre /sandbox" />
-              <div className="max-h-72 space-y-2 overflow-y-auto">
+            <CollapsibleCard defaultOpen={false} title="Published updates" subtitle="Shown to enrolled orgs on Platform + Command Centre /sandbox">
+              <div className="space-y-2">
                 {updates.map((u) => (
                   <div key={u.id} className="rounded-md border border-phantix-700/40 bg-phantix-950/40 p-3">
                     <div className="flex flex-wrap items-center gap-2">
@@ -532,10 +531,9 @@ export default function SandboxAdmin() {
                 ))}
                 {updates.length === 0 && <p className="text-sm text-slate-500">No updates yet.</p>}
               </div>
-            </Card>
-            <Card>
-              <CardHeader title="Recent ratings" subtitle="From enrolled orgs" />
-              <div className="max-h-72 space-y-2 overflow-y-auto">
+            </CollapsibleCard>
+            <CollapsibleCard defaultOpen={false} title="Recent ratings" subtitle="From enrolled orgs">
+              <div className="space-y-2">
                 {ratings.map((r, i) => (
                   <div key={r.id ?? i} className="rounded-md border border-phantix-700/40 bg-phantix-950/40 p-3 text-xs">
                     <p className="font-mono text-gold-300">
@@ -549,7 +547,7 @@ export default function SandboxAdmin() {
                 ))}
                 {ratings.length === 0 && <p className="text-sm text-slate-500">No ratings yet.</p>}
               </div>
-            </Card>
+            </CollapsibleCard>
           </div>
         </>
       )}

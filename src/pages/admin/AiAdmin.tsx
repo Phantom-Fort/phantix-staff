@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Brain, Settings, Activity, Zap, RefreshCw, Play, DollarSign, Plus, FileText, ShieldAlert, GitBranch, Loader2, Eye, Pencil, Save, X, Server } from "lucide-react";
-import { PageHeader, Card, CardHeader, StatCard, StatusBadge, TableSkeleton, EmptyState, Tabs, Modal } from "@/components/ui";
+import { PageHeader, Card, CardHeader, CollapsibleCard, StatCard, StatusBadge, TableSkeleton, EmptyState, Tabs, Modal } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
 import { api, DEMO_MODE } from "@/lib/api";
@@ -321,8 +321,7 @@ export default function AiAdmin() {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-4 mb-6">
-            <Card>
-              <CardHeader title="Providers" subtitle="Configured AI model providers" />
+            <CollapsibleCard defaultOpen={false} title="Providers" subtitle="Configured AI model providers">
               <div className="space-y-2">
                 {data.providers.map((p: any) => (
                   <div key={p.id} className="flex items-center justify-between rounded-lg bg-phantix-800/40 px-3 py-2.5">
@@ -337,7 +336,7 @@ export default function AiAdmin() {
                   </div>
                 ))}
               </div>
-            </Card>
+            </CollapsibleCard>
 
             <Card>
               <CardHeader title="Actions" />
@@ -420,8 +419,7 @@ export default function AiAdmin() {
 
       {tab === "governance" && (
         <div className="space-y-4">
-          <Card>
-            <CardHeader title="Cost rollup" subtitle="Monthly token + USD spend per organization" action={<DollarSign size={15} className="text-gold-400" />} />
+          <CollapsibleCard defaultOpen={false} title="Cost rollup" subtitle="Monthly token + USD spend per organization" action={<DollarSign size={15} className="text-gold-400" />}>
             {costs.loading && !(costs.data ?? []).length ? (
               <div className="p-4"><TableSkeleton rows={3} /></div>
             ) : (costs.data ?? []).length === 0 ? (
@@ -452,9 +450,8 @@ export default function AiAdmin() {
                 </table>
               </div>
             )}
-          </Card>
-          <Card>
-            <CardHeader title="Audit trail" subtitle="Recent AI calls — model, prompt, tokens, cost" action={<Activity size={15} className="text-phantix-300" />} />
+          </CollapsibleCard>
+          <CollapsibleCard defaultOpen={false} title="Audit trail" subtitle="Recent AI calls — model, prompt, tokens, cost" action={<Activity size={15} className="text-phantix-300" />}>
             {audit.loading && !(audit.data ?? []).length ? (
               <div className="p-4"><TableSkeleton rows={3} /></div>
             ) : (audit.data ?? []).length === 0 ? (
@@ -489,7 +486,7 @@ export default function AiAdmin() {
                 </table>
               </div>
             )}
-          </Card>
+          </CollapsibleCard>
         </div>
       )}
 
