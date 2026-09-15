@@ -8,6 +8,7 @@ import StaffPasswordResetComplete from "@/pages/StaffPasswordResetComplete";
 import StaffChangePassword from "@/pages/StaffChangePassword";
 import Cookies from "@/pages/Cookies";
 import CookieConsent from "@/components/CookieConsent";
+import { BrandLoader } from "@/components/BrandLoader";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/admin/Clients";
 import SupportTickets from "@/pages/admin/Support";
@@ -46,14 +47,7 @@ import { AGI_ENABLED } from "@/lib/api";
 /** Full-screen gate shown while a stored session is verified — nothing renders
  *  until authentication + authorization are decided. */
 function GateLoader() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-phantix-950">
-      <div className="text-center">
-        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-phantix-600 border-t-gold-400" />
-        <p className="mt-3 text-sm text-slate-400">Verifying access...</p>
-      </div>
-    </div>
-  );
+  return <BrandLoader label="Staff" />;
 }
 
 function RequireStaff({ children }: { children: React.ReactNode }) {
