@@ -47,13 +47,15 @@ export default function SupportTickets() {
         created_at: t.created_at || "",
         updated_at: t.last_activity_at || t.updated_at || t.created_at || "",
         messages: Array.isArray(t.messages)
-          ? (t.messages as any[]).map((m) => ({
-              id: Number(m.id ?? 0),
-              from: String(m.submitter_name || m.from || "customer"),
-              from_type: String(m.is_internal ? "staff" : m.from_type || "customer"),
-              body: String(m.body ?? ""),
-              at: String(m.created_at || m.at || ""),
-            }))
+          ? (t.messages as any[])
+              .filter((m) => m && typeof m === "object")
+              .map((m) => ({
+                id: Number(m.id ?? 0),
+                from: String(m.submitter_name || m.from || "customer"),
+                from_type: String(m.is_internal ? "staff" : m.from_type || "customer"),
+                body: String(m.body ?? ""),
+                at: String(m.created_at || m.at || ""),
+              }))
           : [],
       })) as SupportTicket[];
     },
