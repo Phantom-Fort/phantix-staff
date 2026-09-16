@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ScanLine, RefreshCw, Terminal, FileText, Play, Settings, HardDrive, CheckCircle2, XCircle, Container } from "lucide-react";
+import { ScanLine, RefreshCw, Terminal, FileText, Play, Settings, HardDrive, CheckCircle2, XCircle, Container, Cloud, Zap } from "lucide-react";
 import { PageHeader, Card, CardHeader, StatusBadge, TableSkeleton, EmptyState, Modal, Tabs } from "@/components/ui";
 import { useResource } from "@/lib/useResource";
 import { useStore } from "@/lib/store";
@@ -9,6 +9,12 @@ import { cx } from "@/lib/utils";
 type ScannerTool = { tool_key: string; name: string; purpose: string; docker_image: string | null; host_binary: string | null; available: boolean; docker_available: boolean; version: string | null; update_action: string };
 type Wordlist = { key: string; name: string; purpose: string; path: string; present: boolean; bytes: number; source_url: string | null };
 type ScannerResponse = { tools: ScannerTool[]; wordlists: Wordlist[]; wordlist_root: string; notes: string[] };
+
+// Live API poller registry (GET /admin/cloud-security/pollers). Providers with
+// `liveApi` are polled read-only; the rest are webhook-only until a request
+// signer lands.
+type CloudPollerCapability = { provider: string; displayName: string; auth: string; liveApi: boolean; note: string };
+type CloudPollersResponse = { items: CloudPollerCapability[]; total: number; pollable: number; webhook_only: number };
 
 const demoTools: ScannerTool[] = [
   { tool_key: "subfinder", name: "Subdomain enum", purpose: "subdomain", docker_image: "projectdiscovery/subfinder:latest", host_binary: "/usr/local/bin/subfinder", available: true, docker_available: true, version: "v2.6.1", update_action: "docker pull projectdiscovery/subfinder:latest" },
@@ -23,6 +29,13 @@ const demoWordlists: Wordlist[] = [
   { key: "seclists_subdomains", name: "SecLists subdomains top5000", purpose: "subdomain_bruteforce", path: "/usr/share/wordlists/subdomains.txt", present: true, bytes: 30075, source_url: "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/subdomains-top1million-5000.txt" },
   { key: "seclists_dir_small", name: "SecLists directory-list small", purpose: "directory_enum", path: "/usr/share/wordlists/dir-small.txt", present: true, bytes: 725434, source_url: "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/directory-list-2.3-small.txt" },
   { key: "seclists_raft_medium", name: "SecLists raft-medium-dirs", purpose: "directory_enum", path: "/usr/share/wordlists/raft-medium.txt", present: true, bytes: 250427, source_url: "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/raft-medium-directories.txt" },
+];
+
+const demoPollers: CloudPollerCapability[] = [
+  { provider: "contabo", displayName: "Contabo", auth: "oauth2", liveApi: true, note: "client_credentials token exchange" },
+  { provider: "hetzner", displayName: "Hetzner Cloud", auth: "bearer", liveApi: true, note: "" },
+  { provider: "vercel", displayName: "Vercel", auth: "bearer", liveApi: true, note: "" },
+  { provider: "ovh", displayName: "OVHcloud", auth: "custom", liveApi: false, note: "request signing pending" },
 ];
 
 export default function ScannerTools() {
@@ -42,6 +55,15 @@ export default function ScannerTools() {
   const tools = resource.data?.tools ?? (DEMO_MODE ? demoTools : []);
   const wordlists = resource.data?.wordlists ?? (DEMO_MODE ? demoWordlists : []);
   const wordlistRoot = resource.data?.wordlist_root ?? "";
+
+  const pollers = useResource<CloudPollersResponse>(
+    async () => {
+      if (DEMO_MODE) return { items: demoPollers, total: demoPollers.length, pollable: 3, webhook_only: 1 };
+      return api.get<CloudPollersResponse>("/admin/cloud-security/pollers");
+    },
+    { items: DEMO_MODE ? demoPollers : [], total: 0, pollable: 0, webhook_only: 0 },
+  );
+  const pollerItems = pollers.data?.items ?? (DEMO_MODE ? demoPollers : []);
 
   const handleUpdate = async () => {
     try {
@@ -88,6 +110,7 @@ export default function ScannerTools() {
         tabs={[
           { id: "tools", label: "Tools", count: tools.length },
           { id: "wordlists", label: "Wordlists", count: wordlists.length },
+          { id: "pollers", label: "Cloud pollers", count: pollerItems.length },
         ]}
         active={tab}
         onChange={setTab}
@@ -197,6 +220,53 @@ export default function ScannerTools() {
               Root: {wordlistRoot}
             </div>
           )}
+        </Card>
+      )}
+
+      {tab === "pollers" && (
+        <Card>
+          <CardHeader
+            title="Live API pollers"
+            subtitle="Read-only provider inventory pulls (OAuth2 / bearer / api-key). Signer-pending providers stay webhook-only."
+          />
+          {pollerItems.length === 0 ? (
+            <EmptyState icon={<Cloud size={24} />} title="No poller registry" body="Poller capabilities load from the backend registry" />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-phantix-700/40">
+                    <th className="th">Provider</th>
+                    <th className="th">Auth</th>
+                    <th className="th">Transport</th>
+                    <th className="th">Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pollerItems.map((p) => (
+                    <tr key={p.provider} className="border-b border-phantix-700/20 hover:bg-phantix-800/40">
+                      <td className="td">
+                        <p className="text-sm font-medium text-slate-100">{p.displayName || p.provider}</p>
+                        <p className="text-xs text-slate-500 font-mono">{p.provider}</p>
+                      </td>
+                      <td className="td"><span className="chip text-xs text-slate-400 bg-slate-400/10 border-slate-500/30">{p.auth}</span></td>
+                      <td className="td">
+                        {p.liveApi ? (
+                          <span className="chip text-xs text-emerald-300 bg-emerald-400/10 border-emerald-400/30"><Zap size={10} className="mr-1" />Live API</span>
+                        ) : (
+                          <span className="chip text-xs text-slate-400 bg-slate-400/10 border-slate-500/30">Webhook only</span>
+                        )}
+                      </td>
+                      <td className="td"><span className="text-xs text-slate-500">{p.note || (p.liveApi ? "live read-only API pull" : "webhook only — signer pending")}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="px-4 py-2 text-xs text-slate-500 border-t border-phantix-700/40">
+            {pollers.data?.pollable ?? 0} live-pollable · {pollers.data?.webhook_only ?? 0} webhook-only
+          </div>
         </Card>
       )}
 
