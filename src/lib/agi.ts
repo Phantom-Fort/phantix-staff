@@ -781,6 +781,133 @@ export async function resolvedAgiSkills(engagementId: number): Promise<AgiSkill[
   } catch { return []; }
 }
 
+// ── Skill library prioritization ───────────────────────────────────────────────
+// The imported Anthropic pack is ~850 skills; ranking across all of them every
+// engagement is wasteful. This retires the non-prioritized *imported* platform
+// skills (status active → deprecated, never deleted) so only a prioritized set
+// is selected/searched. Reversible via `restore: true`. `dry_run` (default)
+// previews the change without writing.
+
+export interface AgiSkillPrioritizeParams {
+  keep_top?: number;
+  keep_ids?: string[];
+  keep_tags?: string[];
+  keep_kinds?: string[];
+  score_floor?: number;
+  sources?: string[];
+  restore?: boolean;
+  dry_run?: boolean;
+}
+
+export interface AgiSkillPrioritizeResult {
+  ok: boolean;
+  action: "prioritize" | "restore";
+  dry_run: boolean;
+  sources?: string[];
+  candidates?: number;
+  active_before?: number;
+  kept?: number;
+  deprecated?: number;
+  restored?: number;
+  keep_top?: number;
+  score_floor?: number;
+  sample_deprecated?: string[];
+}
+
+export async function prioritizeAgiSkills(
+  params: AgiSkillPrioritizeParams = {},
+): Promise<AgiSkillPrioritizeResult> {
+  if (DEMO_MODE) {
+    await delay(400);
+    if (params.restore) {
+      return { ok: true, action: "restore", dry_run: params.dry_run ?? false, candidates: 817, restored: 181 };
+    }
+    return {
+      ok: true,
+      action: "prioritize",
+      dry_run: params.dry_run ?? true,
+      sources: params.sources ?? ["imported_cyber"],
+      candidates: 817,
+      active_before: 817,
+      kept: params.keep_top ?? 150,
+      deprecated: 817 - (params.keep_top ?? 150),
+      keep_top: params.keep_top ?? 150,
+      score_floor: params.score_floor ?? 0.6,
+      sample_deprecated: ["agi.cyber.analyzing-memory-forensics", "agi.cyber.building-detection-rules-with-sigma"],
+    };
+  }
+  return api.post<AgiSkillPrioritizeResult>("/admin/agi/skills/prioritize", {
+    keep_top: 150,
+    score_floor: 0.6,
+    sources: ["imported_cyber"],
+    dry_run: true,
+    ...params,
+  });
+}
+
+// ── Org context packs — including seedable agent guidance ──────────────────────
+// What the pentest agent follows, per org, with no code change: free-form prompt,
+// per-asset-type process-flow overrides, and detection rules. Stored on the pack
+// meta and injected into the runner's system prompt at session start.
+
+export interface AgiAgentGuidance {
+  prompt_md?: string;
+  process_flows?: Record<string, string[]>;
+  detection_rules?: Array<{
+    id?: string;
+    name?: string;
+    when?: string;
+    severity?: string;
+    note?: string;
+  }>;
+}
+
+export interface AgiOrgContextPack {
+  name?: string;
+  organization_id?: number;
+  agent_guidance?: AgiAgentGuidance;
+  card_md?: string;
+  [k: string]: unknown;
+}
+
+export async function loadOrgContextPack(
+  organizationId: number,
+  name = "default",
+): Promise<AgiOrgContextPack> {
+  if (DEMO_MODE) {
+    await delay(260);
+    return {
+      name,
+      organization_id: organizationId,
+      agent_guidance: {
+        prompt_md: "Confirm real impact before reporting. Prefer live evidence over heuristics.",
+        process_flows: { web_app: ["recon", "discovery", "vuln", "exploit", "report"] },
+        detection_rules: [
+          { id: "no_placeholder", name: "No placeholder findings", when: "value looks like EXAMPLE/CHANGEME", severity: "info", note: "do not flag" },
+        ],
+      },
+    };
+  }
+  return api.get<AgiOrgContextPack>(
+    `/admin/agi/orgs/${organizationId}/context-packs/${encodeURIComponent(name)}`,
+  );
+}
+
+export async function upsertOrgContextPack(
+  organizationId: number,
+  payload: Record<string, unknown>,
+  name = "default",
+): Promise<AgiOrgContextPack> {
+  if (DEMO_MODE) {
+    await delay(360);
+    return { name, organization_id: organizationId, ...payload };
+  }
+  return api.put<AgiOrgContextPack>(
+    `/admin/agi/orgs/${organizationId}/context-packs/${encodeURIComponent(name)}`,
+    payload,
+  );
+}
+
 // ── Findings ──────────────────────────────────────────────────────────────────
 export async function loadAgiFindings(sessionId: number): Promise<AgiFinding[]> {
   if (DEMO_MODE) { await delay(250); return sortAgiFindings(normalizeAgiFindings(demoFindings)); }
