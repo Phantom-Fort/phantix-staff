@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   ShieldCheck, Activity, RefreshCw, Play, Square, Send, Plus, Loader2,
   Globe2, Crosshair, Boxes, FileText, Wrench, Users, Terminal, CheckCircle2, XCircle,
-  Brain, GitBranch, ShieldAlert, Eye, X, Clock, Pencil, SlidersHorizontal, BookOpen, Search, ArrowLeft, Radar, CornerUpLeft,
+  Brain, GitBranch, ShieldAlert, Eye, X, Clock, Pencil, SlidersHorizontal, BookOpen, Search, ArrowLeft, Radar, CornerUpLeft, Sparkles,
 } from "lucide-react";
 import { PageHeader, Card, CardHeader, CollapsibleCard, StatCard, StatusBadge, SeverityBadge, TableSkeleton, EmptyState, Tabs, Modal } from "@/components/ui";
 import { AGI_CONTRIBUTOR_GUIDE_MD } from "@/lib/agiContributorGuide";
@@ -21,12 +21,14 @@ import {
   loadAgiToolInstalls, decideAgiToolInstall, loadAgiGrants, setAgiGrant,
   loadAgiPolicies, loadAgiActivePolicy, publishAgiPolicy,
   loadAgiSkills, upsertAgiSkill, resolvedAgiSkills, loadAgiFindings, promoteAgiFinding, setAgiFindingStatus,
+  prioritizeAgiSkills, type AgiSkillPrioritizeResult,
   setAgiCredentials, setAgiRegistration, getAgiPreflight, provideAgiInfo, provideAgiOtp, runAgiShell, listAgiJobs,
   agiErrorDetail, streamAgiSession, loadAgiEngineCatalog, loadAgiEngineLearning, loadAgiSessionJob, loadAgiApkAssets, trainAgiSession,
   loadAgiSessionSkillPlan, normalizeAgiLoop, answerAgiClarification,
 } from "@/lib/agi";
 import { EngineLearningPanel, EngineSnapshotCards, JobCoveragePanel, EngineCallList, AgiSkillPlanBanner, AgiToolsToProvisionStrip, CollapseCard } from "@/components/AgiCoevolution";
 import AgiPrompts from "@/components/AgiPrompts";
+import { AgentGuidancePanel } from "@/components/AgentGuidancePanel";
 import { openClarificationFrom } from "@/lib/agiStreamGroup";
 import type { AgiEngineCapability, AgiSessionJob, AgiSkillPlan, AgiToolPlan, AgiToolToProvision, EngineCallEvent } from "@/lib/types";
 import type {
@@ -1051,9 +1053,142 @@ function SkillCard({ s, onEdit }: { s: AgiSkill; onEdit: () => void }) {
   );
 }
 
+function SkillPrioritizeModal({
+  open,
+  onClose,
+  onApplied,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onApplied: () => void;
+}) {
+  const { toast } = useStore();
+  const [keepTop, setKeepTop] = useState(150);
+  const [keepKinds, setKeepKinds] = useState(
+    "exploit_verify,web,api,network,cloud,recon,mobile,reporting",
+  );
+  const [keepTags, setKeepTags] = useState(
+    "penetration-testing,red-team,red-teaming,owasp,api-security,web-application-security,web-security,network-security,cloud-security,active-directory,privilege-escalation,mobile-security,container-security,supply-chain,post-exploitation,vulnerability-management,identity-access-management,access-control",
+  );
+  const [restore, setRestore] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<AgiSkillPrioritizeResult | null>(null);
+
+  const split = (v: string) => v.split(",").map((s) => s.trim()).filter(Boolean);
+
+  const run = async (dryRun: boolean) => {
+    setBusy(true);
+    try {
+      const r = await prioritizeAgiSkills({
+        dry_run: dryRun,
+        restore,
+        keep_top: keepTop,
+        keep_kinds: split(keepKinds),
+        keep_tags: split(keepTags),
+      });
+      setResult(r);
+      toast(
+        dryRun ? "info" : "success",
+        dryRun ? "Preview ready" : restore ? "Skills restored" : "Skill library prioritized",
+        `${r.kept ?? r.restored ?? 0} kept · ${r.deprecated ?? 0} retired`,
+      );
+      if (!dryRun) onApplied();
+    } catch (e) {
+      toast("error", "Prioritization failed", e instanceof Error ? e.message : undefined);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Prioritize skill library" wide>
+      <div className="space-y-4">
+        <p className="text-[13px] leading-5 text-slate-400">
+          Retire the non-prioritized imported platform skills so the agent stops ranking across
+          hundreds it will never select. Skills are{" "}
+          <strong className="text-slate-300">deprecated, never deleted</strong>, and restoring
+          re-activates them. Only org-less imported skills are touched — org, manual, built-in,
+          mined and verification-pack skills are always kept.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="prio-top">Keep top N by track record</label>
+            <input
+              id="prio-top"
+              type="number"
+              min={0}
+              value={keepTop}
+              onChange={(e) => setKeepTop(Number(e.target.value))}
+              className="input mt-1"
+            />
+          </div>
+          <label className="mt-6 flex cursor-pointer items-center gap-2 text-[13px] text-slate-300">
+            <input
+              type="checkbox"
+              checked={restore}
+              onChange={(e) => setRestore(e.target.checked)}
+              className="accent-[rgb(var(--gold-400))]"
+            />
+            Restore mode (re-activate deprecated skills)
+          </label>
+          <div className="sm:col-span-2">
+            <label className="label" htmlFor="prio-kinds">Always keep kinds (comma-separated)</label>
+            <input
+              id="prio-kinds"
+              value={keepKinds}
+              onChange={(e) => setKeepKinds(e.target.value)}
+              className="input mt-1 font-mono !text-xs"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="label" htmlFor="prio-tags">Always keep tags (comma-separated)</label>
+            <textarea
+              id="prio-tags"
+              value={keepTags}
+              onChange={(e) => setKeepTags(e.target.value)}
+              rows={3}
+              className="input mt-1 font-mono !text-xs"
+            />
+          </div>
+        </div>
+        {result && (
+          <div className="rounded-xl border border-phantix-700/40 bg-phantix-950/50 p-3 text-[13px] text-slate-300">
+            <p className="font-medium text-slate-200">
+              {result.action === "restore" ? "Restore" : "Prioritize"}{" "}
+              {result.dry_run ? "preview" : "applied"}
+            </p>
+            <p className="mt-1 text-slate-400">
+              {result.candidates ?? 0} candidates · kept {result.kept ?? "—"} · retired{" "}
+              {result.deprecated ?? "—"}
+              {result.restored != null ? ` · restored ${result.restored}` : ""}
+            </p>
+            {(result.sample_deprecated ?? []).length > 0 && (
+              <p className="mt-1 font-mono text-[11px] leading-4 text-slate-500">
+                e.g. {(result.sample_deprecated ?? []).slice(0, 4).join(", ")}
+              </p>
+            )}
+          </div>
+        )}
+        <div className="flex flex-wrap justify-end gap-2">
+          <button onClick={onClose} className="btn-ghost text-xs !py-2">
+            Close
+          </button>
+          <button onClick={() => void run(true)} disabled={busy} className="btn-secondary text-xs !py-2">
+            {busy ? <Loader2 size={13} className="mr-1.5 inline animate-spin" /> : null} Preview
+          </button>
+          <button onClick={() => void run(false)} disabled={busy} className="btn-primary text-xs !py-2">
+            {restore ? "Restore skills" : "Apply prioritization"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export default function AgiAdmin() {
   const { toast, isSuperadmin, isAgiAdmin } = useStore();
   const [tab, setTab] = useState("status");
+  const [prioritizeOpen, setPrioritizeOpen] = useState(false);
   const [status, setStatus] = useState<any>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -1068,7 +1203,7 @@ export default function AgiAdmin() {
   const [skillOpen, setSkillOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<AgiSkill | null>(null);
   const [autonomy, setAutonomy] = useState<"low" | "medium" | "high">("medium");
-  const [includeOrgAssets, setIncludeOrgAssets] = useState(false);
+  const [includeOrgAssets, setIncludeOrgAssets] = useState(true);
   const [preapproveLabAuth, setPreapproveLabAuth] = useState(false);
   const [startCreds, setStartCreds] = useState({ login_url: "", username: "", password: "" });
   const [credsOpen, setCredsOpen] = useState(false);
@@ -1123,7 +1258,13 @@ export default function AgiAdmin() {
   const policies = useResource<AgiPolicy[]>(async () => loadAgiPolicies(), [] as AgiPolicy[]);
   const grants = useResource<any[]>(async () => loadAgiGrants(), [] as any[]);
   const skills = useResource<AgiSkill[]>(async () => loadAgiSkills(), [] as AgiSkill[]);
-  const toolInstalls = useResource<AgiToolInstallRequest[]>(async () => loadAgiToolInstalls("pending_admin"), [] as AgiToolInstallRequest[]);
+  const toolInstalls = useResource<AgiToolInstallRequest[]>(
+    async () => {
+      const rows = await loadAgiToolInstalls("all");
+      return rows.filter((r) => ["pending_approval", "installed_in_session", "pending_admin"].includes(r.status));
+    },
+    [] as AgiToolInstallRequest[],
+  );
 
   const orgs = useResource<{ id: number; name: string }[]>(
     async () => {
@@ -1275,6 +1416,7 @@ export default function AgiAdmin() {
               { id: "approvals", label: "Tool Queue", count: toolInstalls.data.length },
               { id: "engines", label: "Engines" },
               { id: "skills", label: "Skills", count: skills.data.length },
+              { id: "guidance", label: "Guidance" },
               { id: "prompts", label: "Prompts" },
               { id: "policies", label: "Agreement" },
               { id: "findings", label: "Findings", count: activeSession ? 1 : 0 },
@@ -1450,10 +1592,16 @@ export default function AgiAdmin() {
                     <p className="mt-1.5 text-xs text-slate-400">{req.rationale}</p>
                     {req.install_command && <p className="mt-1.5 break-all rounded-lg bg-phantix-950/70 px-2.5 py-1.5 font-mono text-[13px] text-slate-300">{req.install_command}</p>}
                     <p className="mt-1.5 text-[12px] text-slate-600">Session approve ≠ server provision. Confirm only after the package is in phantix-agi-sandbox.</p>
-                    <div className="mt-3 flex items-center gap-2">
-                      <button onClick={() => void decideInstall(req, true)} className="btn-primary !px-3 !py-1.5 !text-[13px]"><CheckCircle2 size={12} className="mr-1 inline" /> Provision server-wide</button>
-                      <button onClick={() => void decideInstall(req, false)} className="btn-ghost !px-3 !py-1.5 !text-[13px] text-severity-critical hover:text-severity-critical"><XCircle size={12} className="mr-1 inline" /> Reject</button>
-                    </div>
+                    {req.status === "pending_admin" || req.status === "installed_in_session" ? (
+                      <div className="mt-3 flex items-center gap-2">
+                        <button onClick={() => void decideInstall(req, true)} className="btn-primary !px-3 !py-1.5 !text-[13px]"><CheckCircle2 size={12} className="mr-1 inline" /> Provision server-wide</button>
+                        <button onClick={() => void decideInstall(req, false)} className="btn-ghost !px-3 !py-1.5 !text-[13px] text-severity-critical hover:text-severity-critical"><XCircle size={12} className="mr-1 inline" /> Reject</button>
+                      </div>
+                    ) : (
+                      <p className="mt-2 rounded-md border border-gold-400/25 bg-gold-400/5 px-3 py-2 text-[12px] text-gold-300">
+                        Waiting for the operator to approve the in-session install before this reaches the admin provision queue.
+                      </p>
+                    )}
                   </div>
                 ))
               )}
@@ -1461,6 +1609,10 @@ export default function AgiAdmin() {
           )}
 
           {tab === "engines" && <EngineLearningPanel />}
+
+          {tab === "guidance" && (
+            <AgentGuidancePanel orgs={orgs.data} />
+          )}
 
           {tab === "prompts" && <AgiPrompts />}
 
@@ -1499,6 +1651,7 @@ export default function AgiAdmin() {
                     <button key={f} onClick={() => { setSkillFilter(f); setSkillPage(1); }} className={cx("rounded-md px-2.5 py-1 text-[13px] capitalize", skillFilter === f ? "bg-phantix-800 text-gold-200" : "text-slate-500")}>{f}</button>
                   ))}
                 </div>
+                <button onClick={() => setPrioritizeOpen(true)} className="btn-ghost !px-3 !py-1.5 !text-xs" title="Retire non-priority imported skills so the agent stops ranking across all of them"><Sparkles size={13} className="mr-1 inline" /> Prioritize library</button>
                 <button onClick={() => { setEditingSkill(null); setSkillOpen(true); }} className="btn-primary !px-3 !py-1.5 !text-xs"><Plus size={13} className="mr-1 inline" /> New skill</button>
               </div>
 
@@ -1653,6 +1806,12 @@ export default function AgiAdmin() {
         onClose={() => { setSkillOpen(false); setEditingSkill(null); }}
         onSaved={() => skills.refresh()}
         toast={toast}
+      />
+
+      <SkillPrioritizeModal
+        open={prioritizeOpen}
+        onClose={() => setPrioritizeOpen(false)}
+        onApplied={() => skills.refresh()}
       />
     </div>
   );
