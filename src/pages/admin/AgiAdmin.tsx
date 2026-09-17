@@ -1068,7 +1068,7 @@ export default function AgiAdmin() {
   const [skillOpen, setSkillOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<AgiSkill | null>(null);
   const [autonomy, setAutonomy] = useState<"low" | "medium" | "high">("medium");
-  const [includeOrgAssets, setIncludeOrgAssets] = useState(false);
+  const [includeOrgAssets, setIncludeOrgAssets] = useState(true);
   const [preapproveLabAuth, setPreapproveLabAuth] = useState(false);
   const [startCreds, setStartCreds] = useState({ login_url: "", username: "", password: "" });
   const [credsOpen, setCredsOpen] = useState(false);
@@ -1123,7 +1123,13 @@ export default function AgiAdmin() {
   const policies = useResource<AgiPolicy[]>(async () => loadAgiPolicies(), [] as AgiPolicy[]);
   const grants = useResource<any[]>(async () => loadAgiGrants(), [] as any[]);
   const skills = useResource<AgiSkill[]>(async () => loadAgiSkills(), [] as AgiSkill[]);
-  const toolInstalls = useResource<AgiToolInstallRequest[]>(async () => loadAgiToolInstalls("pending_admin"), [] as AgiToolInstallRequest[]);
+  const toolInstalls = useResource<AgiToolInstallRequest[]>(
+    async () => {
+      const rows = await loadAgiToolInstalls("all");
+      return rows.filter((r) => ["pending_approval", "installed_in_session", "pending_admin"].includes(r.status));
+    },
+    [] as AgiToolInstallRequest[],
+  );
 
   const orgs = useResource<{ id: number; name: string }[]>(
     async () => {
@@ -1450,10 +1456,16 @@ export default function AgiAdmin() {
                     <p className="mt-1.5 text-xs text-slate-400">{req.rationale}</p>
                     {req.install_command && <p className="mt-1.5 break-all rounded-lg bg-phantix-950/70 px-2.5 py-1.5 font-mono text-[13px] text-slate-300">{req.install_command}</p>}
                     <p className="mt-1.5 text-[12px] text-slate-600">Session approve ≠ server provision. Confirm only after the package is in phantix-agi-sandbox.</p>
-                    <div className="mt-3 flex items-center gap-2">
-                      <button onClick={() => void decideInstall(req, true)} className="btn-primary !px-3 !py-1.5 !text-[13px]"><CheckCircle2 size={12} className="mr-1 inline" /> Provision server-wide</button>
-                      <button onClick={() => void decideInstall(req, false)} className="btn-ghost !px-3 !py-1.5 !text-[13px] text-severity-critical hover:text-severity-critical"><XCircle size={12} className="mr-1 inline" /> Reject</button>
-                    </div>
+                    {req.status === "pending_admin" || req.status === "installed_in_session" ? (
+                      <div className="mt-3 flex items-center gap-2">
+                        <button onClick={() => void decideInstall(req, true)} className="btn-primary !px-3 !py-1.5 !text-[13px]"><CheckCircle2 size={12} className="mr-1 inline" /> Provision server-wide</button>
+                        <button onClick={() => void decideInstall(req, false)} className="btn-ghost !px-3 !py-1.5 !text-[13px] text-severity-critical hover:text-severity-critical"><XCircle size={12} className="mr-1 inline" /> Reject</button>
+                      </div>
+                    ) : (
+                      <p className="mt-2 rounded-md border border-gold-400/25 bg-gold-400/5 px-3 py-2 text-[12px] text-gold-300">
+                        Waiting for the operator to approve the in-session install before this reaches the admin provision queue.
+                      </p>
+                    )}
                   </div>
                 ))
               )}
