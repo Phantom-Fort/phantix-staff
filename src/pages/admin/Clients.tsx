@@ -37,6 +37,17 @@ interface ClientApplications {
   enabled: string[];
 }
 
+interface EntitlementOverrides {
+  organizationId: number;
+  plan: string;
+  endpoint_monitors: {
+    plan_default: number | null;
+    override: number | null;
+    effective: number | null;
+    used: number;
+  };
+}
+
 export default function Clients() {
   const { toast, isAdmin, isSuperadmin } = useStore();
   const [search, setSearch] = useState("");
@@ -47,6 +58,9 @@ export default function Clients() {
   const [aiAllowance, setAiAllowance] = useState<EnterpriseAiAllowance | null>(null);
   const [aiNgnInput, setAiNgnInput] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
+  const [epLimits, setEpLimits] = useState<EntitlementOverrides | null>(null);
+  const [epInput, setEpInput] = useState("");
+  const [epBusy, setEpBusy] = useState(false);
   // Which applications this client has (plan ∩ admin enable). Staff may turn one
   // on ahead of the plan for a trial — that is recorded as a plan override.
   const [clientApps, setClientApps] = useState<ClientApplications | null>(null);
@@ -113,15 +127,60 @@ export default function Clients() {
     }
   };
 
+  const loadEpLimits = async (id: number) => {
+    if (DEMO_MODE) {
+      setEpLimits({
+        organizationId: id,
+        plan: "growth",
+        endpoint_monitors: { plan_default: 25, override: null, effective: 25, used: 4 },
+      });
+      setEpInput("");
+      return;
+    }
+    try {
+      const res = await api.get<EntitlementOverrides>(`/admin/clients/${id}/entitlement-overrides`);
+      setEpLimits(res);
+      setEpInput(res.endpoint_monitors.override != null ? String(res.endpoint_monitors.override) : "");
+    } catch {
+      setEpLimits(null);
+      setEpInput("");
+    }
+  };
+
+  const saveEpOverride = async (orgId: number, clear = false) => {
+    const value = clear ? null : Number(epInput);
+    if (!clear && (!Number.isFinite(value as number) || (value as number) < 0)) {
+      toast("error", "Invalid limit", "Enter a whole number ≥ 0, or clear to use the plan default.");
+      return;
+    }
+    setEpBusy(true);
+    try {
+      const res = await api.put<EntitlementOverrides>(
+        `/admin/clients/${orgId}/entitlement-overrides`,
+        { endpoint_monitors: clear ? null : value },
+      );
+      setEpLimits(res);
+      setEpInput(res.endpoint_monitors.override != null ? String(res.endpoint_monitors.override) : "");
+      toast("success", "Endpoint-monitor limit updated", clear ? "Reset to the plan default." : `Custom cap: ${value}`);
+    } catch (e) {
+      toast("error", "Update failed", e instanceof Error ? e.message : "");
+    } finally {
+      setEpBusy(false);
+    }
+  };
+
   const handleSelectClient = (id: number | null) => {
     setSelectedClient(id);
     if (id != null) {
       clientDetail.refresh();
       clientExperience.refresh();
       void loadAiAllowance(id);
+      void loadEpLimits(id);
     } else {
       setAiAllowance(null);
       setAiNgnInput("");
+      setEpLimits(null);
+      setEpInput("");
     }
   };
 
@@ -398,6 +457,62 @@ export default function Clients() {
                 )}
                 <p className="mt-2 text-[13px] text-slate-500">
                   Starter ≈ ₦7,500 · Growth ≈ ₦30,000 · Enterprise custom. Security AI uses DeepSeek with Z.AI GLM Flash fallback.
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Endpoint monitoring limit</p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-lg bg-phantix-950/60 border border-phantix-700/40 p-3">
+                    <p className="text-xs text-slate-400">Plan default</p>
+                    <p className="text-sm text-white font-medium">{epLimits?.endpoint_monitors.plan_default ?? "custom"}</p>
+                  </div>
+                  <div className="rounded-lg bg-phantix-950/60 border border-phantix-700/40 p-3">
+                    <p className="text-xs text-slate-400">Override</p>
+                    <p className="text-sm text-white font-medium">{epLimits?.endpoint_monitors.override ?? "—"}</p>
+                  </div>
+                  <div className="rounded-lg bg-phantix-950/60 border border-phantix-700/40 p-3">
+                    <p className="text-xs text-slate-400">Effective</p>
+                    <p className="text-sm text-white font-medium">{epLimits?.endpoint_monitors.effective ?? "unlimited"}</p>
+                  </div>
+                  <div className="rounded-lg bg-phantix-950/60 border border-phantix-700/40 p-3">
+                    <p className="text-xs text-slate-400">In use</p>
+                    <p className="text-sm text-white font-medium">{epLimits?.endpoint_monitors.used ?? 0}</p>
+                  </div>
+                </div>
+                {isSuperadmin && (
+                  <div className="mt-3 flex flex-wrap items-end gap-2">
+                    <div className="min-w-[160px] flex-1">
+                      <label className="label">Custom endpoint-monitor cap</label>
+                      <input
+                        className="input font-mono"
+                        type="number"
+                        min={0}
+                        value={epInput}
+                        onChange={(e) => setEpInput(e.target.value)}
+                        placeholder="e.g. 100"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-secondary text-xs px-3 py-2"
+                      disabled={epBusy}
+                      onClick={() => void saveEpOverride(c.id)}
+                    >
+                      Save cap
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost text-xs px-3 py-2"
+                      disabled={epBusy || epLimits?.endpoint_monitors.override == null}
+                      onClick={() => void saveEpOverride(c.id, true)}
+                    >
+                      Use plan default
+                    </button>
+                  </div>
+                )}
+                <p className="mt-2 text-[13px] text-slate-500">
+                  Free 1 · Starter 10 · Growth 25 · Enterprise custom. An override curates a bespoke cap for this org (leave blank / clear to follow the plan).
                 </p>
               </div>
 
