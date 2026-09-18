@@ -635,6 +635,9 @@ export interface AgiSession {
   /** Present on GET/POST session; always coerce with normalizeAgiSession. */
   job?: AgiSessionJob | Record<string, unknown> | null;
   loop?: AgiLoopBrief | null;
+  /** "running" | "stopped" — the loop, distinct from session.status. */
+  loop_status?: "running" | "stopped" | null;
+  loop_stop_reason?: string | null;
   /** Open ASK_OPERATOR clarification (cleared on answer). */
   clarification?: Record<string, unknown> | null;
 }

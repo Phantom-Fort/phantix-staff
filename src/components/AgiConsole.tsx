@@ -4,7 +4,7 @@ import {
   ArrowDown, Ban, BrainCircuit, CheckCircle2, ChevronDown, ChevronRight, Clock, CornerUpLeft, Crosshair, FileCode2,
   Globe2, Loader2, Lock, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
   Pause, Play, Plus, Radar, Send, ShieldAlert, ShieldCheck, Sparkles, Square,
-  Terminal, XCircle,
+  Terminal, XCircle, AlertTriangle,
 } from "lucide-react";
 import { ApprovalNotice, ClarificationAsk, CopyBtn, StreamEmpty, StreamMessage, ToolGroupCard, TypingIndicator } from "@/components/AgiStream";
 import { groupStreamRows } from "@/lib/agiStreamGroup";
@@ -345,6 +345,8 @@ export type AgiConsoleProps = {
   turnMetrics?: { turns: number; promptTokens: number; completionTokens: number; tools: number; wallSeconds: number };
   /** Prefer loop.working_on over a generic "thinking" spinner label. */
   workingOn?: string | null;
+  /** Set when the autonomous loop ended but the session is still resumable. */
+  loopStopped?: string | null;
   /** Live findings from GET .../findings (preferred over transcript-derived). */
   liveFindings?: AgiFinding[];
   /** Human verification layer: confirm/dismiss a finding via the staff API. */
@@ -384,6 +386,7 @@ export default function AgiConsole({
   onToggleReasoning,
   turnMetrics = { turns: 0, promptTokens: 0, completionTokens: 0, tools: 0, wallSeconds: 0 },
   workingOn = null,
+  loopStopped = null,
   liveFindings,
   onFindingVerify,
   connError,
@@ -518,10 +521,10 @@ export default function AgiConsole({
           ))}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <SessionClock since={session.started_at} live={running && !paused} />
-          <span className={cx("chip !px-2 !py-0.5 wb-2xs", running && !paused ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : paused ? "border-severity-medium/30 bg-severity-medium/10 text-severity-medium" : "border-phantix-600/40 text-slate-400")}>
-            {running && !paused && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />}
-            {paused ? "paused" : running ? "live" : session.status}
+          <SessionClock since={session.started_at} live={running && !paused && !loopStopped} />
+          <span className={cx("chip !px-2 !py-0.5 wb-2xs", loopStopped ? "border-severity-medium/30 bg-severity-medium/10 text-severity-medium" : running && !paused ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : paused ? "border-severity-medium/30 bg-severity-medium/10 text-severity-medium" : "border-phantix-600/40 text-slate-400")}>
+            {!loopStopped && running && !paused && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />}
+            {loopStopped ? "loop stopped" : paused ? "paused" : running ? "live" : session.status}
           </span>
           <span className="chip !px-2 !py-0.5 wb-2xs font-mono text-slate-400">#{session.id}</span>
           {running && (
@@ -1019,6 +1022,12 @@ export default function AgiConsole({
             ))}
           </div>
         )}
+        {loopStopped && (
+          <div className="mx-auto mb-2 flex max-w-3xl items-start gap-2 rounded-md border border-severity-medium/30 bg-severity-medium/10 px-3 py-2 text-[12px] text-severity-medium">
+            <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+            <span>Autonomous loop stopped (<span className="font-mono">{loopStopped}</span>). Send an instruction to continue where it left off, or start a fresh session.</span>
+          </div>
+        )}
         <div className="mx-auto flex max-w-3xl items-start gap-2 rounded-md border border-phantix-700/50 bg-phantix-950/60 px-3 py-2 transition-colors focus-within:border-gold-400/40">
           <textarea
             value={instruction}
@@ -1035,7 +1044,7 @@ export default function AgiConsole({
               e.preventDefault();
               onSend();
             }}
-            placeholder={paused ? "Paused — resume to send" : running ? "Further instructions or override the next step…" : "Session stopped"}
+            placeholder={loopStopped ? "Loop stopped — send an instruction to continue…" : paused ? "Paused — resume to send" : running ? "Further instructions or override the next step…" : "Session stopped"}
             disabled={!running || paused}
             rows={1}
             className="wb-md flex-1 resize-none overflow-hidden bg-transparent text-slate-200 outline-none placeholder:text-slate-500 disabled:opacity-50"

@@ -156,6 +156,8 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
   const [input, setInput] = useState("");
   const [running, setRunning] = useState(session.status === "running" || session.status === "provisioning");
   const [paused, setPaused] = useState(false);
+  // Loop ended but the session is still resumable — distinct from session.status.
+  const [loopStopped, setLoopStopped] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
   const [deciding, setDeciding] = useState<number | null>(null);
   const [thinking, setThinking] = useState(false);
@@ -263,6 +265,8 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
               return [...prev, { seq: afterSeqRef.current + 1, role: "assistant", content: loop.content || "", meta: { kind: "turn_brief", event: "loop_progress" }, created_at: new Date().toISOString() }];
             });
           }
+          if (s.loop_status === "stopped") { setLoopStopped(s.loop_stop_reason || "stopped"); setThinking(false); }
+          else if (s.loop_status === "running") setLoopStopped(null);
           if (s.status === "stopped" || s.status === "torn_down" || s.status === "failed") setRunning(false);
         } catch { /* transient */ }
       })();
@@ -308,6 +312,7 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
       else if (event === "loop_status" || event === "loop_progress") {
         try {
           const loop = normalizeAgiLoop(JSON.parse(String(data)));
+          setLoopStopped(null);
           if (loop.working_on) setWorkingOn(loop.working_on);
           if (event === "loop_status") { setThinking(true); setReasoning(""); }
           if (event === "loop_progress") {
@@ -367,7 +372,14 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
           });
         } catch { /* ignore */ }
       }
-      else if (event === "teardown" || event === "loop_stop") setRunning(false);
+      else if (event === "teardown") { setRunning(false); setLoopStopped(null); }
+      else if (event === "loop_stop") {
+        // Loop ended; keep the session alive so the operator can resume by chat.
+        let reason = "stopped";
+        try { reason = String((JSON.parse(String(data)) as { reason?: string })?.reason || "stopped"); } catch { /* ignore */ }
+        setLoopStopped(reason);
+        setThinking(false);
+      }
     }, controller.signal).catch(() => { /* SSE fallback: transcript poll continues */ });
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -375,6 +387,7 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
 
   const dispatchChat = async (msg: string) => {
     if (!running || paused) return;
+    setLoopStopped(null);
     setConnError(null);
     pendingOpsRef.current.push(msg);
     setTranscript((prev) => [...prev, { seq: -1, role: "operator", content: msg, meta: null, created_at: new Date().toISOString() }]);
@@ -493,6 +506,7 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
           reasoningOpen={reasoningOpen}
           onToggleReasoning={() => setReasoningOpen((v) => !v)}
           turnMetrics={turnMetrics}
+          loopStopped={loopStopped}
           workingOn={workingOn}
           liveFindings={liveFindings}
           onFindingVerify={(findingId, verified) => {
