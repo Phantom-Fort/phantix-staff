@@ -28,12 +28,28 @@ type AppLog = {
 };
 
 // Engine logType catalog (also fetched from GET /admin/logs/types when available).
-const DEFAULT_LOG_TYPES = ["scan", "report", "auth", "session", "http", "dual_control", "access", "ai", "alert", "worker", "exception", "crash", "lifecycle", "app", "security", "system", "audit", "bus"];
+const DEFAULT_LOG_TYPES = ["api", "scan", "report", "auth", "session", "http", "dual_control", "access", "ai", "alert", "worker", "exception", "crash", "lifecycle", "app", "security", "system", "audit", "bus"];
 
 /** Rows per page — keeps the log table to a single screen instead of endless scroll. */
 const PAGE_SIZE = 100;
 
+/** ``datetime-local`` string in the browser's timezone (backend wants ISO-8601). */
+function toLocalInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Quick date/time ranges for the log window. */
+const QUICK_RANGES: Array<[string, number | null]> = [
+  ["1h", 1],
+  ["24h", 24],
+  ["7d", 24 * 7],
+  ["30d", 24 * 30],
+  ["All", null],
+];
+
 const LOG_TYPE_LABELS: Record<string, string> = {
+  api: "Engine / API integration error (user-facing message normalized)",
   scan: "Scanner job / web step",
   report: "Report generate",
   auth: "Login / MFA",
@@ -65,6 +81,7 @@ const demoSummary: Record<string, unknown> = {
 
 function logTypeBadge(logType: string): string {
   const known: Record<string, string> = {
+    api: "text-orange-300 bg-orange-400/10 border-orange-400/30",
     scan: "text-emerald-300 bg-emerald-400/10 border-emerald-400/30",
     report: "text-blue-300 bg-blue-400/10 border-blue-400/30",
     auth: "text-purple-300 bg-purple-400/10 border-purple-400/30",
@@ -128,6 +145,9 @@ export default function DevLogs() {
   const [engineFilter, setEngineFilter] = useState("");
   const [q, setQ] = useState("");
   const [showAccess, setShowAccess] = useState(false);
+  const [fromTs, setFromTs] = useState("");
+  const [toTs, setToTs] = useState("");
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const [logTypes, setLogTypes] = useState<string[]>(DEFAULT_LOG_TYPES);
   const [expandedId, setExpandedId] = useState<number | string | null>(null);
   const [page, setPage] = useState(1);
@@ -155,14 +175,17 @@ export default function DevLogs() {
         include_summary: false,
         limit: PAGE_SIZE,
         offset: (page - 1) * PAGE_SIZE,
+        // Poll every log type. The backend still hides noisy access GET polls
+        // unless the toggle asks for the full set.
+        all_types: showAccess,
       };
-      // Access GET polls are excluded by default; toggle to include the noise.
-      if (!showAccess) params.exclude_log_types = "access";
       if (logTypeFilter) params.log_type = logTypeFilter;
       if (levelFilter) params.level = levelFilter;
       if (orgFilter) params.organization_id = Number(orgFilter);
       if (engineFilter) params.engine = engineFilter;
       if (q.trim()) params.q = q.trim();
+      if (fromTs) params.since = new Date(fromTs).toISOString();
+      if (toTs) params.until = new Date(toTs).toISOString();
       return api.get<{ items: AppLog[]; total: number; summary?: Record<string, unknown> }>("/admin/logs", { params });
     },
     { items: [], total: 0, summary: undefined } as any,
@@ -172,12 +195,12 @@ export default function DevLogs() {
   // Any filter change returns to the first page.
   useEffect(() => {
     setPage(1);
-  }, [logTypeFilter, levelFilter, orgFilter, engineFilter, q, showAccess]);
+  }, [logTypeFilter, levelFilter, orgFilter, engineFilter, q, showAccess, fromTs, toTs]);
 
   // Refetch from the API (server-side filters + paging) when a filter or the
   // page changes. Skip the mount run — useResource already fetched.
   const didMount = React.useRef(false);
-  const queryKey = JSON.stringify([logTypeFilter, levelFilter, orgFilter, engineFilter, q, showAccess, page]);
+  const queryKey = JSON.stringify([logTypeFilter, levelFilter, orgFilter, engineFilter, q, showAccess, fromTs, toTs, page]);
   useEffect(() => {
     if (DEMO_MODE) return;
     if (!didMount.current) { didMount.current = true; return; }
@@ -185,6 +208,25 @@ export default function DevLogs() {
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryKey]);
+
+  // Optional live tail: re-poll the current window every 20s.
+  useEffect(() => {
+    if (!autoRefresh || DEMO_MODE) return;
+    const t = window.setInterval(() => logs.refresh(), 20000);
+    return () => window.clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRefresh]);
+
+  const applyRange = (hours: number | null) => {
+    if (hours === null) {
+      setFromTs("");
+      setToTs("");
+      return;
+    }
+    const now = new Date();
+    setFromTs(toLocalInput(new Date(now.getTime() - hours * 3600_000)));
+    setToTs(toLocalInput(now));
+  };
 
   const openIssue = async (issue: string) => {
     try {
@@ -247,6 +289,13 @@ export default function DevLogs() {
           <option value="">All Types</option>
           {logTypes.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
+        <button
+          className={cx("flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors", logTypeFilter === "api" ? "border-orange-400/40 bg-orange-400/10 text-orange-300" : "border-phantix-700/50 bg-phantix-950/50 text-slate-400 hover:bg-phantix-800/60")}
+          onClick={() => setLogTypeFilter(f => (f === "api" ? "" : "api"))}
+          title="Engine / API integration errors — normalized for users, full route + upstream detail here"
+        >
+          <AlertCircle size={12} /> API errors
+        </button>
         <select className="input w-auto py-1.5 text-xs" value={levelFilter} onChange={e => setLevelFilter(e.target.value)}>
           <option value="">All Levels</option>
           {["debug", "info", "warning", "error", "critical"].map(l => <option key={l} value={l}>{l}</option>)}
@@ -257,12 +306,50 @@ export default function DevLogs() {
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
           <input className="input w-48 py-1.5 pl-8 text-xs" placeholder="Search message / issue" value={q} onChange={e => setQ(e.target.value)} />
         </div>
+        <div className="flex items-center gap-1.5">
+          <input
+            type="datetime-local"
+            className="input w-auto py-1.5 text-xs"
+            value={fromTs}
+            max={toTs || undefined}
+            onChange={e => setFromTs(e.target.value)}
+            title="From (inclusive)"
+          />
+          <span className="text-xs text-slate-600">→</span>
+          <input
+            type="datetime-local"
+            className="input w-auto py-1.5 text-xs"
+            value={toTs}
+            min={fromTs || undefined}
+            onChange={e => setToTs(e.target.value)}
+            title="To (inclusive)"
+          />
+        </div>
+        <div className="flex items-center gap-1">
+          {QUICK_RANGES.map(([label, hours]) => (
+            <button
+              key={label}
+              onClick={() => applyRange(hours)}
+              className="rounded-lg border border-phantix-700/50 bg-phantix-950/50 px-2 py-1.5 text-xs text-slate-400 transition-colors hover:bg-phantix-800/60 hover:text-slate-200"
+              title={hours === null ? "No date limit" : `Last ${label}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          className={cx("flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors", autoRefresh ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300" : "border-phantix-700/50 bg-phantix-950/50 text-slate-400 hover:bg-phantix-800/60")}
+          onClick={() => setAutoRefresh(v => !v)}
+          title="Re-poll the current window every 20s"
+        >
+          <RefreshCw size={12} className={autoRefresh ? "animate-spin" : ""} /> Live
+        </button>
         <button
           className={cx("flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors", showAccess ? "border-gold-400/40 bg-gold-400/10 text-gold-300" : "border-phantix-700/50 bg-phantix-950/50 text-slate-400 hover:bg-phantix-800/60")}
           onClick={() => setShowAccess(s => !s)}
-          title="Access GET polls are noisy and excluded by default"
+          title="Poll every log type (access GET polls included)"
         >
-          {showAccess ? <Eye size={12} /> : <EyeOff size={12} />} Show access polls
+          {showAccess ? <Eye size={12} /> : <EyeOff size={12} />} All log types
         </button>
         {logs.data?.total !== undefined && (
           <span className="text-xs text-slate-500 ml-auto">{logs.data.total} entries</span>
@@ -325,6 +412,26 @@ export default function DevLogs() {
                         <td className="td">
                           <p className="text-sm text-slate-200">{log.message}</p>
                           {log.category && <p className="text-[12px] text-slate-600">{log.category}</p>}
+                          {log.log_type === "api" && (() => {
+                            const ctx = (log.context ?? {}) as Record<string, unknown>;
+                            const route = String(ctx.route ?? log.request_path ?? "");
+                            const method = String(ctx.method ?? log.request_method ?? "");
+                            const detail = ctx.upstream_detail != null ? String(ctx.upstream_detail) : "";
+                            const tool = ctx.tool != null ? String(ctx.tool) : "";
+                            const status = ctx.status_code != null ? String(ctx.status_code) : "";
+                            return (
+                              <div className="mt-1.5 space-y-1 text-[12px]">
+                                {tool && (
+                                  <p className="text-slate-500">
+                                    tool <span className="font-mono text-slate-300">{tool}</span>
+                                    {status && <> · upstream HTTP <span className="font-mono text-slate-300">{status}</span></>}
+                                  </p>
+                                )}
+                                {route && <p className="font-mono text-slate-500">{method ? `${method} ` : ""}{route}</p>}
+                                {detail && <p className="overflow-auto rounded bg-phantix-950/70 px-1.5 py-1 font-mono text-slate-400">{detail}</p>}
+                              </div>
+                            );
+                          })()}
                           {log.issue_id && (
                             <button
                               onClick={(e) => { e.stopPropagation(); void openIssue(log.issue_id!); }}
@@ -398,7 +505,7 @@ export default function DevLogs() {
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div><label className="label">Level</label><select className="input" value={logForm.level} onChange={e => setLogForm(l => ({ ...l, level: e.target.value }))}>{["debug", "info", "warning", "error", "critical"].map(lv => <option key={lv}>{lv}</option>)}</select></div>
-            <div><label className="label">Log Type</label><select className="input" value={logForm.log_type} onChange={e => setLogForm(l => ({ ...l, log_type: e.target.value }))}>{["app", "auth", "security", "system", "scan", "alert", "report"].map(lt => <option key={lt}>{lt}</option>)}</select></div>
+            <div><label className="label">Log Type</label><select className="input" value={logForm.log_type} onChange={e => setLogForm(l => ({ ...l, log_type: e.target.value }))}>{["app", "auth", "security", "system", "scan", "alert", "report", "api"].map(lt => <option key={lt}>{lt}</option>)}</select></div>
           </div>
           <div><label className="label">Organization ID (optional)</label><input className="input" type="number" value={logForm.organization_id} onChange={e => setLogForm(l => ({ ...l, organization_id: e.target.value }))} /></div>
           <div><label className="label">Message</label><textarea className="input resize-none" rows={3} value={logForm.message} onChange={e => setLogForm(l => ({ ...l, message: e.target.value }))} /></div>

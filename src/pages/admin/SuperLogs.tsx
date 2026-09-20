@@ -33,8 +33,22 @@ const logTypeBadge = (t: string) => {
   return known[t] ?? "text-slate-400 bg-slate-400/10 border-slate-500/30";
 };
 
-const logTypes = ["app","auth","http","access","audit","bus","ai","security","system","dual_control","scan","alert","report"];
+const logTypes = ["app","auth","http","access","audit","bus","ai","security","system","dual_control","scan","alert","report","api","exception","crash","lifecycle","worker","session"];
 const levels = ["debug","info","warning","error","critical"];
+
+/** ``datetime-local`` string in the browser's timezone (backend wants ISO-8601). */
+function toLocalInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+const QUICK_RANGES: Array<[string, number | null]> = [
+  ["1h", 1],
+  ["24h", 24],
+  ["7d", 24 * 7],
+  ["30d", 24 * 30],
+  ["All", null],
+];
 
 /** Rows per page — keeps the log table to a single screen instead of endless scroll. */
 const PAGE_SIZE = 100;
@@ -44,6 +58,8 @@ export default function SuperLogs() {
   const [logTypeFilter, setLogTypeFilter] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
   const [orgFilter, setOrgFilter] = useState("");
+  const [fromTs, setFromTs] = useState("");
+  const [toTs, setToTs] = useState("");
   const [liveConnected, setLiveConnected] = useState(false);
   const [liveEvents, setLiveEvents] = useState<SuperLog[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -56,6 +72,8 @@ export default function SuperLogs() {
       if (logTypeFilter) params.log_type = logTypeFilter;
       if (levelFilter) params.level = levelFilter;
       if (orgFilter) params.organization_id = Number(orgFilter);
+      if (fromTs) params.since = new Date(fromTs).toISOString();
+      if (toTs) params.until = new Date(toTs).toISOString();
       return api.get<{ items: SuperLog[]; total: number }>("/admin/super/logs", { params });
     },
     {} as any,
@@ -68,12 +86,12 @@ export default function SuperLogs() {
   // Any filter change returns to the first page.
   useEffect(() => {
     setPage(1);
-  }, [logTypeFilter, levelFilter, orgFilter]);
+  }, [logTypeFilter, levelFilter, orgFilter, fromTs, toTs]);
 
   // Refetch the REST page when a filter or the page changes (skip the mount
   // run — useResource already fetched).
   const didMount = React.useRef(false);
-  const queryKey = JSON.stringify([logTypeFilter, levelFilter, orgFilter, page]);
+  const queryKey = JSON.stringify([logTypeFilter, levelFilter, orgFilter, fromTs, toTs, page]);
   useEffect(() => {
     if (DEMO_MODE) return;
     if (!didMount.current) { didMount.current = true; return; }
@@ -184,6 +202,46 @@ export default function SuperLogs() {
           {logTypes.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
         <input className="input w-24 py-1.5 text-xs" placeholder="Org ID" value={orgFilter} onChange={e => setOrgFilter(e.target.value)} type="number" />
+        <div className="flex items-center gap-1.5">
+          <input
+            type="datetime-local"
+            className="input w-auto py-1.5 text-xs"
+            value={fromTs}
+            max={toTs || undefined}
+            onChange={e => setFromTs(e.target.value)}
+            title="From (inclusive)"
+          />
+          <span className="text-xs text-slate-600">→</span>
+          <input
+            type="datetime-local"
+            className="input w-auto py-1.5 text-xs"
+            value={toTs}
+            min={fromTs || undefined}
+            onChange={e => setToTs(e.target.value)}
+            title="To (inclusive)"
+          />
+        </div>
+        <div className="flex items-center gap-1">
+          {QUICK_RANGES.map(([label, hours]) => (
+            <button
+              key={label}
+              onClick={() => {
+                if (hours === null) {
+                  setFromTs("");
+                  setToTs("");
+                  return;
+                }
+                const now = new Date();
+                setFromTs(toLocalInput(new Date(now.getTime() - hours * 3600_000)));
+                setToTs(toLocalInput(now));
+              }}
+              className="rounded-lg border border-phantix-700/50 bg-phantix-950/50 px-2 py-1.5 text-xs text-slate-400 transition-colors hover:bg-phantix-800/60 hover:text-slate-200"
+              title={hours === null ? "No date limit" : `Last ${label}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         {logs.data?.total !== undefined && (
           <span className="text-xs text-slate-500 ml-2">{logs.data.total} entries</span>
         )}
