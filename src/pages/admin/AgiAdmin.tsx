@@ -25,6 +25,7 @@ import {
   setAgiCredentials, setAgiRegistration, getAgiPreflight, provideAgiInfo, provideAgiOtp, runAgiShell, listAgiJobs,
   agiErrorDetail, streamAgiSession, loadAgiEngineCatalog, loadAgiEngineLearning, loadAgiSessionJob, loadAgiApkAssets, trainAgiSession,
   loadAgiSessionSkillPlan, normalizeAgiLoop, answerAgiClarification,
+  pauseAgiSession, resumeAgiSession,
 } from "@/lib/agi";
 import { EngineLearningPanel, EngineSnapshotCards, JobCoveragePanel, EngineCallList, AgiSkillPlanBanner, AgiToolsToProvisionStrip, CollapseCard } from "@/components/AgiCoevolution";
 import AgiPrompts from "@/components/AgiPrompts";
@@ -372,6 +373,106 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
           });
         } catch { /* ignore */ }
       }
+      else if (event === "campaign_done") {
+        try {
+          const p = JSON.parse(String(data)) as {
+            found?: number;
+            assets?: number;
+            summary?: { elapsed?: number; categories?: string[] };
+          };
+          const cats = (p.summary?.categories || []).join(", ") || "none";
+          setTranscript((prev) => [
+            ...prev,
+            {
+              seq: -2 - prev.filter((r) => r.seq < 0).length,
+              role: "system",
+              content:
+                `Campaign complete — ${p.found ?? 0} finding(s) across ${p.assets ?? 0} asset(s) ` +
+                `in ${p.summary?.elapsed ?? "?"}s. Categories: ${cats}`,
+              meta: { kind: "campaign_done", event: "campaign_done", ...p },
+              created_at: new Date().toISOString(),
+            },
+          ]);
+        } catch { /* ignore */ }
+      }
+      else if (event === "decision_review") {
+        try {
+          const p = JSON.parse(String(data)) as {
+            verdict?: string;
+            findings?: number;
+            unresolved?: string[];
+            next?: string[];
+            categories?: string[];
+          };
+          setTranscript((prev) => [
+            ...prev,
+            {
+              seq: -2 - prev.filter((r) => r.seq < 0).length,
+              role: "system",
+              content:
+                `Decision review — verdict: ${p.verdict || "continue"}. ` +
+                `${(p.unresolved || []).length} open lead(s); next: ` +
+                `${(p.next || []).join(", ") || "none"}`,
+              meta: { kind: "decision_review", event: "decision_review", ...p },
+              created_at: new Date().toISOString(),
+            },
+          ]);
+        } catch { /* ignore */ }
+      }
+      else if (event === "verify_all") {
+        try {
+          const p = JSON.parse(String(data)) as {
+            count?: number;
+            verified?: number;
+            dismissed?: number;
+            inconclusive?: number;
+          };
+          if (typeof p.count === "number") {
+            setTranscript((prev) => [
+              ...prev,
+              {
+                seq: -2 - prev.filter((r) => r.seq < 0).length,
+                role: "system",
+                content:
+                  `Verification — ${p.count} finding(s): ${p.verified ?? 0} confirmed, ` +
+                  `${p.dismissed ?? 0} dismissed, ${p.inconclusive ?? 0} inconclusive`,
+                meta: { kind: "verify_all", event: "verify_all", ...p },
+                created_at: new Date().toISOString(),
+              },
+            ]);
+            void loadAgiFindings(session.id).then((rows) => setLiveFindings(rows.map(mapAgiFinding))).catch(() => {});
+          }
+        } catch { /* ignore */ }
+      }
+      else if (event === "finding_dropped") {
+        try {
+          const p = JSON.parse(String(data)) as {
+            title?: string;
+            verdict?: string;
+            confidence?: number;
+            reason?: string;
+          };
+          setTranscript((prev) => [
+            ...prev,
+            {
+              seq: -2 - prev.filter((r) => r.seq < 0).length,
+              role: "system",
+              content:
+                `Candidate dropped as a non-vulnerability — "${p.title || "candidate"}" ` +
+                `(${p.verdict || p.reason || "control"}, confidence ${p.confidence ?? "?"})`,
+              meta: { kind: "finding_dropped", event: "finding_dropped", ...p },
+              created_at: new Date().toISOString(),
+            },
+          ]);
+        } catch { /* ignore */ }
+      }
+      else if (event === "loop_paused") {
+        setPaused(true);
+        setThinking(false);
+      }
+      else if (event === "loop_resumed") {
+        setPaused(false);
+      }
       else if (event === "teardown") { setRunning(false); setLoopStopped(null); }
       else if (event === "loop_stop") {
         // Loop ended; keep the session alive so the operator can resume by chat.
@@ -384,6 +485,27 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, session.id]);
+
+  // Pause/resume must hit the runner: a local-only toggle would show "paused"
+  // while the agent kept spending credits and probing.
+  const togglePause = async () => {
+    const next = !paused;
+    setPaused(next);
+    try {
+      const s = next ? await pauseAgiSession(session.id) : await resumeAgiSession(session.id);
+      setPaused(s.status === "paused");
+      toast(
+        "success",
+        next ? "Agent paused" : "Agent resumed",
+        next
+          ? "Runner confirmed: no model tokens or shell work start while paused."
+          : "The loop continues from where it stopped.",
+      );
+    } catch (e) {
+      setPaused(!next); // never show a paused UI the runner did not confirm
+      toast("error", next ? "Pause failed" : "Resume failed", agiErrorDetail(e).message);
+    }
+  };
 
   const dispatchChat = async (msg: string) => {
     if (!running || paused) return;
@@ -491,7 +613,7 @@ function SessionTerminal({ session, engagement, onStopped }: { session: AgiSessi
         <AgiConsole
           running={running}
           paused={paused}
-          onTogglePause={() => setPaused((v) => !v)}
+          onTogglePause={() => void togglePause()}
           stopping={stopping}
           onStop={() => void stop()}
           onExit={() => onStopped?.()}

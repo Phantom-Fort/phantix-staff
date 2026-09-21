@@ -623,6 +623,24 @@ export async function stopAgiSession(sessionId: number): Promise<AgiSession> {
   return s;
 }
 
+/** Pause the AGI loop. Enforced runner-side: the agent stops spending immediately. */
+export async function pauseAgiSession(sessionId: number): Promise<AgiSession> {
+  if (DEMO_MODE) {
+    await delay(150);
+    return { id: sessionId, engagement_id: 11, started_by_staff_id: 1, container_id: null, runner_session_id: null, status: "paused", started_at: new Date().toISOString(), ended_at: null, teardown_reason: null, meta: {} };
+  }
+  return api.post<AgiSession>(`/admin/agi/sessions/${sessionId}/pause`);
+}
+
+/** Resume a paused AGI loop. */
+export async function resumeAgiSession(sessionId: number): Promise<AgiSession> {
+  if (DEMO_MODE) {
+    await delay(150);
+    return { id: sessionId, engagement_id: 11, started_by_staff_id: 1, container_id: null, runner_session_id: null, status: "running", started_at: new Date().toISOString(), ended_at: null, teardown_reason: null, meta: {} };
+  }
+  return api.post<AgiSession>(`/admin/agi/sessions/${sessionId}/resume`);
+}
+
 // ── Session controls (login / registration / preflight / OTP / shell / jobs) ─
 
 export async function setAgiCredentials(
