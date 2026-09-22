@@ -6,6 +6,7 @@ import {
   Brain, GitBranch, ShieldAlert, Eye, X, Clock, Pencil, SlidersHorizontal, BookOpen, Search, ArrowLeft, Radar, CornerUpLeft, Sparkles,
 } from "lucide-react";
 import { PageHeader, Card, CardHeader, CollapsibleCard, StatCard, StatusBadge, SeverityBadge, TableSkeleton, EmptyState, Tabs, Modal } from "@/components/ui";
+import { VerificationBadge } from "@/components/VerificationBadge";
 import { AGI_CONTRIBUTOR_GUIDE_MD } from "@/lib/agiContributorGuide";
 import { ContributorGuideView } from "@/components/ContributorGuideView";
 import { useResource } from "@/lib/useResource";
@@ -918,11 +919,23 @@ function SessionControls({ session, running }: { session: AgiSession; running: b
   );
 }
 
+import { EngagementContextFields, TestingModePicker } from "../../components/EngagementContextFields";
+import {
+  TESTING_MODES,
+  DEFAULT_TESTING_MODE,
+  EMPTY_ENGAGEMENT_CONTEXT,
+  buildEngagementConfig,
+  type EngagementContext,
+  type TestingMode,
+} from "../../lib/testingMode";
+
 // ── Engagement create modal ───────────────────────────────────────────────────
 function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string }[]; onCreated: (e: AgiEngagement) => void }) {
   const { toast } = useStore();
   const [form, setForm] = useState({ organization_id: orgs[0]?.id ?? 0, name: "", description: "", allowlist: "", forbidden: "dos\nransomware\ndata_exfil_bulk", roe: "", max_minutes: 120, environment: "staging" as "staging" | "production", production_ack: false, mobile_apk_asset_id: 0 });
   const [creating, setCreating] = useState(false);
+  const [mode, setMode] = useState<TestingMode>(DEFAULT_TESTING_MODE);
+  const [ctx, setCtx] = useState<EngagementContext>(EMPTY_ENGAGEMENT_CONTEXT);
   const [apks, setApks] = useState<{ id: number; name: string; value: string }[]>([]);
 
   useEffect(() => {
@@ -955,7 +968,7 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
           production_ack: form.environment === "production" ? form.production_ack : false,
           mobile_apk_asset_id: form.mobile_apk_asset_id || undefined,
         },
-        config: DEFAULT_ENG_CONFIG,
+        config: buildEngagementConfig(mode, ctx, DEFAULT_ENG_CONFIG),
       });
       toast("success", "Engagement created", eng.name);
       onCreated(eng);
@@ -1024,6 +1037,17 @@ function EngagementForm({ orgs, onCreated }: { orgs: { id: number; name: string 
         <label className="mb-1 block text-[13px] font-semibold text-slate-400">Rules of engagement</label>
         <AutoGrow value={form.roe} onChange={(e) => setForm({ ...form, roe: e.target.value })} minRows={3} placeholder="Business hours only. Stop on PII. No production DB writes." className={field} />
       </div>
+      <div>
+        <label className="mb-1 block text-[13px] font-semibold text-slate-400">Testing mode</label>
+        <TestingModePicker value={mode} onChange={setMode} disabled={creating} />
+        <p className="mt-1 text-[12px] leading-5 text-slate-500">{TESTING_MODES.find((m) => m.id === mode)?.description}</p>
+      </div>
+      <div>
+        <label className="mb-1 block text-[13px] font-semibold text-slate-400">Engagement context — answers the agent up front so it does not stop to ask</label>
+        <div className="mt-1.5">
+          <EngagementContextFields mode={mode} values={ctx} onChange={setCtx} disabled={creating} fieldClass={field} />
+        </div>
+      </div>
       <button onClick={() => void create()} disabled={creating} className="btn-primary w-full !py-2.5 !text-xs">
         {creating ? <Loader2 size={13} className="mr-1 inline animate-spin" /> : <Plus size={13} className="mr-1 inline" />} Create engagement
       </button>
@@ -1059,6 +1083,15 @@ function FindingsPanel({ sessionId }: { sessionId: number }) {
     return f.notes || f.business_impact || "";
   };
 
+  const evidenceParts = (f: AgiFinding): { request: string; response: string; notes: string } | null => {
+    const e = f.evidence;
+    if (!e || typeof e !== "object") return null;
+    const request = typeof e.request === "string" ? e.request : "";
+    const response = typeof e.response === "string" ? e.response : "";
+    const notes = typeof e.notes === "string" ? e.notes : "";
+    return request || response || notes ? { request, response, notes } : null;
+  };
+
   const list = findings.data ?? [];
   return (
     <div className="space-y-2.5">
@@ -1082,7 +1115,46 @@ function FindingsPanel({ sessionId }: { sessionId: number }) {
             <p className="mt-1.5 break-words text-xs leading-5 text-slate-300">{f.business_impact || f.impact_analysis?.business_impact}</p>
           )}
           {f.target && <p className="mt-1 break-all font-mono text-[13px] text-slate-500">{f.target}</p>}
-          <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-slate-400">{evidenceText(f)}</p>
+          {f.verification && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-phantix-700/40 bg-phantix-950/50 px-2.5 py-1.5">
+              <VerificationBadge verification={f.verification} />
+              {f.verification.verifier && (
+                <span className="font-mono text-[12px] text-slate-500">{f.verification.verifier}</span>
+              )}
+              {typeof f.verification.confidence === "number" && (
+                <span className="text-[12px] text-slate-500">conf {f.verification.confidence.toFixed(2)}</span>
+              )}
+              {f.verification.needs_review && (
+                <span className="chip border-severity-medium/30 bg-severity-medium/10 text-[12px] text-severity-medium">needs review</span>
+              )}
+              {f.verification.reason && (
+                <span className="min-w-0 flex-1 break-words text-[12px] text-slate-400">{f.verification.reason}</span>
+              )}
+            </div>
+          )}
+          {(() => {
+            const parts = evidenceParts(f);
+            if (!parts) {
+              return <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-slate-400">{evidenceText(f)}</p>;
+            }
+            return (
+              <div className="mt-2 space-y-2">
+                {parts.notes && <p className="break-words text-xs leading-5 text-slate-400">{parts.notes}</p>}
+                {parts.request && (
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Request</p>
+                    <pre className="mt-0.5 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md border border-phantix-700/40 bg-phantix-950/60 p-2 font-mono text-[12px] leading-5 text-slate-300">{parts.request}</pre>
+                  </div>
+                )}
+                {parts.response && (
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Response</p>
+                    <pre className="mt-0.5 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md border border-phantix-700/40 bg-phantix-950/60 p-2 font-mono text-[12px] leading-5 text-slate-300">{parts.response}</pre>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             {!f.risk_id && (
               <button onClick={() => void act(f, "promote")} className="btn-secondary !px-2.5 !py-1.5 !text-[13px]"><GitBranch size={12} className="mr-1 inline" /> Promote to risk</button>
@@ -1094,6 +1166,31 @@ function FindingsPanel({ sessionId }: { sessionId: number }) {
       ))}
     </div>
   );
+}
+
+function contextFromConfig(cfg: Record<string, unknown>): EngagementContext {
+  return {
+    process_flow: (cfg.process_flow as string) || "",
+    critical_workflows: (cfg.critical_workflows as string) || "",
+    out_of_scope_behaviours: (cfg.out_of_scope_behaviours as string) || "",
+    rate_limit: (cfg.rate_limit as string) || "",
+    tenant_model: (cfg.tenant_model as string) || "",
+    source_paths: (cfg.source_paths as string) || "",
+    repo: (cfg.repo as string) || "",
+    known_findings: (cfg.known_findings as string) || "",
+    secrets_locations: (cfg.secrets_locations as string) || "",
+    fix_lifecycle: (cfg.fix_lifecycle as string) || "",
+    active_exploitation_authorized: cfg.active_exploitation_authorized as boolean | undefined,
+    registration_open: cfg.registration_open as boolean | undefined,
+    api_spec_urls: Array.isArray(cfg.api_spec_urls)
+      ? (cfg.api_spec_urls as string[]).join(", ")
+      : (cfg.api_spec_urls as string) || "",
+    test_accounts: Array.isArray(cfg.credential_accounts)
+      ? (cfg.credential_accounts as Array<{ login_url: string; username: string; password: string }>)
+          .map((c) => `${c.username}:${c.password}@${c.login_url}`)
+          .join("\n")
+      : "",
+  };
 }
 
 function EngagementConfigEditor({
@@ -1111,18 +1208,20 @@ function EngagementConfigEditor({
   const skills = (existing.skills && typeof existing.skills === "object") ? existing.skills as Record<string, unknown> : {};
   const [autoSelect, setAutoSelect] = useState(skills.auto_select !== false);
   const [limit, setLimit] = useState(Number(skills.auto_select_limit ?? 6));
+  const [mode, setMode] = useState<TestingMode>(() => ((existing.testing_mode as TestingMode) || DEFAULT_TESTING_MODE));
+  const [ctx, setCtx] = useState<EngagementContext>(() => contextFromConfig(existing as Record<string, unknown>));
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
     setSaving(true);
     try {
-      const config = {
+      const config = buildEngagementConfig(mode, ctx, {
         ...existing,
         tools: tools.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean),
         skills: { auto_select: autoSelect, auto_select_limit: limit },
         auto_mint_skills: existing.auto_mint_skills !== false,
         prompts: (existing.prompts && typeof existing.prompts === "object") ? existing.prompts : {},
-      };
+      });
       const eng = await patchAgiEngagement(engagement.id, { config });
       toast("success", "Config saved", `${(config.tools as string[]).length} tools`);
       onSaved({ ...engagement, ...eng, config });
@@ -1137,6 +1236,21 @@ function EngagementConfigEditor({
     <div>
       <p className="text-[13px] font-semibold uppercase tracking-wider text-slate-500">Config</p>
       <div className="mt-1.5 space-y-2 rounded-lg border border-phantix-700/40 bg-phantix-950/60 p-3">
+        <div>
+          <label className="mb-1 block text-[12px] font-semibold uppercase tracking-wider text-slate-500">Testing mode</label>
+          <TestingModePicker value={mode} onChange={setMode} disabled={saving} />
+          <p className="mt-1 text-[12px] leading-5 text-slate-500">{TESTING_MODES.find((m) => m.id === mode)?.description}</p>
+        </div>
+        <div>
+          <label className="mb-1 block text-[12px] font-semibold uppercase tracking-wider text-slate-500">Engagement context (suppresses the agent's questions)</label>
+          <EngagementContextFields
+            mode={mode}
+            values={ctx}
+            onChange={setCtx}
+            disabled={saving}
+            fieldClass="w-full rounded-lg border border-phantix-700/50 bg-phantix-900/60 px-3 py-2 text-[13px] text-slate-200 outline-none focus:border-gold-400/40"
+          />
+        </div>
         <div>
           <label className="mb-1 block text-[12px] font-semibold uppercase tracking-wider text-slate-500">Tools</label>
           <input
