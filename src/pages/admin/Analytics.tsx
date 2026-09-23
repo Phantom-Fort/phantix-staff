@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  BarChart3, Building2, Inbox, LifeBuoy, RefreshCw, Sparkles, Ticket, UserCog, Users,
+  BarChart3, Bot, Building2, Eye, Globe, Inbox, LifeBuoy, MousePointerClick, RefreshCw, Sparkles, Ticket, UserCog, Users,
 } from "lucide-react";
 import { Card, CardHeader, ErrorState, PageHeader, StatCard, StatCardSkeleton, Tabs } from "@/components/ui";
 import { DemoRequestsPanel } from "@/components/DemoRequestsPanel";
@@ -10,11 +10,24 @@ import { cx, formatDateTime } from "@/lib/utils";
 // ── Product analytics ────────────────────────────────────────────────────────
 // GET /api/v1/admin/analytics/summary?days= (staff-admin gated). This is the
 // "how is the product being used" plane, aggregated on demand from the platform
-// DB — organizations, users, leads, support load and AI credit burn. It is
-// deliberately not web-traffic analytics: there is no pageview series behind it.
+// DB — organizations, users, leads, support load, AI credit burn, and the
+// first-party page-view traffic captured on the marketing (landing) site.
+//
+// The landing page views come from the cookieless `POST /api/v1/analytics/collect`
+// beacons; bots are excluded server-side/
 //
 // The second tab closes the loop on the one lead-capture flow the marketing
 // site has: demo requests triaged via GET/PATCH /api/v1/admin/demo-requests.
+
+interface PageViews {
+  views: number;
+  sessions: number;
+  visitors: number;
+  bots: number;
+  by_app: Array<{ app: string; views: number }>;
+  top_paths: Array<{ path: string; views: number }>;
+  top_referrers: Array<{ referrer: string; views: number }>;
+}
 
 interface AnalyticsSummary {
   window_days: number;
@@ -26,6 +39,8 @@ interface AnalyticsSummary {
   support: { open_tickets: number };
   growth: { coupons_redeemed: number };
   ai_credits: { entries: number; credits_consumed: number };
+  /** Landing/marketing traffic. Window keys are `*_last_{days}d`. */
+  page_views: PageViews;
 }
 
 const RANGES = [7, 30, 90] as const;
@@ -50,6 +65,31 @@ function windowCount(demo: Record<string, number> | undefined, days: number): nu
   return key ? n(demo[key]) : 0;
 }
 
+/** Landing/marketing page views — window keys are `views_last_{days}d` etc. */
+function normalizePageViews(pv: any, days: number): PageViews {
+  const o = pv && typeof pv === "object" ? (pv as Record<string, any>) : {};
+  const by_app = o.by_app && typeof o.by_app === "object" && !Array.isArray(o.by_app)
+    ? Object.entries(o.by_app as Record<string, unknown>)
+        .map(([app, v]) => ({ app, views: n(v) }))
+        .sort((a, b) => b.views - a.views)
+    : [];
+  const top_paths = Array.isArray(o.top_paths)
+    ? (o.top_paths as any[]).map((x) => ({ path: String(x?.path ?? ""), views: n(x?.views) }))
+    : [];
+  const top_referrers = Array.isArray(o.top_referrers)
+    ? (o.top_referrers as any[]).map((x) => ({ referrer: String(x?.referrer ?? ""), views: n(x?.views) }))
+    : [];
+  return {
+    views: n(o[`views_last_${days}d`]),
+    sessions: n(o[`sessions_last_${days}d`]),
+    visitors: n(o[`visitors_last_${days}d`]),
+    bots: n(o[`bot_views_last_${days}d`]),
+    by_app,
+    top_paths,
+    top_referrers,
+  };
+}
+
 function normalize(raw: any, days: number): AnalyticsSummary {
   const r = (raw ?? {}) as Record<string, any>;
   const obj = (v: unknown): Record<string, any> =>
@@ -69,6 +109,7 @@ function normalize(raw: any, days: number): AnalyticsSummary {
     support: { open_tickets: n(support.open_tickets) },
     growth: { coupons_redeemed: n(growth.coupons_redeemed) },
     ai_credits: { entries: n(credits.entries), credits_consumed: n(credits.credits_consumed) },
+    page_views: normalizePageViews(r.page_views, days),
   };
 }
 
@@ -95,6 +136,7 @@ export default function Analytics() {
     void load(days);
   }, [days, load]);
 
+  const pv = data?.page_views ?? { views: 0, sessions: 0, visitors: 0, bots: 0, by_app: [], top_paths: [], top_referrers: [] };
   const leadsInWindow = useMemo(() => windowCount(data?.demo_requests, days), [data, days]);
   // credits_consumed sums the negative entries, so its magnitude is the burn.
   const creditsBurned = Math.abs(n(data?.ai_credits.credits_consumed));
@@ -196,6 +238,37 @@ export default function Analytics() {
             />
           </div>
 
+          {/* Landing & marketing — first-party, cookieless page views */}
+          <div className="pt-1">
+            <h3 className="text-[13px] font-semibold uppercase tracking-wider text-slate-400">Landing &amp; marketing</h3>
+            <p className="mt-1 text-[13px] text-slate-500">
+              Page views captured on the marketing site (consented, cookieless). Bots are excluded from views,
+              sessions and visitors.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatCard label="Landing views" value={fmt(pv.views)} icon={<Eye size={18} />} trendLabel={`last ${data?.window_days ?? days} days`} />
+            <StatCard label="Unique visitors" value={fmt(pv.visitors)} icon={<Users size={18} />} trendLabel="daily-rotating hash" />
+            <StatCard label="Sessions" value={fmt(pv.sessions)} icon={<MousePointerClick size={18} />} trendLabel="distinct session keys" />
+            <StatCard label="Bot views" value={fmt(pv.bots)} icon={<Bot size={18} />} trendLabel="excluded from the counts above" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <Card>
+              <CardHeader title="Top landing pages" subtitle="Human page views" action={<Globe size={15} className="text-gold-400" />} />
+              <TrafficRows rows={pv.top_paths.slice(0, 8).map((p) => ({ label: p.path || "/", value: p.views }))} empty="No page views captured in this window yet." />
+            </Card>
+            <Card>
+              <CardHeader title="Traffic sources" subtitle="Referrers" action={<Globe size={15} className="text-emerald-400" />} />
+              <TrafficRows rows={pv.top_referrers.slice(0, 8).map((r) => ({ label: r.referrer || "direct", value: r.views }))} empty="No referrers recorded yet." />
+            </Card>
+            <Card>
+              <CardHeader title="By surface" subtitle="Which frontend sent the view" action={<Globe size={15} className="text-phantix-300" />} />
+              <TrafficRows rows={pv.by_app.map((a) => ({ label: a.app, value: a.views }))} empty="No traffic by surface yet." />
+            </Card>
+          </div>
+
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <Card>
               <CardHeader title="Tenants" subtitle="Organization lifecycle" action={<Building2 size={15} className="text-gold-400" />} />
@@ -260,6 +333,11 @@ export default function Analytics() {
       )}
     </div>
   );
+}
+
+function TrafficRows({ rows, empty }: { rows: Array<{ label: string; value: number }>; empty: string }) {
+  if (!rows.length) return <p className="text-xs text-slate-500">{empty}</p>;
+  return <Rows rows={rows} />;
 }
 
 function Rows({ rows }: { rows: Array<{ label: string; value: number; emphasis?: boolean }> }) {
