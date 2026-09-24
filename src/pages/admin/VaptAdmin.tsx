@@ -47,13 +47,19 @@ const scheduleToModel = (s: Record<string, unknown>): VaptSchedule => ({
   last_run: (s.last_run_campaign_id as unknown as string) ?? null,
 });
 
+const DEFAULT_PROCEDURE_STEPS = JSON.stringify(
+  [{ step_type: "scan", step_name: "Baseline scan", config: { tools: ["nuclei"] } }],
+  null,
+  2,
+);
+
 export default function VaptAdmin() {
   const { toast } = useStore();
   const [tab, setTab] = useState("procedures");
   const [showScheduleActions, setShowScheduleActions] = useState<number | null>(null);
   const [showNewProcedure, setShowNewProcedure] = useState(false);
   const [showNewSchedule, setShowNewSchedule] = useState(false);
-  const [newProc, setNewProc] = useState({ procedure_key: "", name: "", category: "web", steps: 5 });
+  const [newProc, setNewProc] = useState({ procedure_key: "", name: "", stepsJson: DEFAULT_PROCEDURE_STEPS });
   const [newSched, setNewSched] = useState({ name: "", procedure_key: "", cron: "0 2 * * 0" });
   const [saving, setSaving] = useState(false);
 
@@ -133,16 +139,30 @@ export default function VaptAdmin() {
       toast("warning", "Required fields", "Procedure key and name are required.");
       return;
     }
+    // Backend ProcedureUpsert requires a non-empty `steps` array of step objects
+    // (step_type / step_name / config) — it does not accept a numeric count.
+    let steps: unknown;
+    try {
+      steps = JSON.parse(newProc.stepsJson);
+    } catch {
+      toast("error", "Invalid steps", "Steps must be valid JSON.");
+      return;
+    }
+    if (!Array.isArray(steps) || steps.length === 0 || steps.some((s) => !s || typeof s !== "object")) {
+      toast("error", "Invalid steps", "Steps must be a non-empty JSON array of step objects.");
+      return;
+    }
     setSaving(true);
     try {
       await api.post("/admin/vapt/procedures", {
         procedure_key: newProc.procedure_key.trim(),
         display_name: newProc.name.trim(),
-        category: newProc.category,
+        steps,
+        is_active: true,
       });
       toast("success", "Created");
       setShowNewProcedure(false);
-      setNewProc({ procedure_key: "", name: "", category: "web", steps: 5 });
+      setNewProc({ procedure_key: "", name: "", stepsJson: DEFAULT_PROCEDURE_STEPS });
       procedures.refresh();
     } catch (e) {
       toast("error", "Create failed", e instanceof Error ? e.message : "");
@@ -359,7 +379,19 @@ export default function VaptAdmin() {
         <div className="space-y-3">
           <div><label className="label">Procedure Key</label><input className="input" value={newProc.procedure_key} onChange={e => setNewProc(p => ({...p, procedure_key: e.target.value}))} placeholder="web_full" /></div>
           <div><label className="label">Name</label><input className="input" value={newProc.name} onChange={e => setNewProc(p => ({...p, name: e.target.value}))} /></div>
-          <div><label className="label">Category</label><select className="input" value={newProc.category} onChange={e => setNewProc(p => ({...p, category: e.target.value}))}><option value="web">Web</option><option value="network">Network</option><option value="api">API</option><option value="mobile">Mobile</option></select></div>
+          <div>
+            <label className="label">Steps (JSON array)</label>
+            <textarea
+              className="input min-h-[160px] font-mono text-xs"
+              value={newProc.stepsJson}
+              onChange={e => setNewProc(p => ({...p, stepsJson: e.target.value}))}
+              spellCheck={false}
+            />
+            <p className="mt-1 text-[13px] leading-4 text-slate-500">
+              Each step needs <code>step_type</code>, <code>step_name</code> and <code>config</code>,
+              e.g. <code>{`[{"step_type":"scan","step_name":"Baseline scan","config":{"tools":["nuclei"]}}]`}</code>
+            </p>
+          </div>
           <button onClick={createProcedure} disabled={saving} className="btn-primary w-full">{saving ? <Loader2 size={14} className="animate-spin inline" /> : null} Create Procedure</button>
         </div>
       </Modal>

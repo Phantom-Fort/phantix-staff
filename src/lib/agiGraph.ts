@@ -55,6 +55,9 @@ export interface AgiFinding {
     evidence?: string;
     by?: string;
     attempted_at?: string;
+    decided_at?: string;
+    confidence?: number | null;
+    needs_review?: boolean;
     subagent?: string;
   };
 }

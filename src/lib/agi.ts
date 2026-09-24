@@ -147,8 +147,18 @@ export function normalizeAgiFindings(raw: unknown): AgiFinding[] {
     const o = asObj(item);
     const id = o.id ?? o.finding_id ?? `f-${i}`;
     const ev = o.evidence;
+    // Structured proof (request/response/summary) is preferred when the runner
+    // sent it; it is what makes each finding auditable at a glance.
+    const ed = o.evidence_detail && typeof o.evidence_detail === "object" ? asObj(o.evidence_detail) : null;
     let evidence: AgiFinding["evidence"] = null;
-    if (typeof ev === "string") evidence = ev;
+    if (ed) {
+      evidence = {
+        request: asStr(ed.request),
+        response: asStr(ed.response_excerpt) || asStr(ed.response),
+        notes: asStr(ed.summary) || asStr(ed.notes),
+        hash: asStr(ed.hash),
+      };
+    } else if (typeof ev === "string") evidence = ev;
     else if (ev && typeof ev === "object") {
       const e = asObj(ev);
       evidence = {
@@ -187,8 +197,16 @@ export function normalizeAgiFindings(raw: unknown): AgiFinding[] {
         o.verification && typeof o.verification === "object"
           ? {
               verdict: asStr((o.verification as Record<string, unknown>).verdict) || undefined,
+              verifier: asStr((o.verification as Record<string, unknown>).verifier) || undefined,
               reason: asStr((o.verification as Record<string, unknown>).reason) || undefined,
               evidence: asStr((o.verification as Record<string, unknown>).evidence) || undefined,
+              subagent: asStr((o.verification as Record<string, unknown>).subagent) || undefined,
+              confidence:
+                typeof (o.verification as Record<string, unknown>).confidence === "number"
+                  ? ((o.verification as Record<string, unknown>).confidence as number)
+                  : null,
+              needs_review: Boolean((o.verification as Record<string, unknown>).needs_review),
+              decided_at: asStr((o.verification as Record<string, unknown>).decided_at) || undefined,
             }
           : null,
     };
@@ -779,7 +797,7 @@ export async function decideAgiAction(actionId: number, approve: boolean, notes 
 // ── Skills ────────────────────────────────────────────────────────────────────
 export async function loadAgiSkills(): Promise<AgiSkill[]> {
   if (DEMO_MODE) { await delay(250); return demoSills; }
-  const res = await api.get<AgiSkill[]>("/admin/agi/skills?limit=100");
+  const res = await api.get<AgiSkill[]>("/admin/agi/skills");
   return Array.isArray(res) ? res : [];
 }
 
