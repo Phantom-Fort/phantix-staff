@@ -36,6 +36,7 @@ import DemoRequestsAdmin from "@/pages/admin/DemoRequests";
 import SocProvisioning from "@/pages/admin/SocProvisioning";
 import EmailTemplates from "@/pages/admin/EmailTemplates";
 import LegalDocuments from "@/pages/admin/LegalDocuments";
+import WeeklyAdmin from "@/pages/admin/Weekly";
 import ContributeHome from "@/pages/contribute/ContributeHome";
 import ContributeKnowledge from "@/pages/contribute/ContributeKnowledge";
 import ContributeCapabilities from "@/pages/contribute/ContributeCapabilities";
@@ -144,6 +145,7 @@ export default function App() {
             <Route path="/soc-provisioning" element={<RequireAdmin><SocProvisioning /></RequireAdmin>} />
             <Route path="/email-templates" element={<RequireAdmin><EmailTemplates /></RequireAdmin>} />
             <Route path="/legal-documents" element={<RequireAdmin><LegalDocuments /></RequireAdmin>} />
+            <Route path="/weekly" element={<RequireAdmin><WeeklyAdmin /></RequireAdmin>} />
             <Route path="/tooling" element={<RequireAdmin><ToolingAdmin /></RequireAdmin>} />
             <Route path="/discovery" element={<RequireAdmin><DiscoveryAdmin /></RequireAdmin>} />
             <Route path="/experience" element={<RequireAdmin><ExperienceAdmin /></RequireAdmin>} />

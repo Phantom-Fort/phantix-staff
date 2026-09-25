@@ -6,7 +6,7 @@ import {
   Users, FileCheck, Wrench, Search, Activity, LogOut, Menu, X,
   Zap, Globe, AlertTriangle, ScanLine, BarChart3, RefreshCw,
   Crosshair, Radio, FileText, TerminalSquare, Radar, BookOpen, FlaskConical,
-  ScrollText, Mail, Layers, Inbox, Sparkles, FileCode2, ChevronDown, MoreHorizontal,
+  ScrollText, Mail, Layers, Inbox, Sparkles, FileCode2, ChevronDown, MoreHorizontal, Newspaper,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { APP_URL } from "@/lib/links";
@@ -105,6 +105,7 @@ const navSections: {
     items: [
       { to: "/compliance", label: "Compliance", icon: <FileCheck size={18} /> },
       { to: "/tooling", label: "Tooling", icon: <Wrench size={18} /> },
+      { to: "/weekly", label: "The Weekly", icon: <Newspaper size={18} /> },
       { type: "dropdown", label: "More Catalogs", icon: <MoreHorizontal size={18} />, items: moreCatalogsSubItems },
     ],
   },
