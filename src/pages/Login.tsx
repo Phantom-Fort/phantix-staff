@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Shield, Mail, Lock, Eye, EyeOff, Loader2, AlertTriangle } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { DEMO_MODE, ApiError, throttleSeconds } from "@/lib/api";
-import { BrandLogo } from "@/components/BrandLogo";
+import { BrandWordmark } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Login() {
@@ -65,7 +65,7 @@ export default function Login() {
       >
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <BrandLogo className="h-14 w-auto mb-4" />
+          <BrandWordmark className="mb-4 h-12" />
           <h1 className="font-display text-xl font-bold text-slate-100">Staff Portal</h1>
           <p className="text-sm text-slate-500 mt-1">Sign in with your staff account</p>
         </div>

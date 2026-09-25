@@ -286,12 +286,11 @@ export default function WeeklyAdmin() {
                   <tr key={p.id} className="border-b border-phantix-700/20 hover:bg-phantix-900/30">
                     <td className="td font-mono text-xs text-gold-300">{p.no}</td>
                     <td className="td max-w-[420px]">
-                      <p className="flex items-center gap-1.5 truncate font-medium text-slate-100">
+                      <p className="flex items-center gap-1.5 font-medium text-slate-100" title={p.excerpt || undefined}>
                         {p.featured && <Star size={13} className="shrink-0 fill-gold-400 text-gold-400" aria-label="Lead essay" />}
                         <span className="truncate">{p.title}</span>
+                        <span className="shrink-0 truncate font-mono text-[12px] font-normal text-slate-500">/posts/{p.slug}</span>
                       </p>
-                      <p className="truncate font-mono text-[12px] text-slate-500">/posts/{p.slug}</p>
-                      {p.excerpt && <p className="truncate text-xs text-slate-400">{p.excerpt}</p>}
                     </td>
                     <td className="td"><StatusBadge status={p.status === "published" ? "published" : "draft"} /></td>
                     <td className="td text-xs text-slate-400">{p.date || "—"}</td>

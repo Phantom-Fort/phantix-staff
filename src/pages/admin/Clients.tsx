@@ -299,11 +299,11 @@ export default function Clients() {
                 {filtered.map((client) => (
                   <tr key={client.id} className="border-b border-phantix-700/20 hover:bg-phantix-800/40 transition-colors">
                     <td className="td">
-                      <div>
-                        <p className="text-sm font-medium text-slate-100">{client.name}</p>
-                        <p className="text-xs text-slate-500">{client.email} · {client.slug} · {client.country}</p>
+                      <div className="flex max-w-[30rem] min-w-0 items-center gap-2" title={`${client.email} · ${client.slug} · ${client.country}`}>
+                        <span className="shrink-0 font-medium text-slate-100">{client.name}</span>
+                        <span className="truncate text-[13px] text-slate-500">{client.email} · {client.slug} · {client.country}</span>
                         {client.flags?.length > 0 && (
-                          <div className="flex items-center gap-1 mt-0.5">
+                          <div className="flex shrink-0 items-center gap-1">
                             {client.flags.map((f) => (
                               <span key={f} className="chip text-[12px] text-severity-medium bg-severity-medium/10 border-severity-medium/20">{f}</span>
                             ))}

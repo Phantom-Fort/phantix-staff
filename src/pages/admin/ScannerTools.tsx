@@ -200,8 +200,10 @@ export default function ScannerTools() {
                   {wordlists.map((w) => (
                     <tr key={w.key} className="border-b border-phantix-700/20 hover:bg-phantix-800/40">
                       <td className="td">
-                        <p className="text-sm font-medium text-slate-100">{w.name}</p>
-                        <p className="text-xs text-slate-500 font-mono truncate max-w-[300px]">{w.path}</p>
+                        <span className="block max-w-[26rem] truncate" title={w.path}>
+                          <span className="font-medium text-slate-100">{w.name}</span>
+                          <span className="ml-2 font-mono text-[12px] text-slate-500">{w.path}</span>
+                        </span>
                       </td>
                       <td className="td"><span className="chip text-xs text-slate-400 bg-slate-400/10 border-slate-500/30">{w.purpose.replace(/_/g, " ")}</span></td>
                       <td className="td"><span className="text-xs font-mono text-slate-300">{w.present ? `${(w.bytes / 1024).toFixed(1)} KB` : "---"}</span></td>
@@ -246,8 +248,10 @@ export default function ScannerTools() {
                   {pollerItems.map((p) => (
                     <tr key={p.provider} className="border-b border-phantix-700/20 hover:bg-phantix-800/40">
                       <td className="td">
-                        <p className="text-sm font-medium text-slate-100">{p.displayName || p.provider}</p>
-                        <p className="text-xs text-slate-500 font-mono">{p.provider}</p>
+                        <span className="whitespace-nowrap">
+                          <span className="font-medium text-slate-100">{p.displayName || p.provider}</span>
+                          <span className="ml-2 font-mono text-[12px] text-slate-500">{p.provider}</span>
+                        </span>
                       </td>
                       <td className="td"><span className="chip text-xs text-slate-400 bg-slate-400/10 border-slate-500/30">{p.auth}</span></td>
                       <td className="td">

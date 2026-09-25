@@ -95,11 +95,11 @@ export default function StaffUsers() {
                 {data.map((s) => (
                   <tr key={s.id} className="border-b border-phantix-700/20 hover:bg-phantix-800/40">
                     <td className="td">
-                      <div>
-                        <p className="text-sm font-medium text-slate-100">{s.full_name}</p>
-                        <p className="text-xs text-slate-500">{s.email}</p>
+                      <div className="flex items-center gap-2 whitespace-nowrap">
+                        <span className="font-medium text-slate-100">{s.full_name}</span>
+                        <span className="text-[13px] text-slate-500">{s.email}</span>
                         {s.must_change_password && (
-                          <span className="chip mt-1 text-[12px] text-severity-medium bg-severity-medium/10 border-severity-medium/30">
+                          <span className="chip text-[12px] text-severity-medium bg-severity-medium/10 border-severity-medium/30">
                             password change pending
                           </span>
                         )}

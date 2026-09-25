@@ -13,6 +13,7 @@ import { APP_URL } from "@/lib/links";
 import { cx } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AGI_ENABLED } from "@/lib/api";
+import { BrandWordmark } from "@/components/BrandLogo";
 
 type NavLeafItem = {
   to: string;
@@ -272,7 +273,7 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-phantix-700/30 bg-[rgb(var(--surface-sidebar))]">
         <div className="flex h-16 items-center gap-3 px-5 border-b border-phantix-700/30">
-          <img src="/logo-white.png" alt="SecureGraph" className="h-7 w-auto object-contain" />
+          <BrandWordmark className="h-8" />
           <div>
             <p className="font-display text-sm font-bold text-white tracking-tight">Staff Portal</p>
           </div>
