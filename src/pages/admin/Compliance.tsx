@@ -368,10 +368,10 @@ export default function ComplianceAdmin() {
                   {data.map((fw, i) => (
                     <tr key={fw.id || i} className="border-b border-phantix-700/20 hover:bg-phantix-800/40 transition-colors">
                       <td className="td">
-                        <div>
-                          <p className="text-sm font-medium text-slate-100">{fw.name}</p>
-                          <p className="text-xs text-slate-500">{fw.description}</p>
-                        </div>
+                        <span className="block max-w-[28rem] truncate" title={fw.description}>
+                          <span className="font-medium text-slate-100">{fw.name}</span>
+                          <span className="ml-2 text-[13px] text-slate-500">{fw.description}</span>
+                        </span>
                       </td>
                       <td className="td text-sm text-slate-300">{fw.version}</td>
                       <td className="td text-sm font-mono text-slate-300">{fw.control_count}</td>
@@ -453,9 +453,10 @@ export default function ComplianceAdmin() {
                   {visibleQuestions.map((q) => (
                     <tr key={q.id} className="border-b border-phantix-700/20 hover:bg-phantix-800/40 transition-colors">
                       <td className="td max-w-[380px]">
-                        <p className="text-sm text-slate-200">{q.prompt}</p>
-                        <p className="mt-0.5 font-mono text-[12px] text-slate-500">{q.question_key}</p>
-                        {q.help_text && <p className="mt-1 text-[13px] text-slate-500">{q.help_text}</p>}
+                        <span className="block truncate" title={[q.prompt, q.question_key, q.help_text].filter(Boolean).join("\n")}>
+                          <span className="text-slate-100">{q.prompt}</span>
+                          <span className="ml-2 font-mono text-[12px] text-slate-500">{q.question_key}</span>
+                        </span>
                       </td>
                       <td className="td">
                         <div className="flex flex-wrap gap-1">

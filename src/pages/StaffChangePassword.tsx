@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { ShieldCheck, KeyRound, Eye, EyeOff, Loader2, AlertTriangle, LogOut } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { api, ApiError, DEMO_MODE } from "@/lib/api";
-import { BrandLogo } from "@/components/BrandLogo";
+import { BrandWordmark } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const MIN_LEN = 12;
@@ -72,7 +72,7 @@ export default function StaffChangePassword() {
         className="w-full max-w-sm"
       >
         <div className="flex flex-col items-center mb-8">
-          <BrandLogo className="h-14 w-auto mb-4" />
+          <BrandWordmark className="mb-4 h-12" />
           <h1 className="font-display text-xl font-bold text-slate-100">
             {forced ? "Set your password" : "Change password"}
           </h1>

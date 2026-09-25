@@ -123,8 +123,10 @@ export default function EmailTemplates() {
                 {data.map((t) => (
                   <tr key={t.id} className="border-b border-phantix-700/20 hover:bg-phantix-900/30">
                     <td className="td">
-                      <p className="font-mono text-xs text-gold-300">{t.template_key}</p>
-                      <p className="text-xs text-slate-400">{t.name}</p>
+                      <span className="block max-w-[24rem] truncate" title={t.name}>
+                        <span className="font-mono text-[13px] text-gold-300">{t.template_key}</span>
+                        <span className="ml-2 text-[13px] text-slate-400">{t.name}</span>
+                      </span>
                     </td>
                     <td className="td"><span className="chip text-slate-400">{t.category}</span></td>
                     <td className="td max-w-[260px] truncate text-xs text-slate-300">{t.subject}</td>

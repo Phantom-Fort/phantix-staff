@@ -147,8 +147,10 @@ export default function LegalDocuments() {
                   return (
                     <tr key={doc.doc_key} className="border-b border-phantix-700/20 hover:bg-phantix-900/30">
                       <td className="td">
-                        <p className="font-mono text-xs text-gold-300">{doc.doc_key}</p>
-                        <p className="text-xs text-slate-400">{doc.title}</p>
+                        <span className="block max-w-[24rem] truncate" title={doc.title}>
+                          <span className="font-mono text-[13px] text-gold-300">{doc.doc_key}</span>
+                          <span className="ml-2 text-[13px] text-slate-400">{doc.title}</span>
+                        </span>
                       </td>
                       <td className="td text-xs text-slate-300">{doc.version}</td>
                       <td className="td text-xs text-slate-500">{doc.effective || "—"}</td>

@@ -179,12 +179,12 @@ export default function AgentActivityAdmin() {
                     return (
                       <React.Fragment key={row.id}>
                         <tr
-                          className="cursor-pointer border-b border-phantix-800/40 hover:bg-phantix-800/35"
+                          className="h-10 cursor-pointer border-b border-phantix-800/40 hover:bg-phantix-800/35"
                           onClick={() => setOpen(open === row.id ? null : row.id)}
                         >
                           <td className="td whitespace-nowrap text-[13px] text-slate-400" title={row.created_at ? formatDateTime(row.created_at) : ""}>
                             {timeAgo(row.created_at ?? null)}
-                            {row.run_id && <p className="font-mono text-[11px] text-slate-600">run {String(row.run_id).slice(0, 8)}</p>}
+                            {row.run_id && <span className="ml-1.5 font-mono text-[11px] text-slate-600">{String(row.run_id).slice(0, 8)}</span>}
                           </td>
                           <td className="td font-mono text-[13px] text-slate-300">#{row.organization_id}</td>
                           <td className="td"><span className="chip border-phantix-700 text-slate-300">{domainLabel(row.domain)}</span></td>
@@ -194,17 +194,15 @@ export default function AgentActivityAdmin() {
                               {row.tool ?? "—"}
                             </p>
                           </td>
-                          <td className="td max-w-[340px] text-[13px] leading-5 text-slate-400">
-                            {row.intent || <span className="text-slate-600">—</span>}
+                          <td className="td max-w-[340px] text-[13px] text-slate-400">
+                            <span className="block truncate" title={row.intent || undefined}>{row.intent || <span className="text-slate-600">—</span>}</span>
                           </td>
                           <td className="td">
                             {row.actor_name || row.actor_email || row.actor_user_id ? (
-                              <div>
-                                <p className="text-[13px] text-slate-300">
-                                  {row.actor_name || row.actor_email || `user #${row.actor_user_id}`}
-                                </p>
-                                <p className="text-[11px] capitalize text-slate-600">{row.actor_role || "—"}</p>
-                              </div>
+                              <span className="whitespace-nowrap text-[13px] text-slate-300">
+                                {row.actor_name || row.actor_email || `user #${row.actor_user_id}`}
+                                {row.actor_role && <span className="ml-1.5 capitalize text-slate-500">{row.actor_role}</span>}
+                              </span>
                             ) : (
                               <span className="text-[13px] text-slate-600" title="A company key or service call, with no named user">org-level</span>
                             )}

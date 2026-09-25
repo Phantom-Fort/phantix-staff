@@ -410,8 +410,10 @@ export default function DevLogs() {
                           </span>
                         </td>
                         <td className="td">
-                          <p className="text-sm text-slate-200">{log.message}</p>
-                          {log.category && <p className="text-[12px] text-slate-600">{log.category}</p>}
+                          <p className="max-w-[40rem] truncate text-sm text-slate-200" title={log.message}>
+                            {log.message}
+                            {log.category && <span className="ml-2 text-[12px] text-slate-500">{log.category}</span>}
+                          </p>
                           {log.log_type === "api" && (() => {
                             const ctx = (log.context ?? {}) as Record<string, unknown>;
                             const route = String(ctx.route ?? log.request_path ?? "");

@@ -291,8 +291,10 @@ export default function SuperLogs() {
                           <span className={cx("chip text-[12px]", logTypeBadge(log.logType))}>{log.logType}</span>
                         </td>
                         <td className="td">
-                          <p className="text-sm text-slate-200">{log.message}</p>
-                          {log.issueId && <p className="text-[12px] font-mono text-slate-600 mt-0.5">{log.issueId}</p>}
+                          <p className="max-w-[40rem] truncate text-sm text-slate-200" title={log.message}>
+                            {log.message}
+                            {log.issueId && <span className="ml-2 font-mono text-[12px] text-slate-500">{log.issueId}</span>}
+                          </p>
                           {expanded && hasContext && (
                             <div className="mt-2">
                               <p className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-slate-500">

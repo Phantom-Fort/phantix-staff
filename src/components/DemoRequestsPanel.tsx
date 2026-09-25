@@ -191,8 +191,10 @@ export function DemoRequestsPanel() {
                       </span>
                     </td>
                     <td className="td">
-                      <span className="block text-slate-300">{r.name || "—"}</span>
-                      <span className="block font-mono text-[13px] text-slate-500">{r.email}</span>
+<span className="block max-w-[28rem] truncate" title={String(r.email ?? "")}>
+                        <span className="text-slate-200">{r.name || "—"}</span>
+                        <span className="ml-2 font-mono text-[13px] text-slate-500">{r.email}</span>
+                      </span>
                     </td>
                     <td className="td text-xs text-slate-400">{r.team_size}</td>
                     <td className="td"><span className="chip text-[12px]">{r.source}</span></td>

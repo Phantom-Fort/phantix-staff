@@ -431,13 +431,13 @@ export default function SandboxAdmin() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-phantix-800/50 text-[13px] uppercase tracking-wider text-slate-500">
-                    <th className="px-4 py-2">Org</th>
-                    <th className="px-4 py-2">Status</th>
-                    <th className="px-4 py-2">Health</th>
-                    <th className="px-4 py-2">Last rating</th>
-                    <th className="px-4 py-2">Contact</th>
-                    <th className="px-4 py-2">Actions</th>
+                  <tr className="border-b border-phantix-800/50 text-[13px] text-slate-300">
+                    <th className="th">Org</th>
+                    <th className="th">Status</th>
+                    <th className="th">Health</th>
+                    <th className="th">Last rating</th>
+                    <th className="th">Contact</th>
+                    <th className="th">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -458,7 +458,7 @@ export default function SandboxAdmin() {
                             failing ? "bg-severity-critical/8" : "hover:bg-phantix-900/40",
                           )}
                         >
-                          <td className="px-4 py-3">
+                          <td className="td">
                             <Link
                               to={`/clients/${m.organizationId}`}
                               className="font-medium text-slate-100 hover:text-gold-300"
@@ -467,10 +467,10 @@ export default function SandboxAdmin() {
                             </Link>
                             <p className="font-mono text-[13px] text-slate-500">{m.org?.slug}</p>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="td">
                             <StatusBadge status={m.status} />
                           </td>
-                          <td className="px-4 py-3 text-xs text-slate-400">
+                          <td className="td text-xs text-slate-400">
                             err {m.health?.errors24h ?? 0} · tix {m.health?.openTickets ?? 0}
                             {failing && <span className="ml-1 text-severity-critical">failing</span>}
                             {m.organizationId > 0 && (
@@ -482,7 +482,7 @@ export default function SandboxAdmin() {
                               </Link>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-xs text-slate-400">
+                          <td className="td text-xs text-slate-400">
                             {m.lastRating ? (
                               <>
                                 {m.lastRating.score}/5 · {m.lastRating.area ?? "—"}
@@ -491,8 +491,8 @@ export default function SandboxAdmin() {
                               "—"
                             )}
                           </td>
-                          <td className="px-4 py-3 text-xs text-slate-400">{m.contactEmail ?? "—"}</td>
-                          <td className="px-4 py-3">
+                          <td className="td text-xs text-slate-400">{m.contactEmail ?? "—"}</td>
+                          <td className="td">
                             <select
                               className="input !w-auto !py-1 text-xs"
                               value={m.status}
