@@ -263,7 +263,31 @@ export function deriveFindings(
 ): AgiFinding[] {
   const target = engagement?.scope_definition.target_allowlist[0] ?? "in-scope target";
   const out: AgiFinding[] = [];
-  const blob = transcript.map((t) => t.content).join("\n");
+  // Only REAL evidence counts, and only tool output is evidence: an assistant row
+  // is the agent's own narration. Every transcript row used to feed this blob,
+  // so the model's planning prose ("httpx -title …", "… the server stack …")
+  // satisfied the detectors and then *became* the finding's `response`, showing
+  // the agent describing an HTTP call instead of what the call returned.
+  const toolChunks = transcript.filter((t) => t.role === "tool" && (t.content ?? "").trim());
+  if (toolChunks.length === 0) return [];
+  const blob = toolChunks.map((t) => t.content ?? "").join("\n");
+
+  /** First tool chunk matching `re` — the only rows that may become evidence. */
+  const toolText = (re: RegExp): string | null => {
+    for (const t of toolChunks) if (re.test(t.content ?? "")) return (t.content ?? "").trim();
+    return null;
+  };
+  /** A real exchange, not prose: a status line, `Status: 200` or an `[200]` marker. */
+  const HTTP_EXCHANGE = /(?:^|\n)\s*(?:HTTP\/[\d.]+\s+\d{3}\b|\bStatus:\s*\d{3}\b|\[\d{3}\])/;
+  /** The Host header is a host: never the allowlist entry's path or query. */
+  const hostOf = (value: string): string => {
+    try {
+      return new URL(value.includes("://") ? value : `https://${value}`).host;
+    } catch {
+      return value.replace(/^https?:\/\//, "").split(/[/?#]/)[0];
+    }
+  };
+  const targetHost = hostOf(target);
 
   if (/HTTP\s+200|title/i.test(blob)) {
     out.push({
@@ -274,15 +298,16 @@ export function deriveFindings(
       status: "validated",
       nodeId: "recon_fingerprint",
       evidence: {
-        request: `GET / HTTP/1.1\nHost: ${target.replace(/^https?:\/\//, "")}\nUser-Agent: phantix-agi/httpx`,
-        response: transcript.find((t) => /HTTP\s+200|title/i.test(t.content))?.content ?? "HTTP 200",
+        request: `GET / HTTP/1.1\nHost: ${targetHost}\nUser-Agent: phantix-agi/httpx`,
+        response: toolText(HTTP_EXCHANGE) ?? "No HTTP response was captured for this probe.",
         hash: hashish(blob.slice(0, 80)),
         notes: "Read-only recon. Title and server banner collected from allowlisted host.",
       },
     });
   }
 
-  if (/nginx|apache|iis|server /i.test(blob)) {
+  const banner = toolText(/(?:^|\n)\s*Server:\s*\S+|nginx|apache|iis/i);
+  if (banner) {
     out.push({
       id: "f-banner",
       title: "Server banner disclosure",
@@ -291,8 +316,8 @@ export function deriveFindings(
       status: "validated",
       nodeId: "recon_fingerprint",
       evidence: {
-        request: `HEAD / HTTP/1.1\nHost: ${target.replace(/^https?:\/\//, "")}`,
-        response: transcript.find((t) => /nginx|apache|iis|server /i.test(t.content))?.content ?? "",
+        request: `HEAD / HTTP/1.1\nHost: ${targetHost}`,
+        response: banner,
         hash: hashish("banner"),
         notes: "Banner leakage aids targeted exploit research. Suppress Server headers.",
       },

@@ -269,6 +269,17 @@ export function ToolGroupCard({
   const [open, setOpen] = useState(runs.length <= 1);
   const count = runs.length;
   const totalText = useMemo(() => runs.map((r) => r.content).join("\n"), [runs]);
+  // Runs with neither a command nor a body render nothing inside the card, so a
+  // group of them is only a header claiming a call that was never emitted.
+  const hasPayload = useMemo(
+    () =>
+      runs.some((r) => {
+        const { command, body } = splitToolContent(r.content);
+        return Boolean(command || body);
+      }),
+    [runs],
+  );
+  if (!hasPayload) return null;
   return (
     <div className="group relative min-w-0 overflow-hidden rounded-md border border-phantix-700/40 bg-phantix-950/70">
       <button
@@ -591,6 +602,10 @@ export const StreamMessage = memo(function StreamMessage({ t, last = false, dens
   const time = streamTime(t.created_at);
 
   if (t.role === "tool") {
+    // No response yet means nothing to show, full stop — a tool name alone (no
+    // output) still isn't a real answer. Without this guard every
+    // tool-call-started event with no output rendered as an empty bordered box.
+    if (!t.content.trim()) return null;
     // Pi mid-turn helpers render as compact cards, not generic tool dumps.
     if (t.meta?.tool === "pi_subagent") {
       return (
@@ -634,6 +649,9 @@ export const StreamMessage = memo(function StreamMessage({ t, last = false, dens
   }
 
   if (t.role === "system") {
+    // An engine row that carried no payload and no known event kind has nothing
+    // to show; the card would only claim an event that arrived without data.
+    if (!t.content.trim() && !EVENT_CARD[String(t.meta?.kind ?? "")]) return null;
     return (
       <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, ease: "easeOut" }}>
         <SystemEventCard t={t} dense={dense} />
@@ -676,6 +694,10 @@ export const StreamMessage = memo(function StreamMessage({ t, last = false, dens
 
   // assistant (default)
   const persona = PERSONA_META[personaForChunk(t)];
+  // A row with nothing to say must not draw chrome: the backend opens an
+  // assistant row per turn and sometimes never fills it, and each one rendered
+  // as an empty bordered bubble with avatar and label.
+  if (!t.content.trim()) return null;
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
